@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Schema Mapping - JKN Risk Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#006d33",
+                        "surface": "#f9f9ff",
+                        "tertiary-fixed-dim": "#ffb2bb",
+                        "on-secondary-fixed-variant": "#004b71",
+                        "on-tertiary-fixed": "#400012",
+                        "background": "#f9f9ff",
+                        "surface-container-high": "#dfe8ff",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-bright": "#f9f9ff",
+                        "tertiary": "#a72e4a",
+                        "surface-variant": "#d9e3fb",
+                        "on-primary-container": "#f7fff3",
+                        "surface-container": "#e8eeff",
+                        "primary-container": "#008740",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#5fbbfd",
+                        "tertiary-fixed": "#ffd9dd",
+                        "primary-fixed": "#78fc9c",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#005225",
+                        "inverse-primary": "#5adf82",
+                        "on-surface": "#111c2d",
+                        "secondary-fixed-dim": "#8fcdff",
+                        "on-secondary-fixed": "#001e30",
+                        "outline": "#6d7b6d",
+                        "on-background": "#111c2d",
+                        "secondary-fixed": "#cbe6ff",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-dim": "#d0daf2",
+                        "primary": "#006b32",
+                        "outline-variant": "#bccabb",
+                        "on-primary-fixed": "#00210b",
+                        "inverse-surface": "#273143",
+                        "on-tertiary-fixed-variant": "#8a1636",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-container": "#004a6f",
+                        "surface-container-highest": "#d9e3fb",
+                        "on-error-container": "#93000a",
+                        "secondary": "#006495",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#3d4a3e",
+                        "tertiary-container": "#c84761",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#ecf0ff",
+                        "primary-fixed-dim": "#5adf82",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding-desktop": "32px",
+                        "unit": "4px",
+                        "sidebar-width": "280px",
+                        "container-padding-mobile": "16px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "title-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "title-lg": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "60px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .mapping-line {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .ai-glow {
+            box-shadow: 0px 0px 12px rgba(22, 137, 200, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[280px] bg-surface-container-lowest border-r border-outline-variant flex flex-col h-screen py-4 z-50">
+<div class="px-6 pb-6">
+<div class="flex items-center gap-3">
+<img class="w-8 h-8 object-cover rounded" data-alt="A clean, professional minimalist logo featuring a geometric shield or abstract data knot, utilizing the primary brand green (#006b32) and white. High contrast, sharp edges, suitable for a national healthcare intelligence platform logo." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMOBuI1ta-RLt5D9SdBZw6b_L_lrDofZIsa_Flg-zOEMRSz3Wc4OvYpZUz3CPW2psWtffl5LB4MGUfdWeMTFssiP29gabWqKKdBYkhGEH6ZDgRFcgV0ao__2_CL63rVDg6NkHe4kySeu3jwAwVAtlEWYWVIQSrxIgHigmorYqSK5ebhy2NGvEP-oNjbYqb1AeIHaZgZceFlZQU-X8Cba_v26UASF1SYZQlxsSfkp1ebILj9_kEedodsA"/>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">JKN Risk Intelligence</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Healthcare Governance</p>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto px-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+<span class="font-label-md text-label-md">Command Center</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">rule</span>
+<span class="font-label-md text-label-md">Investigation Queue</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">search_check</span>
+<span class="font-label-md text-label-md">Investigations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">description</span>
+<span class="font-label-md text-label-md">Claims</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">medical_services</span>
+<span class="font-label-md text-label-md">Providers</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">analytics</span>
+<span class="font-label-md text-label-md">Risk Intelligence</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">psychology</span>
+<span class="font-label-md text-label-md">AI Copilot</span>
+</a>
+<!-- Active Tab -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-container-high text-primary border-l-4 border-primary scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">database</span>
+<span class="font-label-md text-label-md font-bold">Data Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">assessment</span>
+<span class="font-label-md text-label-md">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+<div class="px-4 mt-6 mb-4">
+<button class="w-full bg-primary text-on-primary font-label-md text-label-md py-2.5 rounded-lg flex justify-center items-center gap-2 hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-[18px]">psychology</span>
+                Ask JKN Intelligence
+            </button>
+</div>
+<div class="px-4 space-y-1 mt-auto">
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">account_circle</span>
+<span class="font-label-md text-label-md">Account</span>
+</a>
+</div>
+</nav>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-280px)] z-40 bg-surface border-b border-outline-variant h-16 px-gutter flex justify-between items-center ml-[280px]">
+<div class="flex items-center">
+<div class="relative w-96">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest focus:ring-2 focus:ring-primary focus:border-primary font-body-md text-body-md" placeholder="Search datasets, schemas..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-primary font-label-md text-label-md font-semibold hover:opacity-80 transition-opacity flex items-center gap-1">
+                ✦ Ask JKN Intelligence
+            </button>
+<div class="flex items-center gap-2 border-l border-outline-variant pl-4">
+<button class="text-on-surface-variant hover:text-primary transition-all p-1.5 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-all p-1.5 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-all p-1.5 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-[280px] mt-16 p-container-padding-desktop">
+<div class="max-w-7xl mx-auto space-y-6">
+<!-- Page Header -->
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Schema Mapping</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Map incoming hospital dataset 'RS_Bunda_Data_2023.csv' to Canonical JKN Schema.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-label-md text-label-md hover:bg-surface-container transition-colors">
+                        Auto-Map (AI)
+                    </button>
+<button class="px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">save</span>
+                        Save Mapping
+                    </button>
+</div>
+</div>
+<!-- Mapping Workspace -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 relative overflow-hidden">
+<div class="grid grid-cols-2 gap-24 relative" id="mapping-container">
+<!-- SVG for connecting lines -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" id="lines-svg" style="z-index: 1;">
+<!-- Lines drawn by JS -->
+</svg>
+<!-- Left Column: Incoming -->
+<div class="space-y-4 relative z-10">
+<div class="flex items-center gap-2 pb-2 border-b border-outline-variant">
+<span class="material-symbols-outlined text-secondary">data_object</span>
+<h3 class="font-title-lg text-title-lg text-on-surface">Incoming Schema</h3>
+<span class="ml-auto bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded font-label-sm text-label-sm">RS_Bunda_Data</span>
+</div>
+<div class="space-y-2">
+<!-- Incoming Item 1 -->
+<div class="p-3 border border-outline-variant rounded-lg bg-surface flex justify-between items-center group cursor-pointer hover:border-primary hover:shadow-sm transition-all" id="inc-1">
+<div>
+<div class="font-label-md text-label-md text-on-surface">NO_SEP</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">String (19)</div>
+</div>
+<div class="w-3 h-3 rounded-full bg-outline-variant group-hover:bg-primary connection-point-right" data-id="inc-1"></div>
+</div>
+<!-- Incoming Item 2 -->
+<div class="p-3 border border-outline-variant rounded-lg bg-surface flex justify-between items-center group cursor-pointer hover:border-primary hover:shadow-sm transition-all" id="inc-2">
+<div>
+<div class="font-label-md text-label-md text-on-surface">NO_KARTU</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">String (13)</div>
+</div>
+<div class="w-3 h-3 rounded-full bg-outline-variant group-hover:bg-primary connection-point-right" data-id="inc-2"></div>
+</div>
+</div>
+</div>
+<!-- Right Column: Canonical -->
+<div class="space-y-4 relative z-10">
+<div class="flex items-center gap-2 pb-2 border-b border-outline-variant">
+<span class="material-symbols-outlined text-primary">verified</span>
+<h3 class="font-title-lg text-title-lg text-on-surface">Canonical JKN Schema</h3>
+<span class="ml-auto bg-primary-container text-on-primary-container px-2 py-0.5 rounded font-label-sm text-label-sm">v2.1 Core</span>
+</div>
+<div class="space-y-2">
+<!-- Canonical Item 1 -->
+<div class="p-3 border border-outline-variant rounded-lg bg-surface flex items-center gap-3 group cursor-pointer hover:border-primary hover:shadow-sm transition-all ai-glow" id="can-1">
+<div class="w-3 h-3 rounded-full bg-secondary connection-point-left" data-id="can-1"></div>
+<div class="flex-1 flex justify-between items-center">
+<div>
+<div class="font-label-md text-label-md text-on-surface">claim_id</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">UUID</div>
+</div>
+<!-- AI Suggestion Badge -->
+<div class="flex items-center gap-1 bg-secondary-container/20 text-secondary px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[14px]">psychology</span>
+<span class="font-label-sm text-label-sm">96%</span>
+</div>
+</div>
+</div>
+<!-- Canonical Item 2 -->
+<div class="p-3 border border-outline-variant rounded-lg bg-surface flex items-center gap-3 group cursor-pointer hover:border-primary hover:shadow-sm transition-all ai-glow" id="can-2">
+<div class="w-3 h-3 rounded-full bg-secondary connection-point-left" data-id="can-2"></div>
+<div class="flex-1 flex justify-between items-center">
+<div>
+<div class="font-label-md text-label-md text-on-surface">patient_id</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">String</div>
+</div>
+<div class="flex items-center gap-1 bg-secondary-container/20 text-secondary px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[14px]">psychology</span>
+<span class="font-label-sm text-label-sm">94%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple JS to draw connecting lines between matched items
+        document.addEventListener('DOMContentLoaded', () => {
+            const svg = document.getElementById('lines-svg');
+            const container = document.getElementById('mapping-container');
+            
+            // Hardcoded mappings for demonstration
+            const mappings = [
+                { from: 'inc-1', to: 'can-1' },
+                { from: 'inc-2', to: 'can-2' }
+            ];
+
+            function drawLines() {
+                svg.innerHTML = '';
+                const containerRect = container.getBoundingClientRect();
+
+                mappings.forEach(mapping => {
+                    const fromEl = document.getElementById(mapping.from).querySelector('.connection-point-right');
+                    const toEl = document.getElementById(mapping.to).querySelector('.connection-point-left');
+
+                    if (fromEl && toEl) {
+                        const fromRect = fromEl.getBoundingClientRect();
+                        const toRect = toEl.getBoundingClientRect();
+
+                        // Calculate relative positions within the SVG
+                        const startX = fromRect.left + fromRect.width / 2 - containerRect.left;
+                        const startY = fromRect.top + fromRect.height / 2 - containerRect.top;
+                        
+                        const endX = toRect.left + toRect.width / 2 - containerRect.left;
+                        const endY = toRect.top + toRect.height / 2 - containerRect.top;
+
+                        // Create curved path
+                        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                        const curve = 50; // Control point offset for curve
+                        const d = `M ${startX} ${startY} C ${startX + curve} ${startY}, ${endX - curve} ${endY}, ${endX} ${endY}`;
+                        
+                        path.setAttribute('d', d);
+                        path.setAttribute('stroke', '#1689C8'); // Supporting Blue for intelligence links
+                        path.setAttribute('stroke-width', '2');
+                        path.setAttribute('fill', 'none');
+                        path.setAttribute('stroke-dasharray', '4 4'); // Dashed line to indicate AI suggestion
+                        
+                        svg.appendChild(path);
+                    }
+                });
+            }
+
+            // Draw initially and on resize
+            drawLines();
+            window.addEventListener('resize', drawLines);
+        });
+    </script>
+</body></html>

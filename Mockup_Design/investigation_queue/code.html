@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Investigation Queue - JKN Risk Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#006d33",
+                        "surface": "#f9f9ff",
+                        "tertiary-fixed-dim": "#ffb2bb",
+                        "on-secondary-fixed-variant": "#004b71",
+                        "on-tertiary-fixed": "#400012",
+                        "background": "#f9f9ff",
+                        "surface-container-high": "#dfe8ff",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-bright": "#f9f9ff",
+                        "tertiary": "#a72e4a",
+                        "surface-variant": "#d9e3fb",
+                        "on-primary-container": "#f7fff3",
+                        "surface-container": "#e8eeff",
+                        "primary-container": "#008740",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#5fbbfd",
+                        "tertiary-fixed": "#ffd9dd",
+                        "primary-fixed": "#78fc9c",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#005225",
+                        "inverse-primary": "#5adf82",
+                        "on-surface": "#111c2d",
+                        "secondary-fixed-dim": "#8fcdff",
+                        "on-secondary-fixed": "#001e30",
+                        "outline": "#6d7b6d",
+                        "on-background": "#111c2d",
+                        "secondary-fixed": "#cbe6ff",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-dim": "#d0daf2",
+                        "primary": "#006b32",
+                        "outline-variant": "#bccabb",
+                        "on-primary-fixed": "#00210b",
+                        "inverse-surface": "#273143",
+                        "on-tertiary-fixed-variant": "#8a1636",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-container": "#004a6f",
+                        "surface-container-highest": "#d9e3fb",
+                        "on-error-container": "#93000a",
+                        "secondary": "#006495",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#3d4a3e",
+                        "tertiary-container": "#c84761",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#ecf0ff",
+                        "primary-fixed-dim": "#5adf82",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding-desktop": "32px",
+                        "unit": "4px",
+                        "sidebar-width": "280px",
+                        "container-padding-mobile": "16px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "title-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "title-lg": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "60px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ai-glow {
+            box-shadow: 0px 0px 12px rgba(22, 137, 200, 0.15);
+        }
+        .soft-shadow {
+            box-shadow: 0px 12px 16px -4px rgba(0, 166, 81, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased overflow-hidden flex">
+<!-- SideNavBar (Semantic Map: Active = Investigation Queue) -->
+<nav class="hidden md:flex flex-col h-screen py-4 fixed left-0 top-0 h-full w-[280px] border-r border-outline-variant bg-surface-container-lowest z-50">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center text-on-primary-container font-bold">J</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">JKN Risk Intelligence</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">Healthcare Governance</p>
+</div>
+</div>
+<div class="px-4 mb-6">
+<button class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-[#1689C8] text-on-primary py-2.5 rounded-lg font-label-md text-label-md font-semibold ai-glow hover:opacity-90 transition-opacity">
+<span class="text-lg">✦</span> Ask JKN Intelligence
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto px-4 space-y-1">
+<!-- Command Center -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">dashboard</span>
+<span class="font-body-md text-body-md">Command Center</span>
+</a>
+<!-- Investigation Queue (ACTIVE) -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-container-high text-primary border-l-4 border-primary bg-[#E7F7EE]" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">rule</span>
+<span class="font-body-md text-body-md font-semibold">Investigation Queue</span>
+</a>
+<!-- Investigations -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">search_check</span>
+<span class="font-body-md text-body-md">Investigations</span>
+</a>
+<!-- Claims -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">description</span>
+<span class="font-body-md text-body-md">Claims</span>
+</a>
+<!-- Providers -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">medical_services</span>
+<span class="font-body-md text-body-md">Providers</span>
+</a>
+<!-- Risk Intelligence -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">analytics</span>
+<span class="font-body-md text-body-md">Risk Intelligence</span>
+</a>
+<!-- AI Copilot -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">psychology</span>
+<span class="font-body-md text-body-md">AI Copilot</span>
+</a>
+<!-- Data Management -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">database</span>
+<span class="font-body-md text-body-md">Data Management</span>
+</a>
+<!-- Reports -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">assessment</span>
+<span class="font-body-md text-body-md">Reports</span>
+</a>
+<!-- Settings -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</div>
+<div class="px-4 mt-auto border-t border-outline-variant pt-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">help</span>
+<span class="font-body-md text-body-md">Support</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">account_circle</span>
+<span class="font-body-md text-body-md">Account</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-[280px] flex flex-col h-screen overflow-hidden">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center h-16 px-gutter bg-surface z-40 shrink-0">
+<div class="flex items-center flex-1 max-w-xl">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-shadow" placeholder="Search claims, providers, or IDs..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-primary font-label-md text-label-md font-semibold hover:opacity-80 transition-opacity flex items-center gap-1">
+<span class="text-lg">✦</span> Ask JKN Intelligence
+                 </button>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<button class="p-2 hover:bg-surface-container rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="p-2 hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Page Canvas -->
+<div class="flex-1 overflow-y-auto bg-surface-bright p-container-padding-desktop">
+<!-- Page Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-background mb-1">Investigation Queue</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-[#1689C8]">auto_awesome</span>
+                        AI-prioritized cases requiring attention
+                    </p>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">download</span> Export List
+                    </button>
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg font-label-md text-label-md font-semibold hover:bg-primary-container transition-colors flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span> New Investigation
+                    </button>
+</div>
+</div>
+<!-- Filters & Tabs Bar -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-sm">
+<!-- Tabs -->
+<div class="flex items-center gap-2 border-b lg:border-b-0 border-outline-variant pb-2 lg:pb-0">
+<button class="px-4 py-1.5 rounded-full font-label-md text-label-md font-semibold bg-surface-container-high text-on-surface">
+                        All
+                    </button>
+<button class="px-4 py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error"></span> Critical
+                    </button>
+<button class="px-4 py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-[#F79009]"></span> High
+                    </button>
+<button class="px-4 py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-[#FDB022]"></span> Medium
+                    </button>
+</div>
+<!-- Filters -->
+<div class="flex items-center gap-3 overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
+<div class="relative">
+<select class="appearance-none pl-3 pr-8 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg font-label-md text-label-md text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+<option>Risk Level</option>
+<option>Critical (90-100)</option>
+<option>High (70-89)</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+<div class="relative">
+<select class="appearance-none pl-3 pr-8 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg font-label-md text-label-md text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+<option>Risk Type</option>
+<option>Upcoding</option>
+<option>Phantom Billing</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+<div class="relative">
+<select class="appearance-none pl-3 pr-8 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg font-label-md text-label-md text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+<option>Provider</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+<button class="p-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Enterprise Compact List (Bento-style layout for complex rows) -->
+<div class="space-y-3">
+<!-- Queue Item: Critical -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
+<div class="h-1 w-full bg-error"></div> <!-- Critical top strip -->
+<div class="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+<!-- Col 1: ID & Basic Info -->
+<div class="md:col-span-3 flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm font-bold text-on-surface">CLM-10293</span>
+<span class="px-2 py-0.5 bg-error/10 text-error rounded font-label-sm text-label-sm border border-error/20 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">warning</span> CRITICAL
+                                </span>
+</div>
+<h3 class="font-body-md text-body-md font-semibold text-on-background">RS Sehat Sentosa</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">Submitted: Oct 24, 2023</p>
+</div>
+<!-- Col 2: Risk Types (Chips) -->
+<div class="md:col-span-4 flex flex-col gap-2 border-l border-outline-variant/50 pl-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Detected Patterns</span>
+<div class="flex flex-wrap gap-2">
+<div class="px-2 py-1 bg-surface-container border border-outline-variant rounded-md flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+<span class="font-label-md text-label-md text-on-surface">Upcoding <span class="font-semibold text-error">92%</span></span>
+</div>
+<div class="px-2 py-1 bg-surface-container border border-outline-variant rounded-md flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-[#F79009]"></span>
+<span class="font-label-md text-label-md text-on-surface">Phantom Billing <span class="font-semibold text-[#F79009]">81%</span></span>
+</div>
+</div>
+</div>
+<!-- Col 3: Exposure & Score -->
+<div class="md:col-span-2 flex flex-col gap-1 border-l border-outline-variant/50 pl-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Exposure</span>
+<span class="font-title-lg text-title-lg font-semibold text-error">Rp 18.45M</span>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-md text-label-md text-on-surface">Risk Score:</span>
+<span class="font-body-md text-body-md font-bold text-error">94</span>
+</div>
+</div>
+<!-- Col 4: AI Insight & Action -->
+<div class="md:col-span-3 flex flex-col justify-between h-full border-l border-outline-variant/50 pl-4">
+<div class="bg-gradient-to-r from-surface-container to-surface-container-high p-2 rounded-lg border border-primary/20 ai-glow mb-2">
+<p class="font-label-md text-label-md text-on-surface flex items-start gap-1.5">
+<span class="text-[12px] text-[#1689C8] mt-0.5">✦</span>
+<span>High historical correlation with audited upcoding cases. Immediate review recommended.</span>
+</p>
+</div>
+<div class="flex justify-end gap-2 mt-auto">
+<button class="px-3 py-1.5 text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors">Dismiss</button>
+<button class="px-3 py-1.5 bg-primary text-on-primary rounded font-label-md text-label-md font-semibold hover:bg-primary-container transition-colors shadow-sm">Review Case</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Queue Item: High -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
+<div class="h-1 w-full bg-[#F79009]"></div> <!-- High top strip -->
+<div class="p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+<div class="md:col-span-3 flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm font-bold text-on-surface">CLM-10294</span>
+<span class="px-2 py-0.5 bg-[#F79009]/10 text-[#B54708] rounded font-label-sm text-label-sm border border-[#F79009]/20 flex items-center gap-1">
+                                     HIGH
+                                </span>
+</div>
+<h3 class="font-body-md text-body-md font-semibold text-on-background">Klinik Utama Kasih</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">Submitted: Oct 24, 2023</p>
+</div>
+<div class="md:col-span-4 flex flex-col gap-2 border-l border-outline-variant/50 pl-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Detected Patterns</span>
+<div class="flex flex-wrap gap-2">
+<div class="px-2 py-1 bg-surface-container border border-outline-variant rounded-md flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-[#F79009]"></span>
+<span class="font-label-md text-label-md text-on-surface">Unbundling <span class="font-semibold text-[#F79009]">76%</span></span>
+</div>
+</div>
+</div>
+<div class="md:col-span-2 flex flex-col gap-1 border-l border-outline-variant/50 pl-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Exposure</span>
+<span class="font-title-lg text-title-lg font-semibold text-on-background">Rp 5.20M</span>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-label-md text-label-md text-on-surface">Risk Score:</span>
+<span class="font-body-md text-body-md font-bold text-[#F79009]">82</span>
+</div>
+</div>
+<div class="md:col-span-3 flex flex-col justify-between h-full border-l border-outline-variant/50 pl-4">
+<div class="bg-surface-container-low p-2 rounded-lg border border-outline-variant/50 mb-2">
+<p class="font-label-md text-label-md text-on-surface-variant flex items-start gap-1.5">
+<span class="material-symbols-outlined text-[14px] mt-0.5">info</span>
+<span>Procedure sequence anomalous for reported diagnosis.</span>
+</p>
+</div>
+<div class="flex justify-end gap-2 mt-auto">
+<button class="px-3 py-1.5 text-on-surface-variant font-label-md text-label-md hover:text-primary transition-colors">Dismiss</button>
+<button class="px-3 py-1.5 bg-surface-container-lowest border border-outline-variant text-on-surface rounded font-label-md text-label-md font-semibold hover:bg-surface-container transition-colors shadow-sm">Review Case</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

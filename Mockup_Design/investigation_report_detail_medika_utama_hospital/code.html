@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Investigation Report: Medika Utama Hospital - JKN Risk Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#111c2d",
+                        "secondary-container": "#5fbbfd",
+                        "on-secondary-fixed-variant": "#004b71",
+                        "surface-container-low": "#f0f3ff",
+                        "secondary-fixed-dim": "#8fcdff",
+                        "primary-fixed-dim": "#5adf82",
+                        "surface-variant": "#d9e3fb",
+                        "on-tertiary": "#ffffff",
+                        "surface-tint": "#006d33",
+                        "on-primary-container": "#f7fff3",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#273143",
+                        "outline-variant": "#bccabb",
+                        "secondary-fixed": "#cbe6ff",
+                        "secondary": "#006495",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#ecf0ff",
+                        "on-tertiary-fixed": "#400012",
+                        "surface-container-high": "#dfe8ff",
+                        "on-surface-variant": "#3d4a3e",
+                        "on-secondary-container": "#004a6f",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary": "#a72e4a",
+                        "surface-container-highest": "#d9e3fb",
+                        "error-container": "#ffdad6",
+                        "surface-container": "#e8eeff",
+                        "tertiary-fixed": "#ffd9dd",
+                        "on-tertiary-container": "#fffbff",
+                        "inverse-primary": "#5adf82",
+                        "tertiary-container": "#c84761",
+                        "surface-bright": "#f9f9ff",
+                        "background": "#f9f9ff",
+                        "surface-dim": "#d0daf2",
+                        "on-tertiary-fixed-variant": "#8a1636",
+                        "on-background": "#111c2d",
+                        "on-primary-fixed": "#00210b",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#78fc9c",
+                        "on-primary-fixed-variant": "#005225",
+                        "primary-container": "#008740",
+                        "on-error": "#ffffff",
+                        "primary": "#006b32",
+                        "tertiary-fixed-dim": "#ffb2bb",
+                        "error": "#ba1a1a",
+                        "outline": "#6d7b6d",
+                        "on-secondary-fixed": "#001e30",
+                        "surface": "#f9f9ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sidebar-width": "280px",
+                        "unit": "4px",
+                        "container-padding-desktop": "32px",
+                        "gutter": "24px",
+                        "container-padding-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "60px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "title-lg": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .ai-gradient-bg {
+            background: linear-gradient(135deg, #f7fff3 0%, #f0f3ff 100%);
+        }
+        .ai-glow-text {
+            background: linear-gradient(90deg, #008740, #004a6f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen overflow-x-hidden">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 w-full z-40 bg-surface border-b border-outline-variant shadow-sm h-16 px-gutter flex justify-between items-center transition-all duration-300">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-3xl font-variation-settings-'FILL' 1" style="font-variation-settings: 'FILL' 1;">shield_person</span>
+<span class="font-headline-sm text-headline-sm font-extrabold text-primary tracking-tight">JKN Risk Intelligence</span>
+</div>
+<div class="h-6 w-px bg-outline-variant mx-2 hidden md:block"></div>
+<nav class="hidden md:flex gap-6 items-center">
+<a class="text-on-surface-variant hover:text-primary transition-all flex items-center gap-1" href="#"><span class="material-symbols-outlined text-xl">arrow_back</span> Back to Investigations</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="hidden md:flex items-center gap-2 bg-gradient-to-r from-primary to-secondary text-on-primary px-4 py-2 rounded-lg font-label-md text-label-md shadow-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-sm">magic_button</span> Ask JKN Intelligence
+            </button>
+<div class="flex gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-colors"><span class="material-symbols-outlined">notifications</span></button>
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-colors"><span class="material-symbols-outlined">history</span></button>
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-colors"><span class="material-symbols-outlined">account_circle</span></button>
+</div>
+</div>
+</header>
+<!-- Main Container Layout (simulating sidebar push on desktop, full width on mobile) -->
+<div class="pt-16 w-full flex">
+<!-- Main Canvas Area -->
+<main class="flex-1 w-full bg-background transition-all duration-300">
+<!-- Report Header Actions -->
+<div class="bg-surface border-b border-outline-variant px-container-padding-mobile md:px-container-padding-desktop py-4 sticky top-16 z-30 shadow-sm flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+<div>
+<div class="flex items-center gap-3 mb-1">
+<span class="bg-error text-on-error px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">warning</span> Confirmed Risk</span>
+<span class="text-on-surface-variant font-label-md text-label-md">#INV-2026-010293</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-1">Investigation Report: Medika Utama Hospital</h1>
+<p class="text-on-surface-variant font-body-md text-body-md">Finalized findings and decision summary.</p>
+</div>
+<div class="flex items-center gap-3 self-start md:self-auto">
+<button class="flex items-center gap-2 bg-surface text-on-surface-variant border border-outline-variant px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[18px]">print</span> Print
+                    </button>
+<button class="flex items-center gap-2 bg-surface text-on-surface-variant border border-outline-variant px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[18px]">share</span> Share
+                    </button>
+<button class="flex items-center gap-2 bg-surface text-on-surface border border-outline-variant px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-surface-container transition-colors font-medium">
+<span class="material-symbols-outlined text-[18px]">download</span> Export PDF
+                    </button>
+</div>
+</div>
+<!-- Dashboard Content Grid -->
+<div class="p-container-padding-mobile md:p-container-padding-desktop max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column (Main Content) - 8 cols -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<!-- Executive Summary Card -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="bg-surface-container-low px-6 py-4 border-b border-outline-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">subject</span>
+<h2 class="font-title-lg text-title-lg text-on-surface m-0">Executive Summary</h2>
+</div>
+<div class="p-6">
+<p class="text-on-surface font-body-lg text-body-lg mb-4 leading-relaxed">
+                                 The investigation into Medika Utama Hospital confirms substantial irregularities consistent with organized upcoding and phantom billing schemes, primarily isolated to the Orthopedic and Cardiology departments between Q1 and Q3 2025.
+                             </p>
+<p class="text-on-surface-variant font-body-md text-body-md leading-relaxed">
+                                 Cross-referencing claims data with independent medical summaries revealed a systematic pattern of upgrading minor procedures (e.g., standard consultations) to complex interventions (e.g., specialized diagnostic imaging) without supporting clinical indications. Furthermore, patient interviews indicated non-receipt of services billed under 'phantom' codes.
+                             </p>
+</div>
+</div>
+<!-- Risk Analysis Card -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="border-t-4 border-error"></div>
+<div class="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-error">analytics</span>
+<h2 class="font-title-lg text-title-lg text-on-surface m-0">Risk Analysis Breakdown</h2>
+</div>
+<span class="bg-error-container text-on-error-container px-2 py-1 rounded font-label-sm text-label-sm uppercase tracking-wide">High Severity</span>
+</div>
+<div class="p-0">
+<!-- Analysis Pattern 1 -->
+<div class="p-6 border-b border-outline-variant">
+<div class="flex items-start gap-4">
+<div class="bg-surface-container p-3 rounded-lg flex-shrink-0 mt-1">
+<span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Systematic Upcoding (Orthopedics)</h3>
+<p class="text-on-surface-variant font-body-md text-body-md mb-4">
+                                            A consistent pattern observed where standard joint consultations (ICD-10 Z01.89) were subsequently billed alongside complex diagnostic arthroscopies (CPT 29870), despite no surgical notes or pathology reports indicating the procedure took place.
+                                         </p>
+<div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant border-dashed">
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wide">Frequency Anomaly</span>
+<span class="font-label-md text-label-md text-error font-bold">+340% vs Peer Avg</span>
+</div>
+<div class="w-full bg-outline-variant rounded-full h-1.5">
+<div class="bg-error h-1.5 rounded-full" style="width: 85%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Analysis Pattern 2 -->
+<div class="p-6">
+<div class="flex items-start gap-4">
+<div class="bg-surface-container p-3 rounded-lg flex-shrink-0 mt-1">
+<span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Phantom Billing (Cardiology)</h3>
+<p class="text-on-surface-variant font-body-md text-body-md mb-4">
+                                            Identification of claims submitted for comprehensive echocardiograms (CPT 93306) on dates where patient admission logs and ward transfer records show the patient was not present in the facility or had already been discharged.
+                                         </p>
+<div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant border-dashed flex items-center justify-between">
+<div>
+<span class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wide mb-1">Confirmed Phantom Claims</span>
+<span class="font-headline-md text-headline-md text-on-surface">1,245 <span class="text-body-md text-on-surface-variant font-normal">incidents</span></span>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-4xl">warning</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Evidence Summary Card -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="px-6 py-4 border-b border-outline-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">folder_open</span>
+<h2 class="font-title-lg text-title-lg text-on-surface m-0">Evidence Summary</h2>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="py-3 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Document Type</th>
+<th class="py-3 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Reference ID</th>
+<th class="py-3 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Impact on Case</th>
+<th class="py-3 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-outline-variant">description</span>
+<span class="font-body-md text-body-md text-on-surface font-medium">Independent Medical Summaries</span>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface-variant">DOC-2025-A1</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center gap-1 bg-error-container text-on-error-container px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">
+<span class="material-symbols-outlined text-[14px]">cancel</span> Contradicts Claims
+                                             </span>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="text-primary hover:text-primary-container font-label-md text-label-md transition-colors">View</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors bg-surface-bright">
+<td class="py-4 px-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-outline-variant">biotech</span>
+<span class="font-body-md text-body-md text-on-surface font-medium">External Lab Results (Audit)</span>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface-variant">DOC-2025-B4</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center gap-1 bg-primary-container/20 text-on-primary-fixed-variant px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Supports Audit Findings
+                                             </span>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="text-primary hover:text-primary-container font-label-md text-label-md transition-colors">View</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-4 px-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-outline-variant">groups</span>
+<span class="font-body-md text-body-md text-on-surface font-medium">Patient Interview Transcripts</span>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface-variant">DOC-2025-TR9</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center gap-1 bg-error-container text-on-error-container px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">
+<span class="material-symbols-outlined text-[14px]">cancel</span> Contradicts Claims
+                                             </span>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="text-primary hover:text-primary-container font-label-md text-label-md transition-colors">View</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Final Decision Notes Card -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm relative">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+<div class="px-6 py-4 border-b border-outline-variant flex items-center gap-2 bg-surface-container-low">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">gavel</span>
+<h2 class="font-title-lg text-title-lg text-on-surface m-0">Final Decision &amp; Investigator Notes</h2>
+</div>
+<div class="p-6">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface font-bold text-lg">
+                                     AW
+                                 </div>
+<div>
+<div class="font-label-md text-label-md text-on-surface font-semibold">Dr. A. Wijaya</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Lead Medical Investigator</div>
+</div>
+</div>
+<div class="bg-surface-bright border border-outline-variant rounded-lg p-5 italic text-on-surface font-body-md text-body-md leading-relaxed border-l-4 border-l-outline">
+                                 "Based on the preponderance of evidence, including clear contradictions between billed claims and independent medical summaries, as well as direct patient testimonies regarding phantom services, I confirm the high-risk classification. The patterns observed are structural rather than clerical errors. Immediate recovery proceedings and referral to the central audit committee are recommended."
+                             </div>
+</div>
+</div>
+</div>
+<!-- Right Column (Metadata & AI) - 4 cols -->
+<div class="lg:col-span-4 flex flex-col gap-6">
+<!-- AI Intelligence Briefing (Bento Style) -->
+<div class="ai-gradient-bg border border-secondary-fixed/50 rounded-xl overflow-hidden shadow-sm relative">
+<!-- Decorative Glow -->
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-secondary-container rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+<div class="px-5 py-4 border-b border-secondary-fixed-dim/30 flex items-center justify-between relative z-10">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary ai-glow-text" style="font-variation-settings: 'FILL' 1;">psychology</span>
+<h2 class="font-title-lg text-title-lg text-on-surface font-bold ai-glow-text m-0">Gemini Intelligence Brief</h2>
+</div>
+<span class="material-symbols-outlined text-secondary text-sm">arrow_back_ios_new</span>
+</div>
+<div class="p-5 relative z-10 space-y-4">
+<p class="text-on-surface font-body-md text-body-md leading-relaxed">
+                                 Analysis of historical claim velocity and anomaly detection models indicates a <strong class="text-error font-semibold">94% confidence interval</strong> that Medika Utama Hospital's billing practices exhibit hallmarks of organized fraud networks previously identified in Region 4.
+                             </p>
+<div class="bg-surface/60 backdrop-blur-sm p-3 rounded-lg border border-surface-variant">
+<h4 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">Key AI Deductions</h4>
+<ul class="space-y-2">
+<li class="flex items-start gap-2 text-sm text-on-surface">
+<span class="material-symbols-outlined text-secondary text-[16px] mt-0.5">check</span>
+<span>High correlation with known 'Upcoding' signatures (Pattern Alpha-7).</span>
+</li>
+<li class="flex items-start gap-2 text-sm text-on-surface">
+<span class="material-symbols-outlined text-secondary text-[16px] mt-0.5">check</span>
+<span>Provider network links detected to 2 previously sanctioned entities.</span>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Exposure Metrics Card -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-outline-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">account_balance_wallet</span>
+<h2 class="font-title-lg text-title-lg text-on-surface m-0">Exposure Metrics</h2>
+</div>
+<div class="p-5 space-y-5">
+<div>
+<span class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Total Estimated Exposure</span>
+<div class="font-display-lg text-display-lg text-error font-bold flex items-baseline gap-1">
+<span class="text-headline-md">Rp</span>4.2B
+                                 </div>
+</div>
+<div class="pt-4 border-t border-outline-variant">
+<span class="block font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-3">Recovery Status</span>
+<div class="w-full bg-surface-container rounded-full h-2.5 mb-2 relative overflow-hidden">
+<div class="bg-primary h-2.5 rounded-full absolute top-0 left-0" style="width: 15%"></div>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-on-surface font-medium">Rp 630M <span class="text-on-surface-variant font-normal">(15%) Recovered</span></span>
+<span class="text-on-surface-variant">Pending</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Metadata Details Card -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="px-5 py-4 border-b border-outline-variant">
+<h2 class="font-title-lg text-title-lg text-on-surface m-0">Investigation Details</h2>
+</div>
+<div class="p-0">
+<table class="w-full text-left">
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-5 font-label-md text-label-md text-on-surface-variant w-1/2">Investigation ID</td>
+<td class="py-3 px-5 font-body-md text-body-md text-on-surface font-medium">#INV-2026-010293</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-5 font-label-md text-label-md text-on-surface-variant">Date Created</td>
+<td class="py-3 px-5 font-body-md text-body-md text-on-surface">Oct 12, 2025</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-5 font-label-md text-label-md text-on-surface-variant">Last Modified</td>
+<td class="py-3 px-5 font-body-md text-body-md text-on-surface">Nov 04, 2025</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-5 font-label-md text-label-md text-on-surface-variant">Region Focus</td>
+<td class="py-3 px-5 font-body-md text-body-md text-on-surface">DKI Jakarta (Reg 4)</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-5 font-label-md text-label-md text-on-surface-variant">Primary Investigator</td>
+<td class="py-3 px-5 font-body-md text-body-md text-on-surface">Dr. A. Wijaya</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

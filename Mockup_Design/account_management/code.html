@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Account Management - JKN Risk Intelligence</title>
+<!-- Google Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Design System Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary": "#006495",
+                        "on-primary-container": "#f7fff3",
+                        "on-background": "#111c2d",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#8a1636",
+                        "error-container": "#ffdad6",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#005225",
+                        "primary-fixed-dim": "#5adf82",
+                        "surface-container-high": "#dfe8ff",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "outline": "#6d7b6d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-bright": "#f9f9ff",
+                        "secondary-container": "#5fbbfd",
+                        "inverse-on-surface": "#ecf0ff",
+                        "on-secondary-fixed-variant": "#004b71",
+                        "surface-container": "#e8eeff",
+                        "secondary-fixed-dim": "#8fcdff",
+                        "inverse-surface": "#273143",
+                        "surface-variant": "#d9e3fb",
+                        "on-secondary-fixed": "#001e30",
+                        "primary": "#006b32",
+                        "primary-container": "#008740",
+                        "tertiary-fixed": "#ffd9dd",
+                        "on-tertiary-fixed": "#400012",
+                        "surface-dim": "#d0daf2",
+                        "outline-variant": "#bccabb",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#111c2d",
+                        "surface-tint": "#006d33",
+                        "tertiary-fixed-dim": "#ffb2bb",
+                        "on-primary-fixed": "#00210b",
+                        "primary-fixed": "#78fc9c",
+                        "background": "#f9f9ff",
+                        "error": "#ba1a1a",
+                        "surface": "#f9f9ff",
+                        "surface-container-highest": "#d9e3fb",
+                        "tertiary-container": "#c84761",
+                        "on-surface-variant": "#3d4a3e",
+                        "on-secondary-container": "#004a6f",
+                        "on-tertiary-container": "#fffbff",
+                        "secondary-fixed": "#cbe6ff",
+                        "inverse-primary": "#5adf82",
+                        "tertiary": "#a72e4a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding-desktop": "32px",
+                        "container-padding-mobile": "16px",
+                        "sidebar-width": "280px",
+                        "unit": "4px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "title-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "title-lg": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "60px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased font-body-md text-body-md min-h-screen">
+<!-- Navigation Shell: SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[280px] bg-surface-container-lowest border-r border-outline-variant flex flex-col h-screen py-4 z-50">
+<!-- Brand Header -->
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary truncate">JKN Risk Intelligence</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">Healthcare Governance</p>
+</div>
+</div>
+<!-- Main Tabs -->
+<div class="flex-1 overflow-y-auto px-4 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-title-lg text-title-lg text-[14px]">Command Center</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined">rule</span>
+<span class="font-title-lg text-title-lg text-[14px]">Investigation Queue</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined">search_check</span>
+<span class="font-title-lg text-title-lg text-[14px]">Investigations</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-title-lg text-title-lg text-[14px]">Claims</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined">medical_services</span>
+<span class="font-title-lg text-title-lg text-[14px]">Providers</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-title-lg text-title-lg text-[14px]">Risk Intelligence</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined" style="color: #1689C8">psychology</span>
+<span class="font-title-lg text-title-lg text-[14px]">AI Copilot</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="font-title-lg text-title-lg text-[14px]">Data Management</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-title-lg text-title-lg text-[14px]">Reports</span>
+</a>
+<!-- Active Tab: Settings (Semantic intent of Account Management) -->
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-surface-container-high text-primary border-l-4 border-primary scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-title-lg text-title-lg text-[14px]">Settings</span>
+</a>
+</div>
+<!-- CTA -->
+<div class="px-4 mt-4">
+<button class="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gradient-to-r from-primary to-secondary text-white font-title-lg text-title-lg text-[14px] hover:opacity-90 transition-opacity">
+<span>✦</span>
+                Ask JKN Intelligence
+            </button>
+</div>
+<!-- Footer Tabs -->
+<div class="mt-4 px-4 flex flex-col gap-1 border-t border-outline-variant pt-4">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-title-lg text-title-lg text-[14px]">Support</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-container text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_circle</span>
+<span class="font-title-lg text-title-lg text-[14px]">Account</span>
+</a>
+</div>
+</nav>
+<!-- Navigation Shell: TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-280px)] z-40 bg-surface border-b border-outline-variant flex justify-between items-center h-16 px-gutter ml-[280px]">
+<!-- Search Bar (Left aligned per JSON) -->
+<div class="flex-1 max-w-md">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-full py-2 pl-10 pr-4 font-body-md text-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-on-surface placeholder-on-surface-variant/70" placeholder="Search records, entities, or risk alerts..." type="text"/>
+</div>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container text-primary hover:text-primary transition-all opacity-80 duration-150 font-label-sm text-label-sm uppercase tracking-wider font-semibold">
+<span>✦</span> Ask JKN Intelligence
+            </button>
+<div class="flex items-center gap-2 border-l border-outline-variant pl-4">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-primary transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-primary transition-all">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-primary bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[280px] mt-16 p-container-padding-desktop flex flex-col gap-6">
+<!-- Page Header -->
+<div class="flex justify-between items-end mb-4">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface">Account Management</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-2">Manage your professional profile, security settings, and institutional access.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-lg bg-surface-container-lowest border border-outline text-on-surface font-title-lg text-title-lg text-[14px] hover:bg-surface-container transition-colors">Discard Changes</button>
+<button class="px-4 py-2 rounded-lg bg-primary text-on-primary font-title-lg text-title-lg text-[14px] hover:bg-primary-container transition-colors shadow-sm">Save Preferences</button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Profile Header Card (Spans full width) -->
+<div class="col-span-12 bg-surface-container-lowest border border-outline-variant rounded-xl p-8 flex items-center gap-8 relative overflow-hidden">
+<!-- Decorative AI Sparkle BG element -->
+<div class="absolute right-0 top-0 w-64 h-64 bg-secondary-container/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+<div class="relative shrink-0">
+<img class="w-32 h-32 rounded-full object-cover border-4 border-surface border-surface-container-lowest shadow-sm z-10 relative" data-alt="A highly professional corporate headshot of a mature female healthcare executive, Dr. Sarah Jenkins. She is wearing a dark navy tailored blazer over a crisp white blouse. The lighting is bright, flat, and modern, shot against a pristine white studio background. The style conveys authority, intelligence, and institutional trust, fitting for a top-tier medical governance platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAidsNHxNsL8SJNmQrzMrM_o6vW0t5XbhKd2oay-iSaxjAJVptqvoIJNrCZ_dqzpdCvFA7LEDNF1pHM6AJzbIAieU3hS4QfL2n47_ExdbBA7bTcCvFRe329CThn3YxhNFtzVcj_StWGRpQcG_l5hijt4sIrWPLJGrpZvQX-_BlOVnhffVvkvlLwTYsB-H5IfLxF5qWrKfwm5-i3f-j5AiHgCWyNEZnGpbods57djyqfvLn8fp2hHrqgnA"/>
+<div class="absolute bottom-1 right-1 w-6 h-6 bg-primary rounded-full border-2 border-surface-container-lowest flex items-center justify-center z-20" title="Verified Personnel">
+<span class="material-symbols-outlined text-[14px] text-on-primary" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+<div class="flex-1 z-10">
+<h3 class="font-headline-lg text-headline-lg text-on-surface">Dr. Sarah Jenkins</h3>
+<p class="font-title-lg text-title-lg text-primary mt-1">Chief Risk Officer</p>
+<div class="flex items-center gap-4 mt-4 text-on-surface-variant">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">domain</span>
+<span class="font-label-md text-label-md">National Health Intelligence Agency</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+<span class="font-label-md text-label-md">Jakarta Headquarters</span>
+</div>
+</div>
+</div>
+<div class="z-10 flex flex-col gap-3">
+<button class="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-surface-container-lowest border border-outline text-on-surface font-label-md text-label-md hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[18px]">photo_camera</span>
+                        Update Photo
+                    </button>
+<button class="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-surface-container-lowest border border-outline text-on-surface font-label-md text-label-md hover:bg-surface-container transition-colors text-error">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+                        Remove
+                    </button>
+</div>
+</div>
+<!-- Left Column: Info & Access -->
+<div class="col-span-12 lg:col-span-7 flex flex-col gap-6">
+<!-- Personal Information -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col">
+<div class="px-6 py-4 border-b border-outline-variant bg-surface/50">
+<h4 class="font-title-lg text-title-lg text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">badge</span>
+                            Personal Information
+                        </h4>
+</div>
+<div class="p-6 grid grid-cols-2 gap-x-6 gap-y-5">
+<div class="col-span-2 sm:col-span-1">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Full Name</label>
+<input class="w-full bg-surface border border-outline-variant rounded-lg py-2 px-3 font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary/20 text-on-surface transition-all" type="text" value="Sarah Jenkins"/>
+</div>
+<div class="col-span-2 sm:col-span-1">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Employee ID</label>
+<input class="w-full bg-surface-container border border-outline-variant/50 rounded-lg py-2 px-3 font-body-md text-body-md text-on-surface-variant cursor-not-allowed" disabled="" type="text" value="RI-8472-X"/>
+</div>
+<div class="col-span-2">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Institutional Email</label>
+<input class="w-full bg-surface-container border border-outline-variant/50 rounded-lg py-2 px-3 font-body-md text-body-md text-on-surface-variant cursor-not-allowed" disabled="" type="email" value="s.jenkins@jkn-intelligence.gov.id"/>
+</div>
+<div class="col-span-2 sm:col-span-1">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Direct Phone (Secure)</label>
+<input class="w-full bg-surface border border-outline-variant rounded-lg py-2 px-3 font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary/20 text-on-surface transition-all" type="tel" value="+62 811-9842-111"/>
+</div>
+<div class="col-span-2 sm:col-span-1">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Timezone</label>
+<select class="w-full bg-surface border border-outline-variant rounded-lg py-2 px-3 font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary/20 text-on-surface transition-all">
+<option>(GMT+07:00) Western Indonesia Time</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Institutional Access -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col">
+<div class="px-6 py-4 border-b border-outline-variant bg-surface/50 flex justify-between items-center">
+<h4 class="font-title-lg text-title-lg text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">policy</span>
+                            Institutional Access
+                        </h4>
+<span class="px-2 py-1 rounded bg-error-container text-on-error-container font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">warning</span> RESTRICTED DATA
+                        </span>
+</div>
+<div class="p-6 flex flex-col gap-5">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-2">Clearance Level</p>
+<div class="flex items-center justify-between p-4 border border-outline-variant rounded-lg bg-surface">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-primary-container text-on-primary-container flex items-center justify-center">
+<span class="font-title-lg text-title-lg">L4</span>
+</div>
+<div>
+<p class="font-title-lg text-title-lg text-on-surface text-[14px]">Executive Clearance</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-[12px]">Full read/write access to national intelligence grids.</p>
+</div>
+</div>
+<button class="text-secondary font-label-md text-label-md hover:underline">Request Upgrade</button>
+</div>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-2">Assigned Regions</p>
+<div class="flex flex-wrap gap-2">
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container-high text-on-surface font-body-md text-[13px] border border-outline-variant">
+<span class="material-symbols-outlined text-[16px] text-primary">map</span> DKI Jakarta
+                                </span>
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container-high text-on-surface font-body-md text-[13px] border border-outline-variant">
+<span class="material-symbols-outlined text-[16px] text-primary">map</span> West Java
+                                </span>
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-outline text-on-surface-variant font-body-md text-[13px] hover:bg-surface-container cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[16px]">add</span> Add Region
+                                </span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Security & Notifications -->
+<div class="col-span-12 lg:col-span-5 flex flex-col gap-6">
+<!-- Security & Authentication -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col">
+<div class="px-6 py-4 border-b border-outline-variant bg-surface/50">
+<h4 class="font-title-lg text-title-lg text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">shield_person</span>
+                            Security &amp; Authentication
+                        </h4>
+</div>
+<div class="p-6 flex flex-col gap-5">
+<div class="flex justify-between items-start pb-4 border-b border-outline-variant/50">
+<div>
+<p class="font-title-lg text-title-lg text-on-surface text-[14px]">Password</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-[12px] mt-1">Last changed 45 days ago. Required every 90 days.</p>
+</div>
+<button class="px-3 py-1.5 rounded bg-surface-container border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors">Change</button>
+</div>
+<div class="flex justify-between items-start pb-4 border-b border-outline-variant/50">
+<div>
+<div class="flex items-center gap-2">
+<p class="font-title-lg text-title-lg text-on-surface text-[14px]">Two-Factor Authentication (2FA)</p>
+<span class="px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary font-label-sm text-[10px] uppercase border border-primary/20">Enabled</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant text-[12px] mt-1">Authenticator App configured (Primary).</p>
+</div>
+<button class="px-3 py-1.5 rounded bg-surface-container border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors">Manage</button>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<p class="font-title-lg text-title-lg text-on-surface text-[14px]">Active Sessions</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-[12px] mt-1">3 sessions active across 2 devices.</p>
+</div>
+<button class="text-error font-label-md text-label-md hover:underline">Revoke All</button>
+</div>
+</div>
+</div>
+<!-- Notification Preferences -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col">
+<div class="px-6 py-4 border-b border-outline-variant bg-surface/50">
+<h4 class="font-title-lg text-title-lg text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">notifications_active</span>
+                            Notification Preferences
+                        </h4>
+</div>
+<div class="p-6 flex flex-col gap-4">
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-center pt-0.5">
+<input checked="" class="peer sr-only" type="checkbox"/>
+<div class="w-10 h-5 bg-primary rounded-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/40 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+</div>
+<div>
+<p class="font-title-lg text-title-lg text-on-surface text-[14px]">Critical Risk Alerts</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-[12px]">Immediate push and email notifications for Level 4+ anomalies.</p>
+</div>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-center pt-0.5">
+<input checked="" class="peer sr-only" type="checkbox"/>
+<div class="w-10 h-5 bg-primary rounded-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/40 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+</div>
+<div>
+<p class="font-title-lg text-title-lg text-on-surface text-[14px]">Report Approvals Queue</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-[12px]">Daily digest of pending provider compliance reports.</p>
+</div>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-center pt-0.5">
+<input class="peer sr-only" type="checkbox"/>
+<div class="w-10 h-5 bg-surface-variant rounded-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/40 peer-checked:bg-primary peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-outline-variant after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+</div>
+<div>
+<p class="font-title-lg text-title-lg text-on-surface text-[14px]">System Maintenance</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-[12px]">Updates on scheduled downtime and platform upgrades.</p>
+</div>
+</label>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

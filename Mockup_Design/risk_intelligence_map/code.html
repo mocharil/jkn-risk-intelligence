@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Risk Intelligence - Map Overview</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-tint": "#006d33",
+                      "surface": "#f9f9ff",
+                      "tertiary-fixed-dim": "#ffb2bb",
+                      "on-secondary-fixed-variant": "#004b71",
+                      "on-tertiary-fixed": "#400012",
+                      "background": "#f9f9ff",
+                      "surface-container-high": "#dfe8ff",
+                      "surface-container-low": "#f0f3ff",
+                      "surface-bright": "#f9f9ff",
+                      "tertiary": "#a72e4a",
+                      "surface-variant": "#d9e3fb",
+                      "on-primary-container": "#f7fff3",
+                      "surface-container": "#e8eeff",
+                      "primary-container": "#008740",
+                      "on-error": "#ffffff",
+                      "secondary-container": "#5fbbfd",
+                      "tertiary-fixed": "#ffd9dd",
+                      "primary-fixed": "#78fc9c",
+                      "on-primary": "#ffffff",
+                      "on-primary-fixed-variant": "#005225",
+                      "inverse-primary": "#5adf82",
+                      "on-surface": "#111c2d",
+                      "secondary-fixed-dim": "#8fcdff",
+                      "on-secondary-fixed": "#001e30",
+                      "outline": "#6d7b6d",
+                      "on-background": "#111c2d",
+                      "secondary-fixed": "#cbe6ff",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-container": "#fffbff",
+                      "surface-dim": "#d0daf2",
+                      "primary": "#006b32",
+                      "outline-variant": "#bccabb",
+                      "on-primary-fixed": "#00210b",
+                      "inverse-surface": "#273143",
+                      "on-tertiary-fixed-variant": "#8a1636",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary-container": "#004a6f",
+                      "surface-container-highest": "#d9e3fb",
+                      "on-error-container": "#93000a",
+                      "secondary": "#006495",
+                      "error-container": "#ffdad6",
+                      "on-surface-variant": "#3d4a3e",
+                      "tertiary-container": "#c84761",
+                      "surface-container-lowest": "#ffffff",
+                      "inverse-on-surface": "#ecf0ff",
+                      "primary-fixed-dim": "#5adf82",
+                      "error": "#ba1a1a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-padding-desktop": "32px",
+                      "unit": "4px",
+                      "sidebar-width": "280px",
+                      "container-padding-mobile": "16px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "title-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-md": ["Inter"],
+                      "label-md": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "headline-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "title-lg": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                      "label-sm": ["11px", {"lineHeight": "14px", "fontWeight": "600"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "display-lg": ["48px", {"lineHeight": "60px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f9f9ff; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(228, 231, 236, 0.8);
+        }
+        .ai-glow { box-shadow: 0px 0px 12px rgba(22, 137, 200, 0.15); }
+        .map-pulse {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased flex h-screen overflow-hidden">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-lowest border-r border-outline-variant fixed left-0 top-0 h-full w-[280px] flex flex-col py-4 z-50">
+<div class="px-gutter mb-8 flex flex-col gap-2">
+<span class="font-headline-md text-headline-md font-bold text-primary">JKN Risk Intelligence</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Healthcare Governance</span>
+</div>
+<div class="flex-1 overflow-y-auto px-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span>Command Center</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">rule</span>
+<span>Investigation Queue</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">search_check</span>
+<span>Investigations</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">description</span>
+<span>Claims</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">medical_services</span>
+<span>Providers</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-container-high text-primary border-l-4 border-primary transition-colors font-body-md text-body-md scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-semibold">Risk Intelligence</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">psychology</span>
+<span>AI Copilot</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">database</span>
+<span>Data Management</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">assessment</span>
+<span>Reports</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span>Settings</span>
+</a>
+</div>
+<div class="px-4 mt-auto pt-4 border-t border-outline-variant/30">
+<button class="w-full bg-gradient-to-r from-primary to-secondary text-white py-2.5 rounded-lg flex items-center justify-center gap-2 font-label-md text-label-md hover:shadow-lg transition-all ai-glow mb-4">
+<span class="material-symbols-outlined text-[16px]">temp_preferences_custom</span>
+                Ask JKN Intelligence
+            </button>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+<span>Support</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">account_circle</span>
+<span>Account</span>
+</a>
+</div>
+</div>
+</nav>
+<!-- TopNavBar -->
+<header class="bg-surface fixed top-0 right-0 w-[calc(100%-280px)] z-40 border-b border-outline-variant flex justify-between items-center h-16 px-gutter">
+<div class="flex items-center gap-4">
+<!-- Search Left -->
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-full py-1.5 pl-10 pr-4 text-body-md font-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="Search insights..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="flex items-center gap-1.5 text-primary hover:opacity-80 transition-opacity font-label-md text-label-md font-semibold">
+<span>✦</span>
+                Ask JKN Intelligence
+            </button>
+<div class="flex items-center gap-3">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[280px] mt-16 p-container-padding-desktop w-full h-[calc(100vh-64px)] flex flex-col gap-6 overflow-y-auto">
+<!-- Page Header -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-1">Risk Intelligence</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Explore systemic risk patterns across the healthcare network.</p>
+</div>
+<!-- Tabs -->
+<div class="flex bg-surface-container-lowest p-1 rounded-lg border border-outline-variant">
+<button class="px-4 py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors">Overview</button>
+<button class="px-4 py-1.5 rounded-md bg-surface-container-highest text-primary font-label-md text-label-md shadow-sm">Risk Map</button>
+<button class="px-4 py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors">Network Graph</button>
+<button class="px-4 py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:bg-surface-container transition-colors">Emerging Patterns</button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="flex-1 grid grid-cols-12 gap-6 min-h-0 pb-8">
+<!-- Main Map Canvas -->
+<div class="col-span-8 bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden relative flex flex-col shadow-sm">
+<!-- Map Tools -->
+<div class="absolute top-4 left-4 z-10 glass-panel rounded-lg p-2 flex gap-2">
+<button class="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-surface"><span class="material-symbols-outlined text-[18px]">zoom_in</span></button>
+<button class="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-surface border-l border-outline-variant pl-2"><span class="material-symbols-outlined text-[18px]">zoom_out</span></button>
+<button class="p-1.5 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-surface border-l border-outline-variant pl-2"><span class="material-symbols-outlined text-[18px]">my_location</span></button>
+</div>
+<div class="absolute top-4 right-4 z-10 glass-panel rounded-lg px-3 py-2 flex items-center gap-3 border-t-2 border-t-error">
+<span class="flex h-3 w-3 relative">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-error"></span>
+</span>
+<span class="font-label-md text-label-md text-on-surface">Live Anomaly Detection: Active</span>
+</div>
+<!-- Interactive Map Area Placeholder -->
+<div class="flex-1 w-full h-full relative bg-surface-container-low" style="background-image: radial-gradient(#d9e3fb 1px, transparent 1px); background-size: 24px 24px;">
+<!-- Map Graphic -->
+<img class="w-full h-full object-cover opacity-80" data-alt="A highly detailed, modern top-down stylized map of Indonesia designed for a digital dashboard. The map is rendered in a minimalist light-mode aesthetic using soft gray and white tones, resting on a subtle grid background. Vibrant red, orange, and blue glowing nodes are scattered across the map to indicate data hotspots and risk clusters, connected by faint sweeping lines. The overall mood is analytical, precise, and high-tech, suitable for a healthcare intelligence platform." data-location="Indonesia" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDult-ayij9TMOiCwDiQJLnTE2EW4AvXyy9aC-MVa_Fw09h-tOWOxkZVXvmsxZnL6rjAfQsEQr4Dtqsp8Bc2COQRy8NZdvoVTYFTNc3gY49AK1SxifTSe95tc19YLRNwbMgQLwP_3Ke1sZyirojXZQraAOlAVGiqiey0l6JN5_reXHMazawdt0LvQmzs927027pipQuQiAuBZz4R32FY3TEtgLz5uCGesb-JTzuTI7TFWg78F6zeF9Clw"/>
+<!-- Map Hotspots Overlay -->
+<div class="absolute top-[40%] left-[30%]">
+<div class="relative flex items-center justify-center">
+<div class="w-4 h-4 bg-error rounded-full border-2 border-white z-10"></div>
+<div class="absolute w-12 h-12 bg-error rounded-full map-pulse"></div>
+<!-- Hover Tooltip -->
+<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg p-2 hidden group-hover:block pointer-events-none">
+<p class="font-label-sm text-label-sm text-on-surface">Jakarta Cluster</p>
+<p class="font-label-sm text-label-sm text-error">Critical Risk</p>
+</div>
+</div>
+</div>
+<div class="absolute top-[50%] left-[45%]">
+<div class="relative flex items-center justify-center">
+<div class="w-3 h-3 bg-tertiary-container rounded-full border-2 border-white z-10"></div>
+<div class="absolute w-8 h-8 bg-tertiary-container rounded-full map-pulse" style="animation-delay: 0.5s;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Regional Intelligence Panel -->
+<div class="col-span-4 flex flex-col gap-4">
+<!-- Regional Focus Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm">
+<div class="flex justify-between items-start mb-4 border-b border-outline-variant/50 pb-3">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Regional Focus</span>
+<h2 class="font-title-lg text-title-lg text-on-surface mt-1 flex items-center gap-2">
+                                Jakarta Raya
+                                <span class="material-symbols-outlined text-error text-[20px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+</h2>
+</div>
+<button class="text-primary hover:bg-surface-container p-1 rounded"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="bg-surface-container-low p-3 rounded-lg border-l-2 border-error">
+<span class="font-label-md text-label-md text-on-surface-variant block mb-1">High Risk Claims</span>
+<span class="font-headline-md text-headline-md text-on-surface">47</span>
+<span class="font-label-sm text-label-sm text-error flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +12%
+                            </span>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg border-l-2 border-tertiary-container">
+<span class="font-label-md text-label-md text-on-surface-variant block mb-1">Exposure</span>
+<span class="font-headline-md text-headline-md text-on-surface">Rp 12.4B</span>
+<span class="font-label-sm text-label-sm text-tertiary-container flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +5%
+                            </span>
+</div>
+</div>
+<div>
+<span class="font-label-md text-label-md text-on-surface-variant block mb-2">Primary Anomaly Drivers</span>
+<div class="space-y-2">
+<div class="flex justify-between items-center text-body-md font-body-md">
+<span class="text-on-surface flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-error"></span>Phantom Billing</span>
+<span class="font-medium">42%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-1.5 mb-2">
+<div class="bg-error h-1.5 rounded-full" style="width: 42%"></div>
+</div>
+<div class="flex justify-between items-center text-body-md font-body-md">
+<span class="text-on-surface flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-tertiary-container"></span>Upcoding</span>
+<span class="font-medium">28%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-1.5">
+<div class="bg-tertiary-container h-1.5 rounded-full" style="width: 28%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- AI Insights Small Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary"></div>
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">psychology</span>
+<h3 class="font-title-lg text-title-lg text-on-surface">Copilot Insights</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                        Detected an emerging cluster of coordinated billing anomalies across 3 specialized clinics in South Jakarta. Pattern strongly correlates with historical network fraud profiles.
+                    </p>
+<button class="mt-4 text-primary font-label-md text-label-md flex items-center gap-1 hover:underline">
+                        Investigate Cluster <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

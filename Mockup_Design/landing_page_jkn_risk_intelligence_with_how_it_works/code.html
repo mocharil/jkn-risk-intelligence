@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>JKN Risk Intelligence - Next-Generation Healthcare Risk Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#c84761",
+                        "on-tertiary-fixed-variant": "#8a1636",
+                        "on-tertiary-fixed": "#400012",
+                        "tertiary-fixed-dim": "#ffb2bb",
+                        "outline-variant": "#bccabb",
+                        "tertiary-fixed": "#ffd9dd",
+                        "surface-dim": "#d0daf2",
+                        "secondary-fixed": "#cbe6ff",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#005225",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-variant": "#d9e3fb",
+                        "on-surface-variant": "#3d4a3e",
+                        "inverse-on-surface": "#ecf0ff",
+                        "secondary-fixed-dim": "#8fcdff",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#6d7b6d",
+                        "secondary": "#006495",
+                        "inverse-surface": "#273143",
+                        "on-secondary-fixed": "#001e30",
+                        "on-secondary-container": "#004a6f",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#f9f9ff",
+                        "on-background": "#111c2d",
+                        "surface-tint": "#006d33",
+                        "inverse-primary": "#5adf82",
+                        "surface-container-highest": "#d9e3fb",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#78fc9c",
+                        "surface-container": "#e8eeff",
+                        "secondary-container": "#5fbbfd",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#a72e4a",
+                        "on-secondary-fixed-variant": "#004b71",
+                        "on-primary-container": "#f7fff3",
+                        "surface": "#f9f9ff",
+                        "primary": "#006b32",
+                        "on-surface": "#111c2d",
+                        "on-error": "#ffffff",
+                        "primary-container": "#008740",
+                        "background": "#f9f9ff",
+                        "on-tertiary-container": "#fffbff",
+                        "primary-fixed-dim": "#5adf82",
+                        "on-primary-fixed": "#00210b",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#dfe8ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "container-padding-desktop": "32px",
+                        "sidebar-width": "280px",
+                        "unit": "4px",
+                        "container-padding-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "60px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "title-lg": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .grid-bg {
+            background-image: 
+                linear-gradient(to right, #E4E7EC 1px, transparent 1px),
+                linear-gradient(to bottom, #E4E7EC 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center top;
+        }
+        .soft-intelligence-shadow {
+            box-shadow: 0px 12px 16px -4px rgba(0, 166, 81, 0.08);
+        }
+        .ai-glow {
+            box-shadow: 0px 0px 12px rgba(22, 137, 200, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col relative overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top Navigation -->
+<nav class="fixed top-0 left-0 w-full z-50 bg-surface-container-lowest border-b border-outline-variant h-16 flex justify-between items-center px-gutter transition-all duration-300">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-2xl font-bold" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="font-headline-sm text-headline-sm font-extrabold text-primary">JKN Risk Intelligence</span>
+</div>
+<div class="hidden md:flex items-center gap-6">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Platform</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Solutions</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Resources</a>
+</div>
+<div class="flex items-center gap-4">
+<a class="font-label-md text-label-md font-semibold text-primary hover:text-primary-container transition-colors hidden sm:block" href="#">Login</a>
+<button class="bg-primary text-on-primary font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
+                Request Access
+                <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</nav>
+<!-- Hero Section -->
+<section class="relative pt-32 pb-24 px-container-padding-mobile md:px-container-padding-desktop overflow-hidden border-b border-outline-variant bg-surface-container-lowest grid-bg">
+<div class="absolute inset-0 bg-gradient-to-b from-transparent to-surface-container-lowest/90 pointer-events-none"></div>
+<div class="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+<div class="flex flex-col items-start space-y-6">
+<div class="inline-flex items-center gap-2 bg-surface-container-low border border-outline-variant rounded-full px-3 py-1.5">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-wider">Enterprise Intelligence Platform</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-on-background">Next-Generation Healthcare <span class="text-primary">Risk Intelligence</span></h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl">
+                    Empowering national healthcare systems with advanced AI detection, forensic investigation tools, and institutional governance to safeguard operational integrity and prevent fraud.
+                </p>
+<div class="flex flex-wrap gap-4 pt-4">
+<button class="bg-primary text-on-primary font-label-md text-label-md px-6 py-3 rounded-lg hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
+                        Deploy Intelligence
+                        <span class="material-symbols-outlined text-sm">rocket_launch</span>
+</button>
+<button class="bg-surface-container-lowest text-on-surface border border-outline-variant font-label-md text-label-md px-6 py-3 rounded-lg hover:bg-surface-container-low transition-colors flex items-center gap-2">
+                        View Capability Brief
+                        <span class="material-symbols-outlined text-sm">description</span>
+</button>
+</div>
+</div>
+<div class="relative w-full h-full min-h-[400px] flex items-center justify-center">
+<!-- Abstract Hero Visual -->
+<div class="absolute inset-0 bg-gradient-to-tr from-surface-container to-surface-container-highest rounded-2xl border border-outline-variant soft-intelligence-shadow overflow-hidden group">
+<div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjIiIGZpbGw9IiMwMEE2NTEiIGZpbGwtb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==')] [mask-image:linear-gradient(to_bottom_right,white,transparent)]"></div>
+<img class="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" data-alt="A highly detailed, modern 3D abstract visualization of a healthcare data network. Floating glowing nodes connected by fine blue and green lines representing AI intelligence processing medical data. Clean white background with soft studio lighting, creating a professional, secure, and advanced technological aesthetic suitable for enterprise risk management." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEtPn-o3ejPAmVPKdVK9lxjkfaw9Jy51BFseIEf_NcLi3yTZzVzmiffgUsGirrvVJE0iBjT4gO6cQKm9c31lprvVLwo8MvW-rI7MOtToOlilEOnFOU54_Q-PTU8x2uzN-fzT4RuiHrLn4jygRToh_ns8UrJ-nwNIOEkp2x-e6P_d_Er9yxap21BEd7TZRi6gn2OnE3_Ck-N48wbQ6Tz0Lwf3jEeG2hjajZwCzRYd38fp6-0RAznuCI8A"/>
+<!-- Floating Data Card -->
+<div class="absolute bottom-6 left-6 bg-surface-container-lowest border border-outline-variant rounded-xl p-4 soft-intelligence-shadow ai-glow animate-[bounce_4s_infinite]">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Anomaly Detected</span>
+</div>
+<div class="w-full bg-surface-container-high rounded-full h-1.5 mb-1">
+<div class="bg-primary h-1.5 rounded-full" style="width: 85%"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Confidence: 85%</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Value Proposition Bento Grid -->
+<section class="py-24 px-container-padding-mobile md:px-container-padding-desktop bg-surface-container-low">
+<div class="max-w-7xl mx-auto">
+<div class="text-center max-w-2xl mx-auto mb-16">
+<h2 class="font-headline-lg text-headline-lg text-on-background mb-4">Architected for Institutional Trust</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Our platform integrates seamlessly into existing healthcare infrastructures, providing unprecedented visibility into systemic risks.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[minmax(300px,_auto)]">
+<!-- Card 1: AI-Powered Detection (Large) -->
+<div class="col-span-1 md:col-span-2 bg-surface-container-lowest border border-outline-variant rounded-2xl p-8 relative overflow-hidden soft-intelligence-shadow group">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors duration-500"></div>
+<div class="relative z-10 h-full flex flex-col">
+<div class="w-12 h-12 bg-primary-container/10 rounded-lg flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-background mb-3">AI-Powered Detection</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md mb-8">
+                            Utilize machine learning models specifically trained on national healthcare datasets to identify anomalous billing patterns, provider risk profiles, and emerging fraud vectors in real-time.
+                        </p>
+<!-- Mock UI snippet -->
+<div class="mt-auto border border-outline-variant rounded-xl bg-surface p-4 flex flex-col gap-3">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Recent Scans</span>
+<span class="font-label-sm text-label-sm text-primary">System Active</span>
+</div>
+<div class="flex items-center gap-4 bg-surface-container-lowest p-2 rounded-lg border border-outline-variant">
+<div class="w-8 h-8 rounded-full bg-error-container flex items-center justify-center">
+<span class="material-symbols-outlined text-error text-sm">warning</span>
+</div>
+<div class="flex-1">
+<div class="font-label-md text-label-md text-on-surface">Claim Cluster Alpha-9</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">High Risk • 12 Claims</div>
+</div>
+<span class="font-label-md text-label-md font-bold text-error">94%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 2: Forensic Investigation -->
+<div class="col-span-1 bg-surface-container-lowest border border-outline-variant rounded-2xl p-8 relative overflow-hidden soft-intelligence-shadow">
+<div class="relative z-10 h-full flex flex-col">
+<div class="w-12 h-12 bg-secondary-container/10 rounded-lg flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-secondary text-2xl" style="font-variation-settings: 'FILL' 1;">manage_search</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-background mb-3">Forensic Investigation</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">
+                            Deep-dive tools for auditors to reconstruct claim histories, map provider networks, and generate evidentiary reports for governance committees.
+                        </p>
+<div class="mt-auto rounded-xl overflow-hidden border border-outline-variant h-32 relative">
+<img class="w-full h-full object-cover" data-alt="A clean, minimalist data visualization chart showing a network graph. Nodes represent healthcare providers and lines represent connections, with one cluster highlighted in soft red indicating a risk area. Professional enterprise UI aesthetic on a crisp white background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCi43TtTDInwSmxswU0eu1CK8u02i-aM2WvF0DkKPopqewdqQ9AlpaHr-g1WaPZnNaQ-JlVDjQOYxIefDEtYc2BuEnDjt5fbf1B_cqo8IyOZWYqb3hmCmrdjfVY_aT0w8YOv5gAga3iS7ioQuNmmMbkLJS-Y2lzJA1MxLtIsH_jk09ZPgajkLDAn-BxZGshwlJlp-_jzUUGWKLoZdRk5y8jytyeNta95N8Z-e61jvuPCv-0LZl7uafUIw"/>
+</div>
+</div>
+</div>
+<!-- Card 3: Institutional Governance -->
+<div class="col-span-1 bg-surface-container-lowest border border-outline-variant rounded-2xl p-8 relative overflow-hidden soft-intelligence-shadow">
+<div class="relative z-10 h-full flex flex-col">
+<div class="w-12 h-12 bg-surface-variant rounded-lg flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-on-surface-variant text-2xl" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-background mb-3">Institutional Governance</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                            Enforce policy compliance automatically. Generate board-ready risk assessments and maintain comprehensive audit trails for regulatory scrutiny.
+                        </p>
+</div>
+</div>
+<!-- Card 4: Data Integration -->
+<div class="col-span-1 md:col-span-2 bg-surface-tint text-on-primary rounded-2xl p-8 relative overflow-hidden soft-intelligence-shadow flex items-center justify-between">
+<div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjIiIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIi8+PC9zdmc+')]"></div>
+<div class="relative z-10 max-w-lg">
+<h3 class="font-headline-md text-headline-md mb-2">Seamless Data Integration</h3>
+<p class="font-body-md text-body-md opacity-90">
+                            Connects directly to core claims processing engines and provider registries via secure, high-throughput APIs.
+                        </p>
+</div>
+<div class="relative z-10 hidden sm:block">
+<span class="material-symbols-outlined text-6xl opacity-50">database</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Platform Capability Highlight -->
+<section class="py-24 px-container-padding-mobile md:px-container-padding-desktop bg-surface-container-lowest">
+<div class="max-w-7xl mx-auto">
+<div class="text-center max-w-2xl mx-auto mb-16">
+<h2 class="font-headline-lg text-headline-lg text-on-background mb-4">How it Works</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">A streamlined, end-to-end process designed to secure national healthcare systems through advanced intelligence.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+<!-- Step 1 -->
+<div class="flex flex-col items-start space-y-4">
+<div class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center font-headline-md text-headline-md">
+          1
+        </div>
+<h3 class="font-title-lg text-title-lg text-on-background">Data Integration</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Seamless ingestion of national healthcare datasets and provider registries into our secure environment.
+        </p>
+</div>
+<!-- Step 2 -->
+<div class="flex flex-col items-start space-y-4">
+<div class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center font-headline-md text-headline-md">
+          2
+        </div>
+<h3 class="font-title-lg text-title-lg text-on-background">AI Detection</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Real-time analysis using specialized models to flag anomalous billing patterns and risk clusters.
+        </p>
+</div>
+<!-- Step 3 -->
+<div class="flex flex-col items-start space-y-4">
+<div class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center font-headline-md text-headline-md">
+          3
+        </div>
+<h3 class="font-title-lg text-title-lg text-on-background">Forensic Investigation</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Deep-dive tools for auditors to reconstruct claim histories and map provider networks with precision.
+        </p>
+</div>
+<!-- Step 4 -->
+<div class="flex flex-col items-start space-y-4">
+<div class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center font-headline-md text-headline-md">
+          4
+        </div>
+<h3 class="font-title-lg text-title-lg text-on-background">Institutional Resolution</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Automated generation of board-ready reports and enforcement of policy compliance across the network.
+        </p>
+</div>
+</div>
+</div>
+</section><section class="py-24 px-container-padding-mobile md:px-container-padding-desktop bg-surface-container-lowest border-y border-outline-variant">
+<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+<div class="order-2 lg:order-1 relative rounded-2xl border border-outline-variant overflow-hidden soft-intelligence-shadow h-[400px]">
+<img alt="Data visualization dashboard" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApVzhvptuhDBL-oigSBxTsx-IRaf3DMFqDgktptWn35knsQ2qZzkGqZsDwrsGYcAq2RPHlB4exHbfeikIi54_EhPvEoY0PeyeKVni8bLt8tzEHENFZU_vyUafeVhhAG_HkNMnJpOSLSJ1GxV1dn5jdu7tL8aTxM_SJK41fLOBn8DCYr2fkXMVu1tG0f0qbM53TVNVJKJZszY7EtylS0_uUIqMltD0oL-BSL1LcXzRKcdt9bx3w5iKpLQ"/>
+<!-- Overlay element for tech feel -->
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/80 to-transparent pointer-events-none"></div>
+<div class="absolute bottom-4 left-4 right-4 bg-surface-container-lowest/90 backdrop-blur border border-outline-variant rounded-lg p-4">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface font-semibold">National Risk Mapping</span>
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+</div>
+<div class="flex gap-4">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Active Nodes</span>
+<span class="font-title-lg text-title-lg text-on-surface">124,592</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Risk Clusters</span>
+<span class="font-title-lg text-title-lg text-error">47</span>
+</div>
+</div>
+</div>
+</div>
+<div class="order-1 lg:order-2 flex flex-col items-start space-y-6">
+<div class="w-12 h-12 bg-primary-container/10 rounded-lg flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1;">public</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-background">National Risk Intelligence Map</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">
+                Experience unprecedented visibility with our advanced Healthcare Risk Network Graph. Connect disparate data points across national systems to reveal hidden relationships, systemic vulnerabilities, and coordinated fraud rings in real-time.
+            </p>
+<ul class="space-y-4 w-full">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5">check_circle</span>
+<div>
+<strong class="font-label-md text-label-md text-on-surface block">Geospatial Risk Tracking</strong>
+<span class="font-body-md text-body-md text-on-surface-variant">Visualize risk concentration across regions and facilities.</span>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5">check_circle</span>
+<div>
+<strong class="font-label-md text-label-md text-on-surface block">Entity Relationship Mapping</strong>
+<span class="font-body-md text-body-md text-on-surface-variant">Uncover hidden links between providers, patients, and claims.</span>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest border-t border-outline-variant pt-24 pb-12 px-container-padding-mobile md:px-container-padding-desktop">
+<div class="max-w-7xl mx-auto">
+<!-- CTA section first -->
+<div class="text-center max-w-3xl mx-auto flex flex-col items-center mb-24">
+<span class="material-symbols-outlined text-primary text-4xl mb-4" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+<h2 class="font-headline-lg text-headline-lg text-on-background mb-4">Secure Your Healthcare Ecosystem</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-8">
+                Join leading national healthcare providers in utilizing JKN Risk Intelligence to minimize waste and ensure operational integrity.
+            </p>
+<button class="bg-primary text-on-primary font-title-lg text-title-lg px-8 py-4 rounded-xl hover:bg-primary-container transition-colors shadow-md flex items-center gap-3">
+                Request a Technical Demo
+                <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<!-- Links and Mission -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 border-t border-outline-variant pt-16 mb-16">
+<div class="col-span-1 md:col-span-1 flex flex-col space-y-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary text-2xl font-bold" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="font-headline-sm text-headline-sm font-extrabold text-primary">JKN Risk</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                    Empowering healthcare systems with next-generation intelligence to safeguard integrity and trust.
+                </p>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface font-semibold mb-6 uppercase tracking-wider">Product</h4>
+<ul class="space-y-4">
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Platform</a></li>
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">AI Detection</a></li>
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Forensics</a></li>
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Integration</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface font-semibold mb-6 uppercase tracking-wider">Company</h4>
+<ul class="space-y-4">
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">About Us</a></li>
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Careers</a></li>
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Contact</a></li>
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Blog</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface font-semibold mb-6 uppercase tracking-wider">Legal</h4>
+<ul class="space-y-4">
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a></li>
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a></li>
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Compliance</a></li>
+<li><a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Security</a></li>
+</ul>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-8 border-t border-outline-variant">
+<div class="font-label-sm text-label-sm text-on-surface-variant">
+                © 2024 JKN Intelligence Systems. All rights reserved.
+            </div>
+<div class="flex gap-4">
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-xl">language</span>
+</a>
+</div>
+</div>
+</div>
+</footer>
+</body></html>

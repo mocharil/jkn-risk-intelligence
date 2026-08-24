@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Support Center - JKN Risk Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary": "#006495",
+                        "on-primary-container": "#f7fff3",
+                        "on-background": "#111c2d",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#8a1636",
+                        "error-container": "#ffdad6",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#005225",
+                        "primary-fixed-dim": "#5adf82",
+                        "surface-container-high": "#dfe8ff",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "outline": "#6d7b6d",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-bright": "#f9f9ff",
+                        "secondary-container": "#5fbbfd",
+                        "inverse-on-surface": "#ecf0ff",
+                        "on-secondary-fixed-variant": "#004b71",
+                        "surface-container": "#e8eeff",
+                        "secondary-fixed-dim": "#8fcdff",
+                        "inverse-surface": "#273143",
+                        "surface-variant": "#d9e3fb",
+                        "on-secondary-fixed": "#001e30",
+                        "primary": "#006b32",
+                        "primary-container": "#008740",
+                        "tertiary-fixed": "#ffd9dd",
+                        "on-tertiary-fixed": "#400012",
+                        "surface-dim": "#d0daf2",
+                        "outline-variant": "#bccabb",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#111c2d",
+                        "surface-tint": "#006d33",
+                        "tertiary-fixed-dim": "#ffb2bb",
+                        "on-primary-fixed": "#00210b",
+                        "primary-fixed": "#78fc9c",
+                        "background": "#f9f9ff",
+                        "error": "#ba1a1a",
+                        "surface": "#f9f9ff",
+                        "surface-container-highest": "#d9e3fb",
+                        "tertiary-container": "#c84761",
+                        "on-surface-variant": "#3d4a3e",
+                        "on-secondary-container": "#004a6f",
+                        "on-tertiary-container": "#fffbff",
+                        "secondary-fixed": "#cbe6ff",
+                        "inverse-primary": "#5adf82",
+                        "tertiary": "#a72e4a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding-desktop": "32px",
+                        "container-padding-mobile": "16px",
+                        "sidebar-width": "280px",
+                        "unit": "4px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "title-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "title-lg": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "60px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #F8FBFA; }
+        .soft-shadow { box-shadow: 0px 12px 16px -4px rgba(0, 166, 81, 0.08); }
+        .ai-glow { box-shadow: 0px 0px 12px rgba(22, 137, 200, 0.15); }
+    </style>
+</head>
+<body class="text-on-surface antialiased">
+<!-- Shared Component: SideNavBar -->
+<nav class="bg-surface-container-lowest fixed left-0 top-0 h-full w-[280px] border-r border-outline-variant flex flex-col h-screen py-4 z-50">
+<!-- Header -->
+<div class="px-6 pb-6 pt-2">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+<span class="font-headline-md text-headline-md font-bold text-on-primary">J</span>
+</div>
+<div>
+<h1 class="font-headline-md text-title-lg font-bold text-primary leading-tight">JKN Risk Intelligence</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Healthcare Governance</p>
+</div>
+</div>
+</div>
+<!-- Main Tabs -->
+<div class="flex-1 px-4 space-y-1 overflow-y-auto">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+<span class="font-label-md text-label-md">Command Center</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">rule</span>
+<span class="font-label-md text-label-md">Investigation Queue</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">search_check</span>
+<span class="font-label-md text-label-md">Investigations</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">description</span>
+<span class="font-label-md text-label-md">Claims</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">medical_services</span>
+<span class="font-label-md text-label-md">Providers</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">analytics</span>
+<span class="font-label-md text-label-md">Risk Intelligence</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors duration-200 group" href="#">
+<span class="material-symbols-outlined text-[#1689C8] group-hover:text-primary transition-colors" style="font-variation-settings: 'FILL' 0;">psychology</span>
+<span class="font-label-md text-label-md">AI Copilot</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">database</span>
+<span class="font-label-md text-label-md">Data Management</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">assessment</span>
+<span class="font-label-md text-label-md">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+<!-- Footer Tabs (Support Active) -->
+<div class="px-4 pt-4 border-t border-outline-variant mt-auto space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-surface-container-high text-primary border-l-4 border-primary hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">help</span>
+<span class="font-label-md text-label-md font-semibold">Support</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">account_circle</span>
+<span class="font-label-md text-label-md">Account</span>
+</a>
+</div>
+</nav>
+<!-- Shared Component: TopNavBar -->
+<header class="bg-surface fixed top-0 right-0 w-[calc(100%-280px)] z-40 border-b border-outline-variant flex justify-between items-center h-16 px-gutter ml-[280px]">
+<div class="flex items-center">
+<!-- Search placeholder on left as per JSON -->
+<div class="relative hidden lg:block w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="w-full pl-9 pr-4 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-md font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Search platform..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="bg-gradient-to-r from-primary to-[#1689C8] text-on-primary px-4 py-2 rounded-lg font-label-md text-label-md flex items-center gap-2 hover:opacity-90 transition-opacity ai-glow">
+<span class="material-symbols-outlined text-sm">arrow_back_ios_new</span>
+                Ask JKN Intelligence
+            </button>
+<div class="flex items-center gap-4 border-l border-outline-variant pl-6">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">history</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[280px] mt-16 p-container-padding-desktop min-h-[calc(100vh-64px)]">
+<div class="max-w-6xl mx-auto space-y-8">
+<!-- Hero Search Section -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-10 flex flex-col items-center justify-center text-center relative overflow-hidden">
+<!-- Decorative background elements for that "White Plus" structural feel -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+<div class="absolute bottom-0 left-0 w-48 h-48 bg-[#1689C8]/5 rounded-full blur-2xl translate-y-1/3 -translate-x-1/4"></div>
+<h2 class="font-display-lg text-display-lg text-on-surface mb-4 relative z-10">How can we help you today?</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-8 max-w-2xl relative z-10">Search our comprehensive knowledge base for platform guides, investigative methodologies, and API documentation.</p>
+<div class="relative w-full max-w-2xl z-10">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">search</span>
+<input class="w-full pl-12 pr-32 py-4 bg-surface border border-outline-variant rounded-lg font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm" placeholder="Search documentation, help articles, or ask a question..." type="text"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-on-primary px-6 py-2 rounded-md font-label-md text-label-md hover:bg-primary-container transition-colors">
+                        Search
+                    </button>
+</div>
+</div>
+<!-- Bento Grid: Status & Quick Categories -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- System Status Widget -->
+<div class="lg:col-span-4 bg-surface-container-lowest border border-outline-variant rounded-xl p-6 flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">memory</span>
+<h3 class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">System Status</h3>
+</div>
+<h4 class="font-title-lg text-title-lg text-on-surface mb-4">Platform Health</h4>
+</div>
+<div class="bg-[#E7F7EE] border border-[#BCE8D1] rounded-lg p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-primary relative">
+<div class="absolute inset-0 rounded-full bg-primary animate-ping opacity-75"></div>
+</div>
+<span class="font-label-md text-label-md text-primary-container">All Systems Operational</span>
+</div>
+<span class="font-label-sm text-label-sm text-primary-container/70">Updated 2m ago</span>
+</div>
+</div>
+<!-- Help Categories Grid -->
+<div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<a class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:border-primary hover:shadow-[0px_4px_12px_-2px_rgba(0,166,81,0.06)] transition-all group" href="#">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center mb-4 group-hover:bg-[#E7F7EE] transition-colors">
+<span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors">school</span>
+</div>
+<h4 class="font-title-lg text-title-lg text-on-surface mb-2 text-base">Getting Started</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Basic navigation, user roles, and platform onboarding.</p>
+</a>
+<a class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:border-primary hover:shadow-[0px_4px_12px_-2px_rgba(0,166,81,0.06)] transition-all group" href="#">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center mb-4 group-hover:bg-[#E7F7EE] transition-colors">
+<span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors">plagiarism</span>
+</div>
+<h4 class="font-title-lg text-title-lg text-on-surface mb-2 text-base">Investigation Guide</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Workflows for claim reviews and upcoding detection.</p>
+</a>
+<a class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:border-primary hover:shadow-[0px_4px_12px_-2px_rgba(0,166,81,0.06)] transition-all group relative overflow-hidden" href="#">
+<div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-primary/10 to-[#1689C8]/10 rounded-bl-full -z-10"></div>
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center mb-4 group-hover:bg-gradient-to-r group-hover:from-primary/10 group-hover:to-[#1689C8]/10 transition-colors">
+<span class="material-symbols-outlined text-[#1689C8] group-hover:text-primary transition-colors">psychology</span>
+</div>
+<h4 class="font-title-lg text-title-lg text-on-surface mb-2 text-base">AI Copilot Help</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Understanding risk scoring and generative insights.</p>
+</a>
+<a class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:border-primary hover:shadow-[0px_4px_12px_-2px_rgba(0,166,81,0.06)] transition-all group" href="#">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center mb-4 group-hover:bg-[#E7F7EE] transition-colors">
+<span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors">shield_lock</span>
+</div>
+<h4 class="font-title-lg text-title-lg text-on-surface mb-2 text-base">Data Security</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Compliance, PHI handling, and export policies.</p>
+</a>
+<a class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 hover:border-primary hover:shadow-[0px_4px_12px_-2px_rgba(0,166,81,0.06)] transition-all group lg:col-span-2" href="#">
+<div class="flex items-start gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center shrink-0 group-hover:bg-[#E7F7EE] transition-colors">
+<span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors">new_releases</span>
+</div>
+<div>
+<h4 class="font-title-lg text-title-lg text-on-surface mb-1 text-base">Platform Updates</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-2">Release notes for v4.2: Enhanced DRG validation algorithms and new network graph visualizations.</p>
+<span class="font-label-md text-label-md text-primary flex items-center gap-1">Read Release Notes <span class="material-symbols-outlined text-sm">arrow_forward</span></span>
+</div>
+</div>
+</a>
+</div>
+</div>
+<!-- Lower Section: FAQs and Direct Support -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- FAQs List -->
+<div class="lg:col-span-2 bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
+<div class="px-6 py-5 border-b border-outline-variant bg-surface-bright flex justify-between items-center">
+<h3 class="font-title-lg text-title-lg text-on-surface">Frequently Asked Questions</h3>
+<a class="font-label-md text-label-md text-primary hover:underline" href="#">View all FAQs</a>
+</div>
+<div class="divide-y divide-outline-variant">
+<div class="px-6 py-4 hover:bg-surface-bright transition-colors cursor-pointer group">
+<h4 class="font-label-md text-label-md text-on-surface mb-1 text-sm group-hover:text-primary transition-colors flex items-center justify-between">
+                                How do I initiate an upcoding investigation workflow?
+                                <span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</h4>
+<p class="font-body-md text-body-md text-on-surface-variant hidden mt-2">Navigate to the 'Claims' view, select a high-risk claim, and click 'Initiate Investigation' in the top action bar. This will move the entity to your Investigation Queue.</p>
+</div>
+<div class="px-6 py-4 hover:bg-surface-bright transition-colors cursor-pointer group">
+<h4 class="font-label-md text-label-md text-on-surface mb-1 text-sm group-hover:text-primary transition-colors flex items-center justify-between">
+                                What data sources define the baseline for Risk Intelligence scoring?
+                                <span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</h4>
+<p class="font-body-md text-body-md text-on-surface-variant hidden mt-2">Scores are derived from historical institutional claims data cross-referenced against national Medicare/Medicaid benchmarks and known anomaly patterns.</p>
+</div>
+<div class="px-6 py-4 hover:bg-surface-bright transition-colors cursor-pointer group">
+<h4 class="font-label-md text-label-md text-on-surface mb-1 text-sm group-hover:text-primary transition-colors flex items-center justify-between">
+                                How does the AI Copilot determine confidence intervals?
+                                <span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</h4>
+<p class="font-body-md text-body-md text-on-surface-variant hidden mt-2">Confidence intervals are calculated based on the density of corroborating data points within the provider's peer network graph.</p>
+</div>
+<div class="px-6 py-4 hover:bg-surface-bright transition-colors cursor-pointer group">
+<h4 class="font-label-md text-label-md text-on-surface mb-1 text-sm group-hover:text-primary transition-colors flex items-center justify-between">
+                                Can I export investigative reports for legal compliance?
+                                <span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</h4>
+<p class="font-body-md text-body-md text-on-surface-variant hidden mt-2">Yes, use the 'Export PDF' function within any active investigation dossier. Ensure you have the requisite PHI handling permissions.</p>
+</div>
+</div>
+</div>
+<!-- Direct Support Cards -->
+<div class="flex flex-col gap-4">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 h-full flex flex-col border-t-4 border-t-secondary-container">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-secondary">support_agent</span>
+</div>
+<h4 class="font-title-lg text-title-lg text-on-surface mb-2">Technical Support</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6 flex-1">Need help resolving a platform error or data sync issue? Our engineers are available 24/7.</p>
+<button class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface py-2.5 rounded-lg font-label-md text-label-md hover:bg-surface-container transition-colors shadow-sm">
+                            Contact Technical Support
+                        </button>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 h-full flex flex-col border-t-4 border-t-primary">
+<div class="w-12 h-12 rounded-full bg-[#E7F7EE] flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary">model_training</span>
+</div>
+<h4 class="font-title-lg text-title-lg text-on-surface mb-2">Platform Training</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6 flex-1">Schedule a bespoke training session for your investigative unit to maximize platform utility.</p>
+<button class="w-full bg-primary text-on-primary py-2.5 rounded-lg font-label-md text-label-md hover:bg-primary-container transition-colors shadow-sm">
+                            Request Training
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple script to handle FAQ accordions for interaction demonstration
+        document.querySelectorAll('.group.cursor-pointer').forEach(item => {
+            item.addEventListener('click', () => {
+                const p = item.querySelector('p');
+                const icon = item.querySelector('.material-symbols-outlined:last-child');
+                
+                if (p.classList.contains('hidden')) {
+                    p.classList.remove('hidden');
+                    icon.textContent = 'expand_less';
+                } else {
+                    p.classList.add('hidden');
+                    icon.textContent = 'expand_more';
+                }
+            });
+        });
+    </script>
+</body></html>

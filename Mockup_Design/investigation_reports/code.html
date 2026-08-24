@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>JKN Risk Intelligence - Reports</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#111c2d",
+                    "surface-container-low": "#f0f3ff",
+                    "outline": "#6d7b6d",
+                    "primary-fixed": "#78fc9c",
+                    "on-primary-fixed-variant": "#005225",
+                    "on-surface": "#111c2d",
+                    "background": "#f9f9ff",
+                    "primary-container": "#008740",
+                    "inverse-primary": "#5adf82",
+                    "secondary-fixed": "#cbe6ff",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed": "#ffd9dd",
+                    "on-secondary-container": "#004a6f",
+                    "on-error": "#ffffff",
+                    "surface-variant": "#d9e3fb",
+                    "surface-bright": "#f9f9ff",
+                    "surface-container": "#e8eeff",
+                    "on-surface-variant": "#3d4a3e",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed": "#001e30",
+                    "inverse-surface": "#273143",
+                    "tertiary-container": "#c84761",
+                    "outline-variant": "#bccabb",
+                    "on-tertiary-fixed-variant": "#8a1636",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed-dim": "#ffb2bb",
+                    "secondary": "#006495",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#dfe8ff",
+                    "on-primary-container": "#f7fff3",
+                    "primary-fixed-dim": "#5adf82",
+                    "surface-container-lowest": "#ffffff",
+                    "primary": "#006b32",
+                    "on-tertiary-fixed": "#400012",
+                    "error": "#ba1a1a",
+                    "surface-tint": "#006d33",
+                    "surface-dim": "#d0daf2",
+                    "inverse-on-surface": "#ecf0ff",
+                    "on-primary-fixed": "#00210b",
+                    "secondary-fixed-dim": "#8fcdff",
+                    "on-tertiary-container": "#fffbff",
+                    "tertiary": "#a72e4a",
+                    "surface-container-highest": "#d9e3fb",
+                    "on-primary": "#ffffff",
+                    "surface": "#f9f9ff",
+                    "on-secondary-fixed-variant": "#004b71",
+                    "secondary-container": "#5fbbfd"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "sidebar-width": "280px",
+                    "container-padding-desktop": "32px",
+                    "container-padding-mobile": "16px",
+                    "unit": "4px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "title-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "display-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "title-lg": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-sm": ["11px", {"lineHeight": "14px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "60px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-lg antialiased min-h-screen flex">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-container-lowest border-r border-outline-variant flex flex-col py-4 z-50">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold text-lg">JK</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">JKN Risk Intelligence</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">Healthcare Governance</p>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Command Center
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="rule">rule</span>
+                Investigation Queue
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="search_check">search_check</span>
+                Investigations
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+                Claims
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="medical_services">medical_services</span>
+                Providers
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Risk Intelligence
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+                AI Copilot
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="database">database</span>
+                Data Management
+            </a>
+<!-- Active Tab: Reports -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-container-high text-primary border-l-4 border-primary transition-colors font-body-md text-body-md scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined icon-fill" data-icon="assessment">assessment</span>
+                Reports
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+</nav>
+<div class="px-4 mt-auto space-y-4">
+<button class="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-primary to-secondary text-white font-label-md text-label-md font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-[0_0_12px_rgba(22,137,200,0.15)]">
+                ✦ Ask JKN Intelligence
+            </button>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                    Support
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+                    Account
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 ml-[280px] flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-280px)] h-16 bg-surface border-b border-outline-variant flex justify-between items-center px-gutter z-40">
+<div class="flex items-center bg-surface-container-lowest border border-outline-variant rounded-full px-4 py-1.5 w-96">
+<span class="material-symbols-outlined text-on-surface-variant mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-full placeholder-on-surface-variant" placeholder="Search reports, providers, IDs..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Canvas Content -->
+<main class="flex-1 pt-24 px-container-padding-desktop pb-12 bg-[#F8FBFA]">
+<!-- Page Header -->
+<div class="mb-8 flex justify-between items-end">
+<div>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface mb-2">Investigation Reports</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Access and manage generated investigation findings and risk assessments.</p>
+</div>
+<button class="py-2.5 px-5 rounded-lg bg-primary text-white font-label-md text-label-md font-semibold flex items-center gap-2 hover:bg-on-primary-fixed-variant transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                    New Report
+                </button>
+</div>
+<!-- Tabs & Filters -->
+<div class="flex items-center justify-between mb-6 border-b border-outline-variant pb-px">
+<div class="flex gap-8">
+<button class="pb-3 border-b-2 border-primary text-primary font-title-lg text-title-lg font-semibold relative top-[1px]">All Reports</button>
+<button class="pb-3 border-b-2 border-transparent text-on-surface-variant hover:text-primary font-title-lg text-title-lg font-medium transition-colors">Completed</button>
+<button class="pb-3 border-b-2 border-transparent text-on-surface-variant hover:text-primary font-title-lg text-title-lg font-medium transition-colors">Drafts</button>
+</div>
+<div class="flex items-center gap-3 pb-3">
+<button class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md text-on-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="filter_list">filter_list</span>
+                        Filter
+                    </button>
+<button class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-md text-on-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="sort">sort</span>
+                        Sort: Newest
+                    </button>
+</div>
+</div>
+<!-- Bento Grid of Reports -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<!-- Report Card 1: Critical -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col relative group">
+<div class="h-1 bg-[#ba1a1a] w-full absolute top-0 left-0"></div> <!-- Critical Indicator -->
+<div class="p-5 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-3">
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container-low px-2 py-1 rounded">#INV-2026-010293</span>
+<div class="flex items-center gap-1 text-[#ba1a1a] bg-error-container/50 px-2 py-1 rounded font-label-sm text-label-sm font-bold">
+<span class="material-symbols-outlined text-[14px]" data-icon="warning">warning</span>
+                                Critical
+                            </div>
+</div>
+<h3 class="font-title-lg text-title-lg text-on-surface mb-1">Medika Utama Hospital</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4 line-clamp-2">Phantom billing anomalies detected across cardiology department over 6 months.</p>
+<div class="mt-auto space-y-3 pt-4 border-t border-outline-variant/50">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">Exposure</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">Rp 4.2B</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">Investigator</span>
+<span class="font-label-md text-label-md text-on-surface">Dr. A. Wijaya</span>
+</div>
+</div>
+</div>
+<div class="px-5 pb-5 pt-2">
+<button class="w-full py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-secondary font-label-md text-label-md font-semibold hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2 group-hover:border-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="visibility">visibility</span>
+                            View Report
+                        </button>
+</div>
+</div>
+<!-- Report Card 2: High -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col relative group">
+<div class="h-1 bg-[#d97706] w-full absolute top-0 left-0"></div> <!-- High Indicator -->
+<div class="p-5 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-3">
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container-low px-2 py-1 rounded">#INV-2026-010245</span>
+<div class="flex items-center gap-1 text-[#d97706] bg-[#fef3c7] px-2 py-1 rounded font-label-sm text-label-sm font-bold">
+                                High Risk
+                            </div>
+</div>
+<h3 class="font-title-lg text-title-lg text-on-surface mb-1">Klinik Sehat Bersama</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4 line-clamp-2">Upcoding patterns observed in outpatient physical therapy sessions.</p>
+<div class="mt-auto space-y-3 pt-4 border-t border-outline-variant/50">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">Exposure</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">Rp 850M</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">Investigator</span>
+<span class="font-label-md text-label-md text-on-surface">S. Rahman</span>
+</div>
+</div>
+</div>
+<div class="px-5 pb-5 pt-2">
+<button class="w-full py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-secondary font-label-md text-label-md font-semibold hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2 group-hover:border-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="visibility">visibility</span>
+                            View Report
+                        </button>
+</div>
+</div>
+<!-- Report Card 3: Medium (Draft) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col relative group opacity-80">
+<div class="h-1 bg-[#006495] w-full absolute top-0 left-0"></div> <!-- Medium Indicator -->
+<div class="p-5 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-3">
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container-low px-2 py-1 rounded">#INV-2026-010311</span>
+<div class="flex items-center gap-1 text-secondary bg-secondary-container/30 px-2 py-1 rounded font-label-sm text-label-sm font-bold">
+                                Draft
+                            </div>
+</div>
+<h3 class="font-title-lg text-title-lg text-on-surface mb-1">Apotek Sentosa</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4 line-clamp-2">Unbundling of medication prescriptions pending further data review.</p>
+<div class="mt-auto space-y-3 pt-4 border-t border-outline-variant/50">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">Exposure</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">TBD</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">Investigator</span>
+<span class="font-label-md text-label-md text-on-surface">B. Santoso</span>
+</div>
+</div>
+</div>
+<div class="px-5 pb-5 pt-2">
+<button class="w-full py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface-variant font-label-md text-label-md font-semibold hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit">edit</span>
+                            Continue Draft
+                        </button>
+</div>
+</div>
+<!-- Report Card 4: Low -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col relative group">
+<div class="h-1 bg-primary w-full absolute top-0 left-0"></div> <!-- Low/Cleared Indicator -->
+<div class="p-5 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-3">
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container-low px-2 py-1 rounded">#INV-2026-009882</span>
+<div class="flex items-center gap-1 text-primary bg-[#E7F7EE] px-2 py-1 rounded font-label-sm text-label-sm font-bold">
+                                Low Risk
+                            </div>
+</div>
+<h3 class="font-title-lg text-title-lg text-on-surface mb-1">Dr. H. Siregar</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4 line-clamp-2">Routine audit of specialist consultation frequencies. No significant anomalies.</p>
+<div class="mt-auto space-y-3 pt-4 border-t border-outline-variant/50">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">Exposure</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">Rp 12M</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">Investigator</span>
+<span class="font-label-md text-label-md text-on-surface">System AI</span>
+</div>
+</div>
+</div>
+<div class="px-5 pb-5 pt-2">
+<button class="w-full py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-secondary font-label-md text-label-md font-semibold hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2 group-hover:border-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="visibility">visibility</span>
+                            View Report
+                        </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

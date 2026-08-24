@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 160 20% 98%;
+    --foreground: 160 40% 15%;
+  }
+
+  *,
+  *::before,
+  *::after {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #F8FBFA;
+    color: #16332A;
+    font-family: -apple-system, BlinkMacSystemFont, var(--font-sans), "SF Pro Display", "SF Pro Text", "SF Pro", "Plus Jakarta Sans", system-ui, sans-serif;
+    letter-spacing: -0.011em;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01", "ss02", "calt", "liga";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.025em;
+    font-weight: 700;
+  }
+
+  code, kbd, samp, pre {
+    font-family: "SF Mono", SFMono-Regular, var(--font-mono), "JetBrains Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+}
+
+/* Custom Sleek iOS-style Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(138, 158, 150, 0.35);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(138, 158, 150, 0.65);
+}
+
+/* Glassmorphism utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(221, 231, 226, 0.8);
+}
+
+/* Leaflet Container Styling */
+.leaflet-container {
+  font-family: inherit;
+  z-index: 1;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Clean Print & PDF Generation Rules */
+@media print {
+  aside,
+  header,
+  nav,
+  button,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  body, html {
+    background: #FFFFFF !important;
+    color: #16332A !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .print-page {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  @page {
+    margin: 1.5cm;
+    size: A4 portrait;
+  }
+}
