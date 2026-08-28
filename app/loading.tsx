@@ -40,7 +40,7 @@ export default function GlobalLoading() {
 
           <p className="text-xs text-jkn-muted font-medium flex items-center justify-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-bpjs animate-spin" />
-            <span>Memuat Mesin Deteksi & Bukti Klinis...</span>
+            <span>Loading detection engine & clinical evidence...</span>
           </p>
         </div>
 

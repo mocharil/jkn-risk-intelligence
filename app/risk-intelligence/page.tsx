@@ -5,6 +5,7 @@ import { DashboardShell } from "@/components/layout/DashboardShell";
 import { IndonesiaRiskMap } from "@/components/map/IndonesiaRiskMap";
 import { NetworkGraphView } from "@/components/network/NetworkGraphView";
 import { RiskPill } from "@/components/ui/RiskPill";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { ProvinceRiskData, EmergingSignal } from "@/types/risk";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
 import { formatRelativeTime } from "@/lib/formatting/date";
@@ -80,7 +81,7 @@ export default function RiskIntelligencePage() {
 
       {/* Tab Contents */}
       {loading ? (
-        <div className="text-center py-20 text-xs text-jkn-muted">Loading risk intelligence telemetry...</div>
+        <PageLoader label="Loading risk intelligence telemetry..." />
       ) : activeTab === "OVERVIEW" ? (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

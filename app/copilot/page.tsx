@@ -195,9 +195,9 @@ export default function AICopilotPage() {
                         key={idx}
                         href={
                           link.type === "CLAIM"
-                            ? `/investigations/INV-2026-010293`
+                            ? `/investigations/${link.id}`
                             : link.type === "PROVIDER"
-                            ? `/providers/HOSP-01`
+                            ? `/providers/${link.id}`
                             : link.type === "QUEUE"
                             ? `/investigation-queue`
                             : `/risk-intelligence`

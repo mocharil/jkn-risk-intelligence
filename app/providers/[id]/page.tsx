@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { RiskPill } from "@/components/ui/RiskPill";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { Provider } from "@/types/provider";
 import { CanonicalClaim } from "@/types/claim";
 import { formatRupiah, formatNumber, formatPercent } from "@/lib/formatting/currency";
@@ -21,32 +22,60 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 
+// Recharts needs literal color strings (it can't consume Tailwind classes),
+// so these are named to match the actual risk-*/jkn-dim token values in
+// tailwind.config.ts rather than drifting as unlabeled hex.
+const CHART_COLOR_JKN_DIM = "#8A9E96";
+const CHART_COLOR_RISK_CRITICAL = "#D92D20";
+const CHART_COLOR_BPJS = "#00A651";
+
 export default function ProviderDetailPage() {
   const params = useParams();
   const id = params.id as string;
 
   const [provider, setProvider] = useState<(Provider & { recent_claims: CanonicalClaim[] }) | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
+    setNotFound(false);
     fetch(`/api/providers/${id}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.data) {
           setProvider(data.data);
+        } else {
+          setNotFound(true);
         }
         setLoading(false);
       })
       .catch((err) => {
         console.error(err);
+        setNotFound(true);
         setLoading(false);
       });
   }, [id]);
 
-  if (loading || !provider) {
+  if (loading) {
     return (
       <DashboardShell>
-        <div className="text-center py-20 text-xs text-jkn-muted">Loading provider intelligence profile for {id}...</div>
+        <PageLoader label={`Loading provider intelligence profile for ${id}...`} />
+      </DashboardShell>
+    );
+  }
+
+  if (notFound || !provider) {
+    return (
+      <DashboardShell>
+        <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+          <Building2 className="w-8 h-8 text-jkn-dim" />
+          <p className="text-sm font-bold text-jkn-text">Provider not found</p>
+          <p className="text-xs text-jkn-muted">No healthcare facility matches "{id}".</p>
+          <Link href="/providers" className="text-xs font-bold text-bpjs-dark hover:underline">
+            Back to Provider Directory
+          </Link>
+        </div>
       </DashboardShell>
     );
   }
@@ -111,11 +140,11 @@ export default function ProviderDetailPage() {
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={peerComparisonData} layout="vertical">
-                <XAxis type="number" stroke="#8A9E96" fontSize={11} />
-                <YAxis dataKey="name" type="category" stroke="#8A9E96" fontSize={11} width={150} />
+                <XAxis type="number" stroke={CHART_COLOR_JKN_DIM} fontSize={11} />
+                <YAxis dataKey="name" type="category" stroke={CHART_COLOR_JKN_DIM} fontSize={11} width={150} />
                 <Tooltip />
-                <Bar dataKey="provider" name="This Facility" fill="#D92D20" radius={[0, 6, 6, 0]} />
-                <Bar dataKey="peer" name="Peer Facility Median" fill="#00A651" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="provider" name="This Facility" fill={CHART_COLOR_RISK_CRITICAL} radius={[0, 6, 6, 0]} />
+                <Bar dataKey="peer" name="Peer Facility Median" fill={CHART_COLOR_BPJS} radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

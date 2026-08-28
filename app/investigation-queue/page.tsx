@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { RiskPill } from "@/components/ui/RiskPill";
+import { PageLoader } from "@/components/ui/PageLoader";
+import { Pagination } from "@/components/ui/Pagination";
 import { Investigation } from "@/types/investigation";
 import { RiskType } from "@/types/risk";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
@@ -30,6 +32,8 @@ export default function InvestigationQueuePage() {
   const [riskTypeFilter, setRiskTypeFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"CARD" | "TABLE">("CARD");
+  const [page, setPage] = useState(1);
+  const pageSize = 9;
 
   useEffect(() => {
     fetch("/api/investigations")
@@ -59,6 +63,14 @@ export default function InvestigationQueuePage() {
     return true;
   });
 
+  useEffect(() => {
+    setPage(1);
+  }, [priorityFilter, statusFilter, riskTypeFilter, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   const criticalCount = investigations.filter((i) => i.priority === "CRITICAL").length;
   const highCount = investigations.filter((i) => i.priority === "HIGH").length;
   const mediumCount = investigations.filter((i) => i.priority === "MEDIUM").length;
@@ -80,22 +92,24 @@ export default function InvestigationQueuePage() {
         </div>
 
         {/* View Toggle */}
-        <div className="flex items-center gap-1.5 p-1 bg-surface-secondary border border-jkn-border rounded-xl">
+        <div className="flex items-center gap-1 p-1 bg-surface-secondary border border-jkn-border rounded-xl shrink-0">
           <button
             onClick={() => setViewMode("CARD")}
-            className={`p-1.5 rounded-lg text-xs font-medium transition-colors ${
-              viewMode === "CARD" ? "bg-white text-bpjs-dark shadow-xs font-bold" : "text-jkn-dim hover:text-jkn-text"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === "CARD" ? "bg-white text-bpjs-dark shadow-xs" : "text-jkn-dim hover:text-jkn-text"
             }`}
           >
             <LayoutGrid className="w-4 h-4" />
+            <span>Grid</span>
           </button>
           <button
             onClick={() => setViewMode("TABLE")}
-            className={`p-1.5 rounded-lg text-xs font-medium transition-colors ${
-              viewMode === "TABLE" ? "bg-white text-bpjs-dark shadow-xs font-bold" : "text-jkn-dim hover:text-jkn-text"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === "TABLE" ? "bg-white text-bpjs-dark shadow-xs" : "text-jkn-dim hover:text-jkn-text"
             }`}
           >
             <List className="w-4 h-4" />
+            <span>List</span>
           </button>
         </div>
       </div>
@@ -172,18 +186,18 @@ export default function InvestigationQueuePage() {
 
       {/* Investigation List */}
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-xs text-jkn-muted">
-          Loading investigation queue...
-        </div>
+        <PageLoader label="Loading investigation queue..." />
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 bg-surface rounded-2xl border border-jkn-border p-6 space-y-2">
           <ShieldAlert className="w-8 h-8 text-jkn-dim mx-auto" />
           <h4 className="text-sm font-bold text-jkn-text">No investigations match your filters</h4>
           <p className="text-xs text-jkn-muted">Try modifying your search keyword or active filters.</p>
         </div>
-      ) : viewMode === "CARD" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((inv) => (
+      ) : (
+      <>
+      {viewMode === "CARD" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {paginated.map((inv) => (
             <div
               key={inv.investigation_id}
               className={`bg-surface rounded-2xl border p-4 shadow-sm hover:shadow-card transition-all flex flex-col justify-between ${
@@ -284,7 +298,7 @@ export default function InvestigationQueuePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-jkn-divider">
-              {filtered.map((inv) => (
+              {paginated.map((inv) => (
                 <tr key={inv.investigation_id} className="hover:bg-bpjs-soft/20 transition-colors">
                   <td className="p-3.5 font-bold text-jkn-text">
                     <div>{inv.claim_id}</div>
@@ -325,6 +339,9 @@ export default function InvestigationQueuePage() {
             </tbody>
           </table>
         </div>
+      )}
+      <Pagination page={currentPage} pageSize={pageSize} total={filtered.length} onPageChange={setPage} />
+      </>
       )}
     </DashboardShell>
   );

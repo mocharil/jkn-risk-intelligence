@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { RiskPill } from "@/components/ui/RiskPill";
+import { PageLoader } from "@/components/ui/PageLoader";
+import { Pagination } from "@/components/ui/Pagination";
 import { Provider } from "@/types/provider";
 import { formatRupiah, formatNumber, formatPercent } from "@/lib/formatting/currency";
 import {
@@ -21,6 +23,8 @@ export default function ProvidersListPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 9;
 
   useEffect(() => {
     fetch("/api/providers")
@@ -41,6 +45,14 @@ export default function ProvidersListPage() {
       p.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.province_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <DashboardShell>
@@ -74,10 +86,11 @@ export default function ProvidersListPage() {
 
       {/* Provider Cards Grid */}
       {loading ? (
-        <div className="text-center py-20 text-xs text-jkn-muted">Loading providers directory...</div>
+        <PageLoader label="Loading providers directory..." />
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((provider) => (
+          {paginated.map((provider) => (
             <div
               key={provider.provider_id}
               className={`bg-surface rounded-2xl border p-4 shadow-sm hover:shadow-card transition-all flex flex-col justify-between ${
@@ -136,6 +149,8 @@ export default function ProvidersListPage() {
             </div>
           ))}
         </div>
+        <Pagination page={currentPage} pageSize={pageSize} total={filtered.length} onPageChange={setPage} />
+        </>
       )}
     </DashboardShell>
   );

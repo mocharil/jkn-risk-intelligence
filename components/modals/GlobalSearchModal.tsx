@@ -20,12 +20,9 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
   const [providers, setProviders] = useState<Provider[]>([]);
 
   useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        isOpen ? onClose() : undefined;
-      }
-      if (e.key === "Escape" && isOpen) {
+      if (e.key === "Escape") {
         onClose();
       }
     };
@@ -55,7 +52,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
           <Search className="w-5 h-5 text-bpjs shrink-0" />
           <input
             type="text"
-            placeholder="Ketik nomor klaim (CLM-10293), nama faskes, dokter, atau diagnosis..."
+            placeholder="Search claim number (CLM-10293), facility name, or diagnosis..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
@@ -75,16 +72,22 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
           {!query && (
             <div className="space-y-2">
               <h5 className="text-[11px] font-bold text-jkn-dim uppercase tracking-wider">
-                Pencarian Populer
+                Popular Searches
               </h5>
               <div className="flex flex-wrap gap-2">
-                {["CLM-10293 (Hero Claim)", "RS Sehat Sentosa", "Diare A09", "dr. Hendra Prasetyo", "Klaster Upcoding"].map((item) => (
+                {[
+                  { label: "CLM-10293 (Hero Claim)", query: "CLM-10293" },
+                  { label: "RS Sehat Sentosa", query: "RS Sehat Sentosa" },
+                  { label: "RS Medika Utama", query: "RS Medika Utama" },
+                  { label: "Gastroenteritis A09", query: "A09" },
+                  { label: "Jakarta", query: "Jakarta" },
+                ].map((item) => (
                   <button
-                    key={item}
-                    onClick={() => setQuery(item.split(" ")[0])}
+                    key={item.label}
+                    onClick={() => setQuery(item.query)}
                     className="px-2.5 py-1 rounded-lg bg-surface-secondary border border-jkn-border text-xs text-jkn-text hover:border-bpjs hover:bg-bpjs-soft transition-colors"
                   >
-                    {item}
+                    {item.label}
                   </button>
                 ))}
               </div>
@@ -95,7 +98,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
           {claims.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[11px] font-bold text-jkn-dim uppercase tracking-wider">
-                <span>Klaim Terdeteksi ({claims.length})</span>
+                <span>Claims Found ({claims.length})</span>
               </div>
               <div className="space-y-1.5">
                 {claims.slice(0, 5).map((claim) => (
@@ -136,7 +139,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
           {providers.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[11px] font-bold text-jkn-dim uppercase tracking-wider">
-                <span>Fasilitas Kesehatan ({providers.length})</span>
+                <span>Healthcare Facilities ({providers.length})</span>
               </div>
               <div className="space-y-1.5">
                 {providers.slice(0, 3).map((provider) => (
@@ -158,7 +161,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
                           <RiskPill score={provider.risk_score} level={provider.risk_level} size="sm" />
                         </div>
                         <p className="text-[11px] text-jkn-dim mt-0.5">
-                          {provider.city}, {provider.province_name} · {provider.high_risk_claims} Klaim Anomali
+                          {provider.city}, {provider.province_name} · {provider.high_risk_claims} Anomalous Claims
                         </p>
                       </div>
                     </div>
@@ -176,7 +179,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
 
         {/* Modal Footer */}
         <div className="p-3 bg-surface-secondary border-t border-jkn-divider text-[11px] text-jkn-dim flex items-center justify-between px-4">
-          <span>Tekan ↵ untuk membuka atau Esc untuk keluar</span>
+          <span>Press ↵ to open or Esc to close</span>
           <span className="font-medium text-bpjs">JKN Global Search</span>
         </div>
       </div>

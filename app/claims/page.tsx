@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { RiskPill } from "@/components/ui/RiskPill";
+import { PageLoader } from "@/components/ui/PageLoader";
+import { Pagination } from "@/components/ui/Pagination";
 import { CanonicalClaim } from "@/types/claim";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
 import { formatDate } from "@/lib/formatting/date";
@@ -28,6 +30,8 @@ export default function ClaimsIntelligencePage() {
   const [riskLevelFilter, setRiskLevelFilter] = useState("ALL");
   const [riskTypeFilter, setRiskTypeFilter] = useState("ALL");
   const [selectedClaim, setSelectedClaim] = useState<CanonicalClaim | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   useEffect(() => {
     fetch("/api/claims")
@@ -56,6 +60,14 @@ export default function ClaimsIntelligencePage() {
     }
     return true;
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, riskLevelFilter, riskTypeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <DashboardShell>
@@ -132,8 +144,8 @@ export default function ClaimsIntelligencePage() {
               <tbody className="divide-y divide-jkn-divider">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-jkn-muted">
-                      Loading claims repository...
+                    <td colSpan={7}>
+                      <PageLoader label="Loading claims repository..." className="py-14" />
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
@@ -143,7 +155,7 @@ export default function ClaimsIntelligencePage() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((claim) => (
+                  paginated.map((claim) => (
                     <tr
                       key={claim.claim_id}
                       onClick={() => setSelectedClaim(claim)}
@@ -186,6 +198,9 @@ export default function ClaimsIntelligencePage() {
               </tbody>
             </table>
           </div>
+          {!loading && (
+            <Pagination page={currentPage} pageSize={pageSize} total={filtered.length} onPageChange={setPage} className="pt-3" />
+          )}
         </div>
 
         {/* Side Preview Drawer (5 cols) */}
@@ -255,11 +270,7 @@ export default function ClaimsIntelligencePage() {
 
             {/* CTA Button */}
             <Link
-              href={
-                selectedClaim.investigation_id
-                  ? `/investigations/${selectedClaim.investigation_id}`
-                  : `/investigations/INV-2026-010293`
-              }
+              href={`/investigations/${selectedClaim.investigation_id || selectedClaim.claim_id}`}
               className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-bpjs text-white text-xs font-bold hover:bg-bpjs-deep transition-all shadow-sm"
             >
               <span>Open Full Investigation Workspace</span>

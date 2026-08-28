@@ -5,6 +5,7 @@ import Link from "next/link";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { IndonesiaRiskMap } from "@/components/map/IndonesiaRiskMap";
 import { RiskPill } from "@/components/ui/RiskPill";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
 import { formatRelativeTime } from "@/lib/formatting/date";
 import { DashboardKPIs, EmergingSignal, ProvinceRiskData } from "@/types/risk";
@@ -59,12 +60,7 @@ export default function CommandCenterPage() {
   if (loading || !data) {
     return (
       <DashboardShell>
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-3 border-bpjs border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs font-semibold text-jkn-muted">Loading Risk Intelligence Command Center...</p>
-          </div>
-        </div>
+        <PageLoader label="Loading Risk Intelligence Command Center..." className="h-[60vh]" />
       </DashboardShell>
     );
   }

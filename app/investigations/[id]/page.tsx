@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { RiskPill } from "@/components/ui/RiskPill";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { Investigation, InvestigationStatus } from "@/types/investigation";
 import { CanonicalClaim } from "@/types/claim";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
@@ -40,6 +41,7 @@ export default function InvestigationWorkspacePage() {
   const [investigation, setInvestigation] = useState<Investigation | null>(null);
   const [activeTab, setActiveTab] = useState<"OVERVIEW" | "EVIDENCE" | "TIMELINE" | "SIMILAR" | "NETWORK" | "NOTES">("OVERVIEW");
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
   const [aiQuestion, setAiQuestion] = useState("");
@@ -48,16 +50,21 @@ export default function InvestigationWorkspacePage() {
   const [highlightedEvidenceId, setHighlightedEvidenceId] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
+    setNotFound(false);
     fetch(`/api/investigations/${id}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.data) {
           setInvestigation(data.data);
+        } else {
+          setNotFound(true);
         }
         setLoading(false);
       })
       .catch((err) => {
         console.error(err);
+        setNotFound(true);
         setLoading(false);
       });
   }, [id]);
@@ -117,7 +124,7 @@ export default function InvestigationWorkspacePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: query,
-          claim_id: investigation?.claim_id || "CLM-10293",
+          claim_id: investigation!.claim_id,
         }),
       });
       const data = await res.json();
@@ -129,11 +136,24 @@ export default function InvestigationWorkspacePage() {
     }
   };
 
-  if (loading || !investigation) {
+  if (loading) {
     return (
       <DashboardShell>
-        <div className="flex items-center justify-center h-[60vh] text-xs text-jkn-muted">
-          Loading investigation case dossier for {id}...
+        <PageLoader label={`Loading investigation case dossier for ${id}...`} className="h-[60vh]" />
+      </DashboardShell>
+    );
+  }
+
+  if (notFound || !investigation) {
+    return (
+      <DashboardShell>
+        <div className="flex flex-col items-center justify-center gap-3 h-[60vh] text-center">
+          <ShieldAlert className="w-8 h-8 text-jkn-dim" />
+          <p className="text-sm font-bold text-jkn-text">Investigation not found</p>
+          <p className="text-xs text-jkn-muted">No case dossier matches "{id}".</p>
+          <Link href="/investigation-queue" className="text-xs font-bold text-bpjs-dark hover:underline">
+            Back to Investigation Queue
+          </Link>
         </div>
       </DashboardShell>
     );
@@ -389,42 +409,53 @@ export default function InvestigationWorkspacePage() {
               <div className="relative pl-6 space-y-6 border-l-2 border-bpjs-border ml-2">
                 <div className="relative">
                   <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-bpjs border-2 border-white" />
-                  <div className="text-xs font-bold text-jkn-text">August 01, 2026 - Patient Admission</div>
-                  <p className="text-xs text-jkn-muted mt-0.5">Emergency admission for watery diarrhea 4x. Vital signs stable, mild dehydration.</p>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-bpjs border-2 border-white" />
-                  <div className="text-xs font-bold text-jkn-text">August 02, 2026 - Clinical Improvement</div>
-                  <p className="text-xs text-jkn-muted mt-0.5">Clinical notes indicate diarrhea stopped, good oral soft diet tolerance.</p>
-                </div>
-
-                <div className="relative p-3 rounded-xl bg-risk-critical-bg border border-risk-critical-border">
-                  <div className="absolute -left-[31px] top-3 w-4 h-4 rounded-full bg-risk-critical border-2 border-white animate-ping-slow" />
-                  <div className="text-xs font-bold text-risk-critical flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>August 03, 2026 - Phantom Digestive Surgery Billing Anomaly</span>
-                  </div>
-                  <p className="text-xs text-risk-critical/90 mt-1 leading-relaxed">
-                    Claim billed laparoscopic procedure 44.95, but nursing notes and OR logs confirm patient never left general ward Melati 3.
+                  <div className="text-xs font-bold text-jkn-text">{formatDate(claim.service.admission_date)} - Patient Admission</div>
+                  <p className="text-xs text-jkn-muted mt-0.5">
+                    Admitted under {claim.service.doctor_name} ({claim.service.doctor_specialty}) for {claim.diagnoses[0]?.description || "evaluation"}.
                   </p>
                 </div>
 
-                <div className="relative p-3 rounded-xl bg-amber-50 border border-amber-200">
-                  <div className="absolute -left-[31px] top-3 w-4 h-4 rounded-full bg-amber-500 border-2 border-white" />
-                  <div className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>August 04 - 06, 2026 - Abnormal Length of Stay Deviation</span>
-                  </div>
-                  <p className="text-xs text-amber-900 mt-1 leading-relaxed">
-                    Patient retained for 3 additional inpatient days without documented clinical deterioration or medical necessity.
-                  </p>
-                </div>
+                {claim.risk_findings.map((finding, idx) => {
+                  const isSevere = finding.verdict === "CRITICAL" || finding.verdict === "HIGH";
+                  return (
+                    <div
+                      key={idx}
+                      className={
+                        isSevere
+                          ? "relative p-3 rounded-xl bg-risk-critical-bg border border-risk-critical-border"
+                          : "relative p-3 rounded-xl bg-amber-50 border border-amber-200"
+                      }
+                    >
+                      <div
+                        className={
+                          isSevere
+                            ? "absolute -left-[31px] top-3 w-4 h-4 rounded-full bg-risk-critical border-2 border-white animate-ping-slow"
+                            : "absolute -left-[31px] top-3 w-4 h-4 rounded-full bg-amber-500 border-2 border-white"
+                        }
+                      />
+                      <div className={`text-xs font-bold flex items-center gap-1.5 ${isSevere ? "text-risk-critical" : "text-amber-800"}`}>
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <span>{finding.title}</span>
+                      </div>
+                      <p className={`text-xs mt-1 leading-relaxed ${isSevere ? "text-risk-critical/90" : "text-amber-900"}`}>
+                        {finding.summary}
+                      </p>
+                    </div>
+                  );
+                })}
 
                 <div className="relative">
                   <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-emerald-600 border-2 border-white" />
-                  <div className="text-xs font-bold text-jkn-text">August 07, 2026 - Discharge & Claim Invoiced</div>
-                  <p className="text-xs text-jkn-muted mt-0.5">Discharge certificate issued with total invoiced amount of Rp 18,450,000 (Severity 3).</p>
+                  <div className="text-xs font-bold text-jkn-text">{formatDate(claim.service.discharge_date)} - Discharge</div>
+                  <p className="text-xs text-jkn-muted mt-0.5">Length of stay: {claim.service.length_of_stay} days.</p>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-bpjs-dark border-2 border-white" />
+                  <div className="text-xs font-bold text-jkn-text">{formatDate(claim.service.submission_date)} - Claim Submitted</div>
+                  <p className="text-xs text-jkn-muted mt-0.5">
+                    Discharge certificate issued with total invoiced amount of {formatRupiah(claim.claim_amount)}.
+                  </p>
                 </div>
               </div>
             </div>
@@ -552,10 +583,24 @@ export default function InvestigationWorkspacePage() {
             ) : (
               <div className="space-y-2">
                 <p className="leading-relaxed">
-                  <strong>AI Analysis Summary:</strong> Claim <span className="font-mono font-bold text-bpjs-dark">{claim.claim_id}</span> demonstrates confirmed indicators of <strong>tariff inflation (Upcoding)</strong> and <strong>undocumented surgical package billing (Phantom Billing)</strong> amounting to Rp 12,500,000.
+                  <strong>AI Analysis Summary:</strong> Claim <span className="font-mono font-bold text-bpjs-dark">{claim.claim_id}</span>{" "}
+                  {claim.risk_findings.length > 0 ? (
+                    <>
+                      demonstrates confirmed indicators of{" "}
+                      {claim.risk_findings.map((f, i) => (
+                        <React.Fragment key={i}>
+                          {i > 0 && (i === claim.risk_findings.length - 1 ? " and " : ", ")}
+                          <strong>{f.title}</strong>
+                        </React.Fragment>
+                      ))}
+                      {claim.tariff_difference ? ` amounting to ${formatRupiah(claim.tariff_difference)}.` : "."}
+                    </>
+                  ) : (
+                    "has no confirmed risk indicators from the automated detectors yet."
+                  )}
                 </p>
                 <div className="p-2 rounded bg-white border border-bpjs-border/60 text-[11px] text-bpjs-dark font-medium">
-                  ✦ All findings verified against electronic medical records DOC-01 & DOC-02.
+                  ✦ All findings verified against {claim.medical_evidence.length} attached electronic medical record{claim.medical_evidence.length === 1 ? "" : "s"}.
                 </div>
               </div>
             )}

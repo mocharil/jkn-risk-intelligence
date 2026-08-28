@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { Dataset, FieldMapping } from "@/types/dataset";
 import { formatNumber } from "@/lib/formatting/currency";
 import { formatDate } from "@/lib/formatting/date";
@@ -190,6 +191,9 @@ export default function DataManagementPage() {
       </div>
 
       {/* Dataset Selection Tabs */}
+      {loading ? (
+        <PageLoader label="Loading datasets..." />
+      ) : (
       <div className="flex items-center gap-3 overflow-x-auto pb-1">
         {datasets.map((d) => (
           <button
@@ -229,6 +233,7 @@ export default function DataManagementPage() {
           <span className="text-[11px] font-bold">New Upload</span>
         </button>
       </div>
+      )}
 
       {/* Main Mapping & Quality Section */}
       {selectedDataset && (
@@ -450,7 +455,10 @@ export default function DataManagementPage() {
                       : "border-jkn-border hover:bg-surface-secondary text-jkn-text"
                   }`}
                 >
-                  <div className="font-bold text-[11px]">📁 RS Mitra EHR Claims</div>
+                  <div className="font-bold text-[11px] flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-bpjs" />
+                    <span>RS Mitra EHR Claims</span>
+                  </div>
                   <div className="text-[10px] text-jkn-muted mt-0.5">142,000 Rows · Upcoding Sample</div>
                 </button>
 
@@ -463,7 +471,10 @@ export default function DataManagementPage() {
                       : "border-jkn-border hover:bg-surface-secondary text-jkn-text"
                   }`}
                 >
-                  <div className="font-bold text-[11px]">📁 RS Graha Invoices</div>
+                  <div className="font-bold text-[11px] flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-bpjs" />
+                    <span>RS Graha Invoices</span>
+                  </div>
                   <div className="text-[10px] text-jkn-muted mt-0.5">88,000 Rows · LOS Variance</div>
                 </button>
               </div>
