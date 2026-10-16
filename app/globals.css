@@ -4,8 +4,8 @@
 
 @layer base {
   :root {
-    --background: 160 20% 98%;
-    --foreground: 160 40% 15%;
+    --background: 150 18% 96%;
+    --foreground: 158 36% 11%;
   }
 
   *,
@@ -22,25 +22,47 @@
   }
 
   body {
-    background-color: #F8FBFA;
-    color: #16332A;
-    font-family: -apple-system, BlinkMacSystemFont, var(--font-sans), "SF Pro Display", "SF Pro Text", "SF Pro", "Plus Jakarta Sans", system-ui, sans-serif;
-    letter-spacing: -0.011em;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01", "ss02", "calt", "liga";
+    background-color: #F4F7F5;
+    color: #11241D;
+    font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+    letter-spacing: -0.006em;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "calt", "liga";
   }
 
   h1, h2, h3, h4, h5, h6 {
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
     font-weight: 700;
   }
 
+  /* Enforce tabular numerals on tables, numbers, badges, and monospace elements */
+  table,
+  td,
+  th,
+  code,
+  kbd,
+  samp,
+  pre,
+  .tabular-nums,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
   code, kbd, samp, pre {
-    font-family: "SF Mono", SFMono-Regular, var(--font-mono), "JetBrains Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
+    font-family: var(--font-mono), "JetBrains Mono", "SF Mono", SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, monospace;
     font-feature-settings: "liga" 0, "calt" 0;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid #007A3A;
+    outline-offset: 1px;
   }
 }
 
-/* Custom Sleek iOS-style Scrollbar */
+/* Custom Sleek Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -51,20 +73,20 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(138, 158, 150, 0.35);
-  border-radius: 9999px;
+  background: rgba(97, 117, 109, 0.3);
+  border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(138, 158, 150, 0.65);
+  background: rgba(97, 117, 109, 0.55);
 }
 
-/* Glassmorphism utilities */
+/* Surface utilities */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(221, 231, 226, 0.8);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid #D5E0DA;
 }
 
 /* Leaflet Container Styling */
@@ -74,8 +96,8 @@
 }
 
 .leaflet-popup-content-wrapper {
-  border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(17, 36, 29, 0.12);
 }
 
 /* Clean Print & PDF Generation Rules */
@@ -117,3 +139,7 @@
     size: A4 portrait;
   }
 }
+
+/* a11y-focus: indikator fokus keyboard yang jelas */
+:focus-visible { outline: 2px solid #00853F; outline-offset: 2px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }

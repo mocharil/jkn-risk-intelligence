@@ -34,3 +34,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# secrets / service accounts
+gemini_sa.json
+*_sa.json
+*service-account*.json
+
+# runtime data (store snapshot, embedding cache, users)
+/.data/
+
+# paket arsip lokal
+*.zip

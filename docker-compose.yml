@@ -1,0 +1,13 @@
+# Postgres + pgvector untuk pengembangan lokal / uji:  docker compose up -d db
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_PASSWORD: arsa
+      POSTGRES_DB: arsa
+    ports:
+      - "54329:5432"
+    volumes:
+      - arsa_pg:/var/lib/postgresql/data
+volumes:
+  arsa_pg:

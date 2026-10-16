@@ -7,6 +7,7 @@ export type InvestigationStatus =
   | "NEED_EVIDENCE" 
   | "CONFIRMED_RISK" 
   | "FALSE_POSITIVE" 
+  | "ESCALATED"
   | "CLOSED";
 
 export interface InvestigationNote {

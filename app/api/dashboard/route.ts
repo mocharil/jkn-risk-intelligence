@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { guard } from "@/lib/auth/guard";
 import { DatabaseService } from "@/lib/supabase/db-service";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const g = await guard(request);
+  if (g.error) return g.error;
+
   const [kpis, provinceRisk, emergingSignals, providers] = await Promise.all([
     DatabaseService.getDashboardKPIs(),
     DatabaseService.getProvinceRiskData(),
