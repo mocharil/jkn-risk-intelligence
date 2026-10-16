@@ -1,5 +1,5 @@
 /**
- * Date and relative time formatting utilities (English)
+ * Date and relative time formatting utilities (Bahasa Indonesia)
  */
 export function formatDate(dateInput: string | Date, includeTime: boolean = false): string {
   if (!dateInput) return "-";
@@ -13,7 +13,7 @@ export function formatDate(dateInput: string | Date, includeTime: boolean = fals
     ...(includeTime ? { hour: "2-digit", minute: "2-digit" } : {}),
   };
 
-  return date.toLocaleDateString("en-US", options);
+  return date.toLocaleDateString("id-ID", options);
 }
 
 export function formatRelativeTime(dateInput: string | Date): string {
@@ -28,11 +28,11 @@ export function formatRelativeTime(dateInput: string | Date): string {
   const diffHours = Math.floor(diffMin / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffSec < 60) return "Just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  
+  if (diffSec < 60) return "Baru saja";
+  if (diffMin < 60) return `${diffMin} mnt lalu`;
+  if (diffHours < 24) return `${diffHours} jam lalu`;
+  if (diffDays === 1) return "Kemarin";
+  if (diffDays < 7) return `${diffDays} hari lalu`;
+
   return formatDate(date);
 }

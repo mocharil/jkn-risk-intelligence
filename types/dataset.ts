@@ -5,6 +5,10 @@ export interface ColumnProfile {
   null_count: number;
   total_count: number;
   distinct_count: number;
+  /** Jenis data pribadi yang terdeteksi pada kolom ini (ditangani saat upload). */
+  pii?: "NIK" | "CARD" | "PATIENT_ID" | "NAME" | "ADDRESS" | "PHONE" | "EMAIL" | "FREE_TEXT";
+  /** Perlakuan yang sudah diterapkan: nilai di dataset tersimpan TIDAK lagi berisi data pribadi asli. */
+  pii_treatment?: "PSEUDONYMIZED" | "INITIALS_ONLY" | "DROPPED" | "SCRUBBED";
 }
 
 export interface FieldMapping {
@@ -13,6 +17,9 @@ export interface FieldMapping {
   confidence: number; // 0.0 - 1.0
   is_ai_suggested: boolean;
   transformation_rule?: string;
+  /** Asal usulan: "llm" (LLM), "heuristic" (nama kolom + pola nilai), atau "manual". */
+  suggested_by?: "llm" | "heuristic" | "manual";
+  reason?: string;
   status: "CONFIRMED" | "SUGGESTED" | "UNMAPPED";
 }
 
@@ -26,6 +33,18 @@ export interface DataQualitySummary {
   missing_required_fields: string[];
 }
 
+export interface RejectedRow {
+  row: number; // nomor baris data (mulai 1)
+  reason: string;
+}
+
+export interface AnonymizationReport {
+  columns_dropped: string[];
+  columns_pseudonymized: string[];
+  columns_initials: string[];
+  columns_scrubbed: string[];
+}
+
 export interface Dataset {
   dataset_id: string;
   name: string;
@@ -36,6 +55,11 @@ export interface Dataset {
   columns: ColumnProfile[];
   mappings: FieldMapping[];
   quality_summary?: DataQualitySummary;
+  rejected_rows?: RejectedRow[];
+  anonymization?: AnonymizationReport;
+  /** Hasil normalisasi + analisis setelah mapping dikonfirmasi. */
+  result?: { claims_ingested: number; findings_total: number; flagged_claims: number; investigations_created: number; embedding_model: string };
+  error_message?: string;
   created_at: string;
   updated_at: string;
 }

@@ -1,4 +1,6 @@
-export type RiskType = "UPCODING" | "CLONING" | "PHANTOM_BILLING" | "ABNORMAL_LOS";
+export type RiskType = "UPCODING" | "CLONING" | "PHANTOM_BILLING" | "ABNORMAL_LOS" | "UNBUNDLING" | "INFLATED_BILLS" | "REPEAT_BILLING" | "READMISSION";
+
+export const ALL_RISK_TYPES: RiskType[] = ["UPCODING", "CLONING", "PHANTOM_BILLING", "ABNORMAL_LOS", "UNBUNDLING", "INFLATED_BILLS", "REPEAT_BILLING", "READMISSION"];
 
 export type RiskLevel = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 
@@ -7,6 +9,10 @@ export interface RiskEvidenceRef {
   document_type: string;
   claim_statement: string;
   supports_finding: boolean;
+  /** Kutipan verbatim dari dokumen sumber (dapat diverifikasi auditor). */
+  excerpt?: string;
+  /** Bila bukti berasal dari klaim lain (mis. klaim yang mirip). */
+  source_claim_id?: string;
 }
 
 export interface RiskFinding {
@@ -20,6 +26,10 @@ export interface RiskFinding {
   missing_evidence: string[];
   recommended_actions: string[];
   limitations: string[];
+  /** Id aturan deterministik yang memicu temuan ini. */
+  rule_id?: string;
+  /** Penjelasan generatif (LLM) – hanya boleh mengutip evidence_id yang ada. */
+  ai_explanation?: { text: string; source: "llm" | "deterministic"; provider?: string; model?: string; cited_evidence_ids: string[] };
   metrics?: {
     peer_benchmark_median?: number;
     actual_value?: number;
@@ -74,6 +84,13 @@ export interface DashboardKPIs {
     affected_providers: number;
     potential_exposure: number;
     detected_at: string;
+    /** Asal ringkasan: 'llm' (dengan sitasi) atau 'deterministic' (templat dari agregasi). */
+    source?: "llm" | "deterministic";
+    provider?: string;
+    model?: string;
+    cited_signal_ids?: string[];
+    /** true = briefing LLM sedang disusun di latar belakang; klien dapat mengambilnya lewat /api/dashboard/briefing. */
+    pending?: boolean;
   };
   risk_distribution: {
     critical: number;
@@ -87,5 +104,11 @@ export interface DashboardKPIs {
     high_count: number;
     medium_count: number;
     exposure_amount: number;
+  }>;
+  risk_by_type?: Array<{
+    risk_type: RiskType;
+    claim_count: number;
+    potential_exposure: number;
+    avg_confidence: number;
   }>;
 }

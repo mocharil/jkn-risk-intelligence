@@ -32,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${plusJakarta.variable} ${jetbrainsMono.variable}`}>
+    <html lang="id" className={`${plusJakarta.variable} ${jetbrainsMono.variable}`}>
       <head>
         <link rel="icon" href="/arsa_logo.png" sizes="any" />
       </head>

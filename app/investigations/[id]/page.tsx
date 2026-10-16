@@ -10,7 +10,10 @@ import { Investigation, InvestigationStatus } from "@/types/investigation";
 import { CanonicalClaim } from "@/types/claim";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
 import { formatDate, formatRelativeTime } from "@/lib/formatting/date";
+import { useSession } from "@/lib/auth/client";
+import { AuditEntry } from "@/lib/audit/chain";
 import { NetworkGraphView } from "@/components/network/NetworkGraphView";
+import { renderCitedText, ModeBadge } from "@/components/ai/CitedAnswer";
 import {
   ArrowLeft,
   Sparkles,
@@ -31,6 +34,9 @@ import {
   Download,
   ShieldAlert,
   ChevronRight,
+  Lock,
+  ShieldCheck,
+  X,
 } from "lucide-react";
 
 export default function InvestigationWorkspacePage() {
@@ -45,7 +51,14 @@ export default function InvestigationWorkspacePage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
   const [aiQuestion, setAiQuestion] = useState("");
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [aiResponse, setAiResponse] = useState<{ text: string; mode?: "llm" | "deterministic"; provider?: string; model?: string; reason?: string; citations: Array<{ ref: number; evidence_id: string; title: string; excerpt: string; status: string }> } | null>(null);
+  const { can, role } = useSession();
+  const [actionError, setActionError] = useState("");
+  const [decisionModal, setDecisionModal] = useState<null | "CONFIRMED_RISK" | "FALSE_POSITIVE">(null);
+  const [decisionText, setDecisionText] = useState("");
+  const [explaining, setExplaining] = useState(false);
+  const [explainInfo, setExplainInfo] = useState<{ mode: "llm" | "deterministic"; reason?: string } | null>(null);
+  const [audit, setAudit] = useState<{ entries: AuditEntry[]; valid: boolean; length: number; reason?: string; head?: string } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [highlightedEvidenceId, setHighlightedEvidenceId] = useState<string | null>(null);
 
@@ -69,22 +82,66 @@ export default function InvestigationWorkspacePage() {
       });
   }, [id]);
 
-  const handleStatusChange = async (newStatus: InvestigationStatus) => {
+  const patchInvestigation = async (body: Record<string, unknown>) => {
+    setUpdatingStatus(true);
+    setActionError("");
     try {
-      setUpdatingStatus(true);
-      const res = await fetch(`/api/investigations/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const res = await fetch(`/api/investigations/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
-      if (data.data) {
-        setInvestigation(data.data);
+      if (!res.ok) throw new Error(data.error || "Aksi gagal");
+      setInvestigation(data.data);
+      loadAudit();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("arsa:store-updated"));
       }
+      return true;
     } catch (e) {
-      console.error(e);
+      setActionError(e instanceof Error ? e.message : "Aksi gagal");
+      return false;
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  useEffect(() => {
+    if (investigation && activeTab === "NOTES") loadAudit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, investigation?.investigation_id]);
+
+  const handleStatusChange = (newStatus: InvestigationStatus, note?: string) => patchInvestigation({ status: newStatus, note });
+
+  const submitDecision = async () => {
+    if (!decisionModal || decisionText.trim().length < 3) return;
+    const ok = await patchInvestigation({ determination: { verdict: decisionModal, rationale: decisionText.trim() } });
+    if (ok) {
+      setDecisionModal(null);
+      setDecisionText("");
+    }
+  };
+
+  const loadAudit = async () => {
+    try {
+      const res = await fetch(`/api/audit?claim_id=${encodeURIComponent(investigation?.claim_id || id.replace(/^INV-2026-0*/, "CLM-"))}&limit=50`);
+      if (!res.ok) return;
+      const j = await res.json();
+      setAudit({ entries: j.data, valid: j.verification.valid, length: j.verification.length, reason: j.verification.reason, head: j.verification.head_hash });
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const explain = async (force = false) => {
+    if (!investigation) return;
+    setExplaining(true);
+    try {
+      const res = await fetch(`/api/claims/${investigation.claim_id}/explain${force ? "?force=1" : ""}`, { method: "POST" });
+      const j = await res.json();
+      if (res.ok) {
+        setInvestigation({ ...investigation, claim: j.data });
+        setExplainInfo({ mode: j.explanation_mode, reason: j.fallback_reason });
+      }
+    } finally {
+      setExplaining(false);
     }
   };
 
@@ -99,15 +156,12 @@ export default function InvestigationWorkspacePage() {
         body: JSON.stringify({ note: newNoteText }),
       });
       const data = await res.json();
-      if (data.data && investigation) {
-        setInvestigation({
-          ...investigation,
-          notes: [data.data, ...investigation.notes],
-        });
-        setNewNoteText("");
-      }
+      if (!res.ok) throw new Error(data.error || "Gagal menyimpan catatan");
+      setInvestigation(data.data);
+      setNewNoteText("");
+      loadAudit();
     } catch (e) {
-      console.error(e);
+      setActionError(e instanceof Error ? e.message : "Gagal menyimpan catatan");
     }
   };
 
@@ -128,9 +182,10 @@ export default function InvestigationWorkspacePage() {
         }),
       });
       const data = await res.json();
-      setAiResponse(data.answer);
+      if (!res.ok) throw new Error(data.error || "Permintaan gagal");
+      setAiResponse({ text: data.answer, mode: data.mode, provider: data.provider, model: data.model, reason: data.fallback_reason, citations: data.evidence_citations || [] });
     } catch (e) {
-      console.error(e);
+      setAiResponse({ text: `Maaf, permintaan gagal: ${e instanceof Error ? e.message : "kesalahan"}`, citations: [] });
     } finally {
       setAiLoading(false);
     }
@@ -139,7 +194,7 @@ export default function InvestigationWorkspacePage() {
   if (loading) {
     return (
       <DashboardShell>
-        <PageLoader label={`Loading investigation case dossier for ${id}...`} className="h-[60vh]" />
+        <PageLoader label={`Memuat berkas investigasi kasus ${id}...`} className="h-[60vh]" />
       </DashboardShell>
     );
   }
@@ -149,10 +204,10 @@ export default function InvestigationWorkspacePage() {
       <DashboardShell>
         <div className="flex flex-col items-center justify-center gap-3 h-[60vh] text-center">
           <ShieldAlert className="w-8 h-8 text-jkn-dim" />
-          <p className="text-sm font-bold text-jkn-text">Investigation not found</p>
-          <p className="text-xs text-jkn-muted">No case dossier matches "{id}".</p>
+          <p className="text-sm font-bold text-jkn-text">Berkas investigasi tidak ditemukan</p>
+          <p className="text-xs text-jkn-muted">Tidak ada kasus dengan kode "{id}".</p>
           <Link href="/investigation-queue" className="text-xs font-bold text-bpjs-dark hover:underline">
-            Back to Investigation Queue
+            Kembali ke Antrean Investigasi
           </Link>
         </div>
       </DashboardShell>
@@ -160,27 +215,37 @@ export default function InvestigationWorkspacePage() {
   }
 
   const { claim } = investigation;
+  const approvedTariff = claim.approved_tariff || 0;
+  const tariffDiff = claim.tariff_difference || 0;
+  const tariffRatioPct = approvedTariff > 0 ? Math.round(((claim.claim_amount - approvedTariff) / approvedTariff) * 100) : 0;
+  const maxTariffScale = Math.max(claim.claim_amount, approvedTariff, 1) * 1.12;
+
+  const supportsCount = claim.medical_evidence.filter((d) => d.status === "SUPPORTS_CLAIM").length;
+  const reviewCount = claim.medical_evidence.filter((d) => d.status === "NEEDS_REVIEW").length;
+  const contradictsCount = claim.medical_evidence.filter((d) => d.status === "CONTRADICTS_CLAIM").length;
+  const totalEvidence = Math.max(claim.medical_evidence.length, 1);
 
   return (
     <DashboardShell>
       {/* Top Breadcrumb & Status Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-jkn-border pb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-jkn-border pb-3.5">
         <div className="flex items-center gap-3">
           <Link
             href="/investigation-queue"
-            className="p-2 rounded-xl bg-surface-secondary border border-jkn-border text-jkn-dim hover:text-jkn-text transition-colors"
+            aria-label="Kembali ke antrean investigasi"
+            className="p-2 rounded-lg bg-surface-secondary border border-jkn-border text-jkn-dim hover:text-jkn-text transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-jkn-dim">{investigation.investigation_id}</span>
+              <span className="text-xs font-mono text-jkn-dim tabular-nums">{investigation.investigation_id}</span>
               <span className="text-xs text-jkn-dim">/</span>
-              <h1 className="text-lg font-black text-jkn-text tracking-tight">{claim.claim_id}</h1>
+              <h1 className="text-lg font-mono font-bold text-jkn-text tracking-tight tabular-nums">{claim.claim_id}</h1>
               <RiskPill score={investigation.risk_score} level={investigation.priority} size="sm" />
             </div>
-            <p className="text-xs text-jkn-muted mt-0.5">
-              {claim.patient.name} ({claim.patient.patient_id}) · {claim.provider.name} · {formatRupiah(claim.claim_amount)}
+            <p className="text-xs text-jkn-muted mt-0.5 tabular-nums">
+              {claim.patient.name} (<span className="font-mono">{claim.patient.patient_id}</span>) · {claim.provider.name} · <span className="font-mono font-semibold text-jkn-text">{formatRupiah(claim.claim_amount)}</span>
             </p>
           </div>
         </div>
@@ -188,16 +253,22 @@ export default function InvestigationWorkspacePage() {
         {/* Current Case Status Badge */}
         <div className="flex items-center gap-2">
           <div className="text-right text-xs">
-            <span className="text-[10px] text-jkn-dim block">Investigation Status</span>
-            <span className="font-bold text-bpjs-dark bg-bpjs-soft px-2.5 py-0.5 rounded-full border border-bpjs-border text-xs">
-              {investigation.status === "UNDER_INVESTIGATION"
-                ? "Under Investigation"
+            <span className="text-[10px] text-jkn-dim block mb-0.5">
+              Status Kasus{investigation.assigned_to.user_id !== "UNASSIGNED" ? ` · ${investigation.assigned_to.name}` : " · Belum Ditugaskan"}
+            </span>
+            <span className="inline-block font-semibold text-bpjs-dark bg-bpjs-soft px-2.5 py-0.5 rounded-md border border-bpjs-border text-xs">
+              {investigation.status === "NEW"
+                ? "Kasus Baru"
+                : investigation.status === "UNDER_INVESTIGATION"
+                ? "Sedang Diinvestigasi"
                 : investigation.status === "CONFIRMED_RISK"
-                ? "Confirmed Risk"
+                ? "Risiko Terkonfirmasi"
                 : investigation.status === "FALSE_POSITIVE"
-                ? "False Positive (Approved)"
+                ? "Positif Palsu (Layak Bayar)"
                 : investigation.status === "NEED_EVIDENCE"
-                ? "Need Evidence"
+                ? "Menunggu Bukti Tambahan"
+                : investigation.status === "ESCALATED"
+                ? "Dieskalasi ke Komite Medis"
                 : investigation.status}
             </span>
           </div>
@@ -205,25 +276,25 @@ export default function InvestigationWorkspacePage() {
       </div>
 
       {/* Main 65/35 Split Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Column: Evidence Workspace (8 cols / 65%) */}
         <div className="lg:col-span-8 space-y-4">
           {/* Workspace Tabs */}
-          <div className="flex items-center gap-1.5 border-b border-jkn-border pb-1 overflow-x-auto">
+          <div className="flex items-center gap-1.5 border-b border-jkn-border pb-2 overflow-x-auto">
             {[
-              { id: "OVERVIEW", label: "Claim Overview" },
-              { id: "EVIDENCE", label: `Evidence Board (${claim.medical_evidence.length})` },
-              { id: "TIMELINE", label: "Timeline & CPPT" },
-              { id: "SIMILAR", label: `Similar Claims (${claim.similar_claims.length})` },
-              { id: "NETWORK", label: "Relation Graph" },
-              { id: "NOTES", label: `Notes & Audit Trail (${investigation.notes.length})` },
+              { id: "OVERVIEW", label: "Ringkasan Klaim" },
+              { id: "EVIDENCE", label: `Papan Bukti (${claim.medical_evidence.length})` },
+              { id: "TIMELINE", label: "Kronologi" },
+              { id: "SIMILAR", label: `Klaim Serupa (${claim.similar_claims.length})` },
+              { id: "NETWORK", label: "Graf Relasi" },
+              { id: "NOTES", label: `Catatan & Audit Trail (${investigation.notes.length})` },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 border ${
+                className={`h-8 px-3 rounded-lg text-xs font-semibold transition-all shrink-0 border ${
                   activeTab === tab.id
-                    ? "bg-bpjs-soft text-bpjs-dark border-bpjs-border shadow-2xs font-bold"
+                    ? "bg-bpjs-soft text-bpjs-dark border-bpjs-border font-bold"
                     : "bg-surface text-jkn-muted border-transparent hover:bg-surface-secondary"
                 }`}
               >
@@ -237,85 +308,303 @@ export default function InvestigationWorkspacePage() {
             <div className="space-y-4 animate-in fade-in duration-100">
               {/* Patient & Service Details Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="bg-surface rounded-2xl border border-jkn-border p-3.5 shadow-xs space-y-1">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-jkn-dim uppercase">
+                <div className="bg-surface rounded-xl border border-jkn-border p-3.5 shadow-subtle space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">
                     <User className="w-3.5 h-3.5 text-bpjs" />
-                    <span>Participant Profile</span>
+                    <span>Profil Peserta (Anonim)</span>
                   </div>
                   <div className="text-xs font-bold text-jkn-text">{claim.patient.name}</div>
-                  <div className="text-[11px] text-jkn-muted">BPJS: {claim.patient.bpjs_card_number}</div>
-                  <div className="text-[11px] text-jkn-dim">{claim.patient.age} yo · {claim.patient.gender === "L" ? "Male" : "Female"}</div>
+                  <div className="text-[11px] text-jkn-muted font-mono tabular-nums">Kartu: {claim.patient.bpjs_card_number}</div>
+                  <div className="text-[11px] text-jkn-dim tabular-nums">{claim.patient.age} thn · {claim.patient.gender === "L" ? "Laki-laki" : "Perempuan"}</div>
                 </div>
 
-                <div className="bg-surface rounded-2xl border border-jkn-border p-3.5 shadow-xs space-y-1">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-jkn-dim uppercase">
+                <div className="bg-surface rounded-xl border border-jkn-border p-3.5 shadow-subtle space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">
                     <Building2 className="w-3.5 h-3.5 text-bpjs" />
-                    <span>Invoicing Provider</span>
+                    <span>Faskes Penagih</span>
                   </div>
-                  <div className="text-xs font-bold text-jkn-text">{claim.provider.name}</div>
+                  <div className="text-xs font-bold text-jkn-text truncate">{claim.provider.name}</div>
                   <div className="text-[11px] text-jkn-muted">{claim.provider.city}</div>
-                  <div className="text-[11px] text-jkn-dim">Physician: {claim.service.doctor_name}</div>
+                  <div className="text-[11px] text-jkn-dim truncate">DPJP: {claim.service.doctor_name}</div>
                 </div>
 
-                <div className="bg-surface rounded-2xl border border-jkn-border p-3.5 shadow-xs space-y-1">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-jkn-dim uppercase">
+                <div className="bg-surface rounded-xl border border-jkn-border p-3.5 shadow-subtle space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">
                     <Calendar className="w-3.5 h-3.5 text-bpjs" />
-                    <span>Care Episode</span>
+                    <span>Episode Perawatan</span>
                   </div>
-                  <div className="text-xs font-bold text-jkn-text">Length of Stay: {claim.service.length_of_stay} Days</div>
-                  <div className="text-[11px] text-jkn-muted">Admitted: {formatDate(claim.service.admission_date)}</div>
-                  <div className="text-[11px] text-jkn-dim">Discharged: {formatDate(claim.service.discharge_date)}</div>
+                  <div className="text-xs font-bold text-jkn-text tabular-nums">Lama rawat: {claim.service.length_of_stay} hari</div>
+                  <div className="text-[11px] text-jkn-muted tabular-nums">Masuk: {formatDate(claim.service.admission_date)}</div>
+                  <div className="text-[11px] text-jkn-dim tabular-nums">Keluar: {formatDate(claim.service.discharge_date)}</div>
                 </div>
               </div>
 
-              {/* Tariff Comparison Table */}
-              <div className="bg-surface rounded-2xl border border-jkn-border p-4 shadow-xs space-y-2.5">
+              {/* Visual Anatomy of Risk Score & Medical Evidence Verification */}
+              <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-jkn-text">Financial Breakdown & INA-CBG Tariff Deviation</h3>
-                  <span className="text-xs font-bold text-risk-critical">
-                    Variance: +{formatRupiah(claim.tariff_difference || 0)}
+                  <div>
+                    <h3 className="text-xs font-bold text-jkn-text">Visualisasi Anatomi Skor Risiko & Bukti Rekam Medis</h3>
+                    <p className="text-[11px] text-jkn-muted">Komposisi sinyal detektor aktif terhadap kelengkapan dokumen pendukung klaim</p>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold tabular-nums px-2.5 py-0.5 rounded-md bg-surface-secondary border border-jkn-border text-jkn-text">
+                    Skor Gabungan: {investigation.risk_score}/100
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-surface-secondary/70 border border-jkn-divider text-xs">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 items-stretch">
+                  {/* Left: Multi-detector bar breakdown */}
+                  <div className="space-y-2.5 p-3 rounded-lg bg-surface-secondary/60 border border-jkn-divider">
+                    <div className="text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">Kontribusi Sinyal per Detektor</div>
+                    {claim.risk_findings.length === 0 ? (
+                      <div className="text-xs text-jkn-muted">Tidak ada sinyal anomali.</div>
+                    ) : (
+                      claim.risk_findings.map((f, i) => (
+                        <div key={i} className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px] gap-2">
+                            <span className="font-semibold text-jkn-text truncate">{f.title}</span>
+                            <span className="font-mono text-[10px] text-jkn-muted tabular-nums shrink-0">
+                              Skor <b className="text-risk-critical">{f.risk_score}</b> · Keyakinan <b>{(f.confidence * 100).toFixed(0)}%</b>
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-white border border-jkn-divider overflow-hidden flex">
+                            <div
+                              className={`h-full rounded-full ${f.risk_score >= 85 ? "bg-risk-critical" : f.risk_score >= 70 ? "bg-risk-high" : "bg-risk-medium"}`}
+                              style={{ width: `${Math.min(100, f.risk_score)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Right: Stacked Document Verification Status + Interactive Document List */}
+                  <div className="space-y-2.5 p-3 rounded-lg bg-surface-secondary/60 border border-jkn-divider flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">
+                        <span>Kesesuaian Dokumen Medis ({claim.medical_evidence.length} Dokumen)</span>
+                        <button onClick={() => setActiveTab("EVIDENCE")} className="text-bpjs hover:underline font-semibold normal-case">
+                          Lihat bukti →
+                        </button>
+                      </div>
+                      <div className="w-full h-2.5 rounded-full bg-white border border-jkn-divider overflow-hidden flex">
+                        {contradictsCount > 0 && (
+                          <div
+                            className="h-full bg-risk-critical transition-all"
+                            style={{ width: `${(contradictsCount / totalEvidence) * 100}%` }}
+                            title={`Tidak mendukung klaim: ${contradictsCount}`}
+                          />
+                        )}
+                        {reviewCount > 0 && (
+                          <div
+                            className="h-full bg-risk-medium transition-all"
+                            style={{ width: `${(reviewCount / totalEvidence) * 100}%` }}
+                            title={`Perlu review: ${reviewCount}`}
+                          />
+                        )}
+                        {supportsCount > 0 && (
+                          <div
+                            className="h-full bg-bpjs transition-all"
+                            style={{ width: `${(supportsCount / totalEvidence) * 100}%` }}
+                            title={`Mendukung klaim: ${supportsCount}`}
+                          />
+                        )}
+                      </div>
+
+                      {/* Document breakdown list filling the vertical space */}
+                      <div className="divide-y divide-jkn-divider border border-jkn-divider rounded-md bg-white overflow-hidden">
+                        {claim.medical_evidence.slice(0, 4).map((doc) => (
+                          <button
+                            key={doc.evidence_id}
+                            onClick={() => {
+                              setActiveTab("EVIDENCE");
+                              setHighlightedEvidenceId(doc.evidence_id);
+                            }}
+                            className="w-full px-2.5 py-1.5 text-left text-[11px] flex items-center justify-between gap-2 hover:bg-surface-secondary transition-colors"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                  doc.status === "CONTRADICTS_CLAIM"
+                                    ? "bg-risk-critical"
+                                    : doc.status === "NEEDS_REVIEW"
+                                    ? "bg-risk-medium"
+                                    : "bg-bpjs"
+                                }`}
+                              />
+                              <span className="font-mono text-[10px] text-jkn-dim shrink-0">{doc.evidence_id}</span>
+                              <span className="text-jkn-text font-medium truncate">{doc.title}</span>
+                            </div>
+                            <span
+                              className={`text-[10px] font-semibold shrink-0 ${
+                                doc.status === "CONTRADICTS_CLAIM"
+                                  ? "text-risk-critical"
+                                  : doc.status === "NEEDS_REVIEW"
+                                  ? "text-risk-medium"
+                                  : "text-bpjs-dark"
+                              }`}
+                            >
+                              {doc.status === "CONTRADICTS_CLAIM" ? "Kontradiktif" : doc.status === "NEEDS_REVIEW" ? "Review" : "Sesuai"}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-[10px]">
+                      <div className="p-1.5 rounded-md bg-risk-critical-bg border border-risk-critical-border text-center">
+                        <div className="font-mono font-bold text-risk-critical text-xs tabular-nums">{contradictsCount}</div>
+                        <div className="text-risk-critical font-medium">Kontradiktif</div>
+                      </div>
+                      <div className="p-1.5 rounded-md bg-risk-medium-bg border border-risk-medium-border text-center">
+                        <div className="font-mono font-bold text-risk-medium text-xs tabular-nums">{reviewCount}</div>
+                        <div className="text-risk-medium font-medium">Perlu Review</div>
+                      </div>
+                      <div className="p-1.5 rounded-md bg-bpjs-soft border border-bpjs-border text-center">
+                        <div className="font-mono font-bold text-bpjs-dark text-xs tabular-nums">{supportsCount}</div>
+                        <div className="text-bpjs-dark font-medium">Mendukung</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tariff Comparison Table + Visual Bullet Bar */}
+              <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h3 className="text-xs font-bold text-jkn-text">Rincian Keuangan & Deviasi terhadap Median Peer</h3>
+                  <div className="flex items-center gap-2">
+                    {tariffRatioPct > 0 && (
+                      <span className="text-[10px] font-mono font-bold tabular-nums px-2 py-0.5 rounded-md bg-risk-critical-bg text-risk-critical border border-risk-critical-border">
+                        +{tariffRatioPct}% di atas median peer
+                      </span>
+                    )}
+                    <span className="text-xs font-mono font-bold text-risk-critical tabular-nums">
+                      Selisih: +{formatRupiah(tariffDiff)}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3 p-3 rounded-lg bg-surface-secondary/70 border border-jkn-divider text-xs">
                   <div>
-                    <span className="text-[10px] text-jkn-dim font-medium block">Hospital Invoiced Amount:</span>
-                    <span className="text-sm font-black text-jkn-text">{formatRupiah(claim.claim_amount)}</span>
+                    <span className="text-[10px] text-jkn-dim font-medium block">Nilai Tagihan Faskes</span>
+                    <span className="text-sm font-mono font-bold text-jkn-text tabular-nums">{formatRupiah(claim.claim_amount)}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-jkn-dim font-medium block">Standard INA-CBG Tariff:</span>
-                    <span className="text-sm font-black text-bpjs-dark">{formatRupiah(claim.approved_tariff || 0)}</span>
+                    <span className="text-[10px] text-jkn-dim font-medium block">Median Peer (Diagnosis Setara)</span>
+                    <span className="text-sm font-mono font-bold text-bpjs-dark tabular-nums">{formatRupiah(approvedTariff)}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-jkn-dim font-medium block">Potential Exposure:</span>
-                    <span className="text-sm font-black text-risk-critical">{formatRupiah(claim.tariff_difference || 0)}</span>
+                    <span className="text-[10px] text-jkn-dim font-medium block">Potensi Eksposur</span>
+                    <span className="text-sm font-mono font-bold text-risk-critical tabular-nums">{formatRupiah(tariffDiff)}</span>
+                  </div>
+                </div>
+
+                {/* Visual Bullet Comparison Bar */}
+                <div className="space-y-2 pt-0.5">
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-jkn-muted">
+                      <span className="font-medium text-jkn-text">Tagihan Klaim Ini ({claim.diagnoses[0]?.code || claim.service.treatment_class})</span>
+                      <span className="font-mono font-bold text-risk-critical tabular-nums">{formatRupiah(claim.claim_amount)}</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-surface-secondary overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-risk-critical"
+                        style={{ width: `${Math.min(100, (claim.claim_amount / maxTariffScale) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-jkn-muted">
+                      <span className="font-medium text-bpjs-dark">Acuan Tarif Median Peer Setara</span>
+                      <span className="font-mono font-bold text-bpjs-dark tabular-nums">{formatRupiah(approvedTariff)}</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-surface-secondary overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-bpjs"
+                        style={{ width: `${Math.min(100, (approvedTariff / maxTariffScale) * 100)}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Detected Risk Findings Cards */}
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider">
-                  Multi-Detector Anomaly Analysis
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider">Analisis Multi-Detektor</h3>
+                  <button onClick={() => explain(false)} disabled={explaining || claim.risk_findings.length === 0} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bpjs text-white text-[11px] font-semibold hover:bg-bpjs-deep disabled:opacity-50 transition-colors">
+                    <Sparkles className={`w-3.5 h-3.5 ${explaining ? "animate-spin" : ""}`} />
+                    {explaining ? "Menyusun penjelasan…" : claim.risk_findings.some((f) => f.ai_explanation) ? "Perbarui penjelasan AI" : "Jelaskan dengan AI"}
+                  </button>
+                </div>
+                {explainInfo && explainInfo.mode === "deterministic" && explainInfo.reason && (
+                  <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">LLM tidak dipakai: {explainInfo.reason}. Penjelasan disusun deterministik dari bukti yang sama.</div>
+                )}
+                {claim.risk_findings.length === 0 && <div className="text-xs text-jkn-muted p-4 rounded-xl bg-surface-secondary border border-jkn-border">Tidak ada temuan dari detektor untuk klaim ini.</div>}
                 {claim.risk_findings.map((finding, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-surface rounded-2xl border border-jkn-border p-4 shadow-xs border-l-4 border-l-risk-critical space-y-2"
-                  >
+                  <div key={idx} className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle border-l-[3px] border-l-risk-critical space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <RiskPill type={finding.risk_type} size="sm" />
                         <h4 className="text-xs font-bold text-jkn-text">{finding.title}</h4>
                       </div>
-                      <RiskPill score={finding.risk_score} level={finding.verdict} size="sm" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono text-jkn-dim tabular-nums" title="Keyakinan detektor dihitung dari jumlah sinyal independen & kelengkapan bukti">Keyakinan {(finding.confidence * 100).toFixed(0)}%</span>
+                        <RiskPill score={finding.risk_score} level={finding.verdict} size="sm" />
+                      </div>
                     </div>
 
                     <p className="text-xs text-jkn-muted leading-relaxed">{finding.summary}</p>
+                    {finding.rule_id && <div className="text-[10px] font-mono text-jkn-dim">Aturan: {finding.rule_id}</div>}
 
-                    {/* Recommendations */}
+                    {/* Bukti terkutip (verbatim dari dokumen) */}
+                    {finding.evidence.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">Bukti Terkutip</span>
+                        {finding.evidence.map((ev, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              if (ev.source_claim_id) return;
+                              setActiveTab("EVIDENCE");
+                              setHighlightedEvidenceId(ev.evidence_id);
+                            }}
+                            className={`w-full text-left p-2.5 rounded-lg border text-[11px] ${ev.supports_finding ? "bg-risk-critical-bg/50 border-risk-critical-border" : "bg-bpjs-soft/50 border-bpjs-border"} hover:ring-1 hover:ring-bpjs transition-all`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-[10px] font-semibold text-jkn-dim">{ev.evidence_id}</span>
+                              <span className={`text-[10px] font-semibold ${ev.supports_finding ? "text-risk-critical" : "text-bpjs-dark"}`}>{ev.supports_finding ? "Mendukung temuan" : "Membantah temuan"}</span>
+                            </div>
+                            <div className="text-jkn-text font-medium mt-0.5">{ev.claim_statement}</div>
+                            {ev.excerpt && <div className="italic text-jkn-muted mt-0.5">"{ev.excerpt}"</div>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {finding.missing_evidence.length > 0 && (
+                      <div className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                        <b>Bukti yang belum tersedia:</b> {finding.missing_evidence.join("; ")}
+                      </div>
+                    )}
+
+                    {/* Penjelasan AI */}
+                    {finding.ai_explanation && (
+                      <div className="p-2.5 rounded-lg bg-intel-light/60 border border-intel-border text-[11px] space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-intel-deep">Penjelasan Analitik</span>
+                          <ModeBadge mode={finding.ai_explanation.source === "llm" ? "llm" : "deterministic"} provider={finding.ai_explanation.provider} model={finding.ai_explanation.model} />
+                        </div>
+                        <p className="text-jkn-text leading-relaxed">{finding.ai_explanation.text}</p>
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {finding.ai_explanation.cited_evidence_ids.map((cid) => (
+                            <button key={cid} onClick={() => { setActiveTab("EVIDENCE"); setHighlightedEvidenceId(cid); }} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-intel-border text-intel-deep hover:bg-intel-light">{cid}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {finding.recommended_actions.length > 0 && (
-                      <div className="p-2.5 rounded-xl bg-bpjs-soft/40 border border-bpjs-border/50 text-[11px] text-jkn-text space-y-1">
-                        <span className="font-bold text-bpjs-dark block">Recommended Actions:</span>
+                      <div className="p-2.5 rounded-lg bg-bpjs-soft/40 border border-bpjs-border/60 text-[11px] text-jkn-text space-y-1">
+                        <span className="font-bold text-bpjs-dark block">Tindakan yang Disarankan:</span>
                         <ul className="list-disc list-inside space-y-0.5 text-jkn-muted">
                           {finding.recommended_actions.map((act, i) => (
                             <li key={i}>{act}</li>
@@ -323,6 +612,7 @@ export default function InvestigationWorkspacePage() {
                         </ul>
                       </div>
                     )}
+                    {finding.limitations.length > 0 && <div className="text-[10px] text-jkn-dim">Keterbatasan: {finding.limitations.join(" ")}</div>}
                   </div>
                 ))}
               </div>
@@ -333,8 +623,8 @@ export default function InvestigationWorkspacePage() {
           {activeTab === "EVIDENCE" && (
             <div className="space-y-3 animate-in fade-in duration-100">
               <div className="p-3 rounded-xl bg-surface-secondary border border-jkn-border text-xs text-jkn-muted flex items-center justify-between">
-                <span>Extracted and cross-verified electronic medical records.</span>
-                <span className="font-bold text-bpjs">{claim.medical_evidence.length} Documents Available</span>
+                <span>Dokumen rekam medis teranonimkan. Status ditentukan dari bagaimana dokumen dipakai oleh temuan.</span>
+                <span className="font-mono font-bold text-bpjs tabular-nums">{claim.medical_evidence.length} dokumen</span>
               </div>
 
               <div className="space-y-3">
@@ -344,14 +634,14 @@ export default function InvestigationWorkspacePage() {
                     <div
                       key={doc.evidence_id}
                       id={doc.evidence_id}
-                      className={`bg-surface rounded-2xl border p-4 shadow-xs transition-all ${
+                      className={`bg-surface rounded-xl border p-4 shadow-subtle transition-all ${
                         isHighlighted
-                          ? "ring-2 ring-bpjs border-bpjs bg-bpjs-soft/20 shadow-md"
+                          ? "ring-2 ring-bpjs border-bpjs bg-bpjs-soft/20 shadow-card"
                           : doc.status === "CONTRADICTS_CLAIM"
-                          ? "border-l-4 border-l-risk-critical border-jkn-border"
+                          ? "border-l-[3px] border-l-risk-critical border-jkn-border"
                           : doc.status === "NEEDS_REVIEW"
-                          ? "border-l-4 border-l-amber-500 border-jkn-border"
-                          : "border-l-4 border-l-bpjs border-jkn-border"
+                          ? "border-l-[3px] border-l-risk-medium border-jkn-border"
+                          : "border-l-[3px] border-l-bpjs border-jkn-border"
                       }`}
                     >
                       <div className="flex items-center justify-between pb-2 border-b border-jkn-divider">
@@ -361,33 +651,33 @@ export default function InvestigationWorkspacePage() {
                           <span className="text-[10px] text-jkn-dim font-mono">({doc.evidence_id})</span>
                         </div>
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                          className={`text-[10px] px-2 py-0.5 rounded-md font-semibold border ${
                             doc.status === "CONTRADICTS_CLAIM"
-                              ? "bg-risk-critical-bg text-risk-critical"
+                              ? "bg-risk-critical-bg text-risk-critical border-risk-critical-border"
                               : doc.status === "NEEDS_REVIEW"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-emerald-100 text-emerald-800"
+                              ? "bg-risk-medium-bg text-risk-medium border-risk-medium-border"
+                              : "bg-bpjs-soft text-bpjs-dark border-bpjs-border"
                           }`}
                         >
                           {doc.status === "CONTRADICTS_CLAIM"
-                            ? "Contradicts Claim"
+                            ? "Tidak mendukung klaim"
                             : doc.status === "NEEDS_REVIEW"
-                            ? "Requires Review"
-                            : "Supports Claim"}
+                            ? "Perlu review"
+                            : "Mendukung klaim"}
                         </span>
                       </div>
 
                       <div className="py-2 space-y-2">
-                        <div className="p-2.5 rounded-xl bg-surface-secondary/70 text-xs font-medium text-jkn-text leading-relaxed italic border border-jkn-divider">
+                        <div className="p-2.5 rounded-lg bg-surface-secondary/70 text-xs font-medium text-jkn-text leading-relaxed italic border border-jkn-divider">
                           "{doc.excerpt}"
                         </div>
                         <p className="text-xs text-jkn-muted leading-relaxed">{doc.content}</p>
                       </div>
 
-                      <div className="pt-2 border-t border-jkn-divider flex items-center justify-between text-[11px] text-jkn-dim">
-                        <span>Document Date: {formatDate(doc.date)}</span>
+                      <div className="pt-2 border-t border-jkn-divider flex items-center justify-between text-[11px] text-jkn-dim tabular-nums">
+                        <span>Tanggal dokumen: {formatDate(doc.date)}</span>
                         {doc.attached_file_name && (
-                          <span className="text-bpjs font-medium flex items-center gap-1">
+                          <span className="text-bpjs font-mono font-medium flex items-center gap-1">
                             <Download className="w-3.5 h-3.5" />
                             {doc.attached_file_name}
                           </span>
@@ -402,16 +692,16 @@ export default function InvestigationWorkspacePage() {
 
           {/* TAB 3: TIMELINE */}
           {activeTab === "TIMELINE" && (
-            <div className="bg-surface rounded-2xl border border-jkn-border p-5 shadow-xs space-y-4 animate-in fade-in duration-100">
+            <div className="bg-surface rounded-xl border border-jkn-border p-5 shadow-subtle space-y-4 animate-in fade-in duration-100">
               <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider">
-                Clinical Chronology & Temporal Anomalies (CPPT)
+                Kronologi Klinis & Anomali Waktu
               </h3>
-              <div className="relative pl-6 space-y-6 border-l-2 border-bpjs-border ml-2">
+              <div className="relative pl-6 space-y-5 border-l-2 border-bpjs-border ml-2">
                 <div className="relative">
-                  <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-bpjs border-2 border-white" />
-                  <div className="text-xs font-bold text-jkn-text">{formatDate(claim.service.admission_date)} - Patient Admission</div>
+                  <div className="absolute -left-[31px] top-0.5 w-3.5 h-3.5 rounded-full bg-bpjs border-2 border-white" />
+                  <div className="text-xs font-bold text-jkn-text tabular-nums">{formatDate(claim.service.admission_date)} — Pasien Masuk</div>
                   <p className="text-xs text-jkn-muted mt-0.5">
-                    Admitted under {claim.service.doctor_name} ({claim.service.doctor_specialty}) for {claim.diagnoses[0]?.description || "evaluation"}.
+                    Dirawat di bawah DPJP {claim.service.doctor_name} ({claim.service.doctor_specialty}) dengan diagnosis awal {claim.diagnoses[0]?.description || "evaluasi klinis"}.
                   </p>
                 </div>
 
@@ -422,18 +712,18 @@ export default function InvestigationWorkspacePage() {
                       key={idx}
                       className={
                         isSevere
-                          ? "relative p-3 rounded-xl bg-risk-critical-bg border border-risk-critical-border"
-                          : "relative p-3 rounded-xl bg-amber-50 border border-amber-200"
+                          ? "relative p-3 rounded-lg bg-risk-critical-bg border border-risk-critical-border"
+                          : "relative p-3 rounded-lg bg-risk-medium-bg border border-risk-medium-border"
                       }
                     >
                       <div
                         className={
                           isSevere
-                            ? "absolute -left-[31px] top-3 w-4 h-4 rounded-full bg-risk-critical border-2 border-white animate-ping-slow"
-                            : "absolute -left-[31px] top-3 w-4 h-4 rounded-full bg-amber-500 border-2 border-white"
+                            ? "absolute -left-[31px] top-3 w-3.5 h-3.5 rounded-full bg-risk-critical border-2 border-white"
+                            : "absolute -left-[31px] top-3 w-3.5 h-3.5 rounded-full bg-risk-medium border-2 border-white"
                         }
                       />
-                      <div className={`text-xs font-bold flex items-center gap-1.5 ${isSevere ? "text-risk-critical" : "text-amber-800"}`}>
+                      <div className={`text-xs font-bold flex items-center gap-1.5 ${isSevere ? "text-risk-critical" : "text-risk-medium"}`}>
                         <AlertTriangle className="w-3.5 h-3.5" />
                         <span>{finding.title}</span>
                       </div>
@@ -445,16 +735,16 @@ export default function InvestigationWorkspacePage() {
                 })}
 
                 <div className="relative">
-                  <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-emerald-600 border-2 border-white" />
-                  <div className="text-xs font-bold text-jkn-text">{formatDate(claim.service.discharge_date)} - Discharge</div>
-                  <p className="text-xs text-jkn-muted mt-0.5">Length of stay: {claim.service.length_of_stay} days.</p>
+                  <div className="absolute -left-[31px] top-0.5 w-3.5 h-3.5 rounded-full bg-bpjs border-2 border-white" />
+                  <div className="text-xs font-bold text-jkn-text tabular-nums">{formatDate(claim.service.discharge_date)} — Pasien Keluar</div>
+                  <p className="text-xs text-jkn-muted mt-0.5 tabular-nums">Lama rawat: {claim.service.length_of_stay} hari.</p>
                 </div>
 
                 <div className="relative">
-                  <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-bpjs-dark border-2 border-white" />
-                  <div className="text-xs font-bold text-jkn-text">{formatDate(claim.service.submission_date)} - Claim Submitted</div>
-                  <p className="text-xs text-jkn-muted mt-0.5">
-                    Discharge certificate issued with total invoiced amount of {formatRupiah(claim.claim_amount)}.
+                  <div className="absolute -left-[31px] top-0.5 w-3.5 h-3.5 rounded-full bg-bpjs-dark border-2 border-white" />
+                  <div className="text-xs font-bold text-jkn-text tabular-nums">{formatDate(claim.service.submission_date)} — Klaim Diajukan</div>
+                  <p className="text-xs text-jkn-muted mt-0.5 tabular-nums">
+                    Resume medis pulang diterbitkan dengan total tagihan klaim sebesar <span className="font-mono font-semibold text-jkn-text">{formatRupiah(claim.claim_amount)}</span>.
                   </p>
                 </div>
               </div>
@@ -465,27 +755,54 @@ export default function InvestigationWorkspacePage() {
           {activeTab === "SIMILAR" && (
             <div className="space-y-3 animate-in fade-in duration-100">
               <div className="p-3 rounded-xl bg-surface-secondary border border-jkn-border text-xs text-jkn-muted">
-                Semantic similarity matching utilizing clinical narrative embeddings via pgvector.
+                Kemiripan semantik narasi medis (embedding vektor, cosine similarity) dipadukan gerbang deterministik tumpang-tindih frasa. Kemiripan tinggi bukan bukti kecurangan; verifikasi manusia tetap diperlukan.
               </div>
 
+              {claim.similar_claims.length === 0 && <div className="text-xs text-jkn-muted p-4 rounded-xl bg-surface-secondary border border-jkn-border">Tidak ada klaim dengan kemiripan di atas ambang pencarian (0,80).</div>}
               {claim.similar_claims.map((sim) => (
                 <div
                   key={sim.claim_id}
-                  className="bg-surface rounded-2xl border border-jkn-border p-4 shadow-xs space-y-3"
+                  className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Copy className="w-4 h-4 text-intel" />
-                      <span className="text-xs font-bold text-jkn-text">{sim.claim_id}</span>
+                      <Link href={`/investigations/${sim.claim_id}`} className="text-xs font-mono font-bold text-jkn-text hover:text-bpjs hover:underline">
+                        {sim.claim_id}
+                      </Link>
                       <span className="text-xs text-jkn-muted">· {sim.provider_name}</span>
                     </div>
-                    <span className="text-xs font-bold text-intel bg-intel-light px-2.5 py-0.5 rounded-full border border-intel/30">
-                      {(sim.similarity_score * 100).toFixed(0)}% Semantic Match
+                    <span className="text-xs font-mono font-bold text-intel-deep bg-intel-light px-2.5 py-0.5 rounded-md border border-intel-border tabular-nums">
+                      {(sim.similarity_score * 100).toFixed(1)}% mirip{sim.lexical_overlap !== undefined ? ` · ${(sim.lexical_overlap * 100).toFixed(0)}% frasa sama` : ""}
                     </span>
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-surface-secondary/70 border border-jkn-divider text-xs space-y-1">
-                    <div className="font-bold text-jkn-text">Similarity Factors Identified:</div>
+                  {/* Dual Similarity Progress Meters */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-2.5 rounded-lg bg-surface-secondary/50 border border-jkn-divider text-[11px]">
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-jkn-muted">Kemiripan Semantik (Cosine Vektor)</span>
+                        <span className="font-mono font-bold text-intel-deep tabular-nums">{(sim.similarity_score * 100).toFixed(1)}%</span>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full bg-white border border-jkn-divider overflow-hidden">
+                        <div className="h-full bg-intel rounded-full" style={{ width: `${Math.min(100, sim.similarity_score * 100)}%` }} />
+                      </div>
+                    </div>
+                    {sim.lexical_overlap !== undefined && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-jkn-muted">Tumpang Tindih Leksikal (Frasa Identik)</span>
+                          <span className="font-mono font-bold text-risk-medium tabular-nums">{(sim.lexical_overlap * 100).toFixed(0)}%</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-white border border-jkn-divider overflow-hidden">
+                          <div className="h-full bg-risk-medium rounded-full" style={{ width: `${Math.min(100, sim.lexical_overlap * 100)}%` }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-surface-secondary/70 border border-jkn-divider text-xs space-y-1">
+                    <div className="font-bold text-jkn-text">Faktor kemiripan:</div>
                     <ul className="list-disc list-inside text-jkn-muted space-y-0.5 text-[11px]">
                       {sim.similarity_reasons.map((r, i) => (
                         <li key={i}>{r}</li>
@@ -493,8 +810,8 @@ export default function InvestigationWorkspacePage() {
                     </ul>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs pt-1">
-                    <span className="text-jkn-dim">Benchmark Claim Amount: {formatRupiah(sim.claim_amount)}</span>
+                  <div className="flex items-center justify-between text-xs pt-1 tabular-nums">
+                    <span className="text-jkn-dim">Nilai klaim pembanding: <span className="font-mono font-semibold text-jkn-text">{formatRupiah(sim.claim_amount)}</span></span>
                     <RiskPill score={sim.risk_score} size="sm" />
                   </div>
                 </div>
@@ -511,96 +828,102 @@ export default function InvestigationWorkspacePage() {
 
           {/* TAB 6: NOTES & AUDIT */}
           {activeTab === "NOTES" && (
-            <div className="bg-surface rounded-2xl border border-jkn-border p-5 shadow-xs space-y-4 animate-in fade-in duration-100">
-              <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider">
-                Investigator Notes & Append-Only Audit Trail
-              </h3>
-
-              {/* Add Note Form */}
-              <form onSubmit={handleAddNote} className="space-y-2">
-                <textarea
-                  value={newNoteText}
-                  onChange={(e) => setNewNoteText(e.target.value)}
-                  placeholder="Add investigative findings note or medical committee interview outcomes..."
-                  rows={3}
-                  className="w-full text-xs p-3 rounded-xl bg-surface-secondary border border-jkn-border text-jkn-text outline-hidden focus:border-bpjs"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-bpjs text-white text-xs font-bold hover:bg-bpjs-deep transition-colors"
-                >
-                  Save Note
-                </button>
-              </form>
-
-              {/* Notes List */}
-              <div className="divide-y divide-jkn-divider pt-2">
-                {investigation.notes.map((note) => (
-                  <div key={note.note_id} className="py-3 space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-jkn-text">{note.author}</span>
-                        <span className="text-[10px] text-jkn-dim">({note.role})</span>
+            <div className="space-y-4 animate-in fade-in duration-100">
+              <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3">
+                <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider">Catatan Investigator</h3>
+                <form onSubmit={handleAddNote} className="space-y-2">
+                  <textarea value={newNoteText} onChange={(e) => setNewNoteText(e.target.value)} placeholder="Tambahkan temuan, hasil wawancara komite medik, dsb..." rows={3} className="w-full text-xs p-3 rounded-lg bg-surface-secondary border border-jkn-border text-jkn-text outline-hidden focus:border-bpjs focus:bg-white transition-colors" />
+                  <button type="submit" disabled={!newNoteText.trim()} className="px-4 py-1.5 rounded-lg bg-bpjs text-white text-xs font-semibold hover:bg-bpjs-deep transition-colors disabled:opacity-50">Simpan Catatan</button>
+                </form>
+                <div className="divide-y divide-jkn-divider pt-2">
+                  {investigation.notes.map((note) => (
+                    <div key={note.note_id} className="py-3 space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-jkn-text">{note.author}</span>
+                          <span className="text-[10px] text-jkn-dim">({note.role})</span>
+                        </div>
+                        <span className="text-[10px] text-jkn-dim tabular-nums">{formatRelativeTime(note.created_at)}</span>
                       </div>
-                      <span className="text-[10px] text-jkn-dim">{formatRelativeTime(note.created_at)}</span>
+                      <p className="text-xs text-jkn-muted leading-relaxed">{note.content}</p>
                     </div>
-                    <p className="text-xs text-jkn-muted leading-relaxed">{note.content}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-bpjs" /> Audit Trail Append-Only (Hash Chain SHA-256)</h3>
+                  {audit && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold flex items-center gap-1 border ${audit.valid ? "bg-bpjs-soft text-bpjs-dark border-bpjs-border" : "bg-risk-critical-bg text-risk-critical border-risk-critical-border"}`}>
+                      <ShieldCheck className="w-3 h-3" /> {audit.valid ? `Rantai Valid (${audit.length} Entri)` : `RANTAI RUSAK: ${audit.reason}`}
+                    </span>
+                  )}
+                </div>
+                {audit?.head && <div className="text-[10px] font-mono text-jkn-dim break-all">head: {audit.head}</div>}
+                <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                  {(audit?.entries || []).map((e) => (
+                    <div key={e.seq} className="p-2.5 rounded-lg bg-surface-secondary/70 border border-jkn-divider text-[11px]">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-jkn-text">#{e.seq} · {e.action}</span>
+                        <span className="text-[10px] text-jkn-dim tabular-nums">{formatRelativeTime(e.timestamp)}</span>
+                      </div>
+                      <div className="text-jkn-muted">{e.actor} ({e.actor_role}){e.previous_status || e.new_status ? ` · ${e.previous_status ?? "—"} → ${e.new_status ?? "—"}` : ""}</div>
+                      {e.justification && e.justification !== "—" && <div className="text-jkn-muted italic">"{e.justification}"</div>}
+                      <div className="font-mono text-[9px] text-jkn-dim break-all mt-0.5">sha256: {e.hash}</div>
+                    </div>
+                  ))}
+                  {audit && audit.entries.length === 0 && <p className="text-[11px] text-jkn-muted">Belum ada entri audit untuk klaim ini.</p>}
+                </div>
               </div>
             </div>
           )}
         </div>
 
         {/* Right Column: AI Investigator Panel (4 cols / 35%) */}
-        <div className="lg:col-span-4 bg-surface rounded-2xl border border-bpjs-border p-4 shadow-sm space-y-4 sticky top-20">
-          <div className="flex items-center justify-between pb-3 border-b border-bpjs-border/60">
-            <div className="flex items-center gap-2">
+        <div className="lg:col-span-4 bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-4 sticky top-20">
+          <div className="flex items-center justify-between pb-3 border-b border-jkn-divider">
+            <div className="flex items-center gap-2.5">
               <div className="p-1.5 rounded-lg bg-bpjs text-white">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-jkn-text">AI Investigator Co-Pilot</h3>
-                <p className="text-[10px] text-jkn-muted">Evidence-Grounded Clinical Reasoning</p>
+                <h3 className="text-xs font-bold text-jkn-text">Arsa Copilot</h3>
+                <p className="text-[10px] text-jkn-muted">Penalaran bersitasi atas klaim ini</p>
               </div>
             </div>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-bpjs-light text-bpjs-dark font-bold">
-              96% Grounded
-            </span>
+            <ModeBadge mode={aiResponse?.mode} provider={aiResponse?.provider} model={aiResponse?.model} reason={aiResponse?.reason} />
           </div>
 
           {/* AI Output Box */}
-          <div className="p-3.5 rounded-xl bg-surface-secondary/80 border border-jkn-divider text-xs text-jkn-text space-y-2.5 max-h-80 overflow-y-auto">
+          <div className="p-3 rounded-lg bg-surface-secondary/80 border border-jkn-divider text-xs text-jkn-text space-y-2.5 max-h-80 overflow-y-auto">
             {aiLoading ? (
               <div className="flex items-center gap-2 text-jkn-muted py-4">
                 <Sparkles className="w-4 h-4 text-bpjs animate-spin" />
-                <span>AI system is cross-verifying medical evidence...</span>
+                <span>Mengambil konteks & memvalidasi sitasi...</span>
               </div>
             ) : aiResponse ? (
-              <div className="whitespace-pre-line leading-relaxed text-xs">
-                {aiResponse}
+              <div className="space-y-2">
+                <div className="whitespace-pre-line leading-relaxed text-xs">{renderCitedText(aiResponse.text, "inv-ai")}</div>
+                {aiResponse.citations.length > 0 && (
+                  <div className="space-y-1 pt-1 border-t border-jkn-divider">
+                    {aiResponse.citations.map((c) => (
+                      <div key={c.evidence_id} id={`inv-ai-ref-${c.ref}`} className="text-[10px] p-1.5 rounded bg-white border border-bpjs-border/50 scroll-mt-20">
+                        <span className="inline-flex items-center justify-center min-w-[14px] h-3.5 px-1 mr-1 rounded bg-bpjs text-white text-[9px] font-bold">{c.ref}</span>
+                        <b>{c.title}</b> <span className="font-mono text-jkn-dim">{c.evidence_id}</span>
+                        <div className="italic text-jkn-muted">"{c.excerpt}"</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="leading-relaxed">
-                  <strong>AI Analysis Summary:</strong> Claim <span className="font-mono font-bold text-bpjs-dark">{claim.claim_id}</span>{" "}
-                  {claim.risk_findings.length > 0 ? (
-                    <>
-                      demonstrates confirmed indicators of{" "}
-                      {claim.risk_findings.map((f, i) => (
-                        <React.Fragment key={i}>
-                          {i > 0 && (i === claim.risk_findings.length - 1 ? " and " : ", ")}
-                          <strong>{f.title}</strong>
-                        </React.Fragment>
-                      ))}
-                      {claim.tariff_difference ? ` amounting to ${formatRupiah(claim.tariff_difference)}.` : "."}
-                    </>
-                  ) : (
-                    "has no confirmed risk indicators from the automated detectors yet."
-                  )}
+                <p className="leading-relaxed text-jkn-muted text-[11px]">
+                  Klik pertanyaan di bawah atau tulis pertanyaan sendiri. Jawaban hanya berasal dari data klaim ini (temuan, dokumen, klaim serupa) dan setiap pernyataan harus bersitasi.
                 </p>
-                <div className="p-2 rounded bg-white border border-bpjs-border/60 text-[11px] text-bpjs-dark font-medium">
-                  ✦ All findings verified against {claim.medical_evidence.length} attached electronic medical record{claim.medical_evidence.length === 1 ? "" : "s"}.
+                <div className="p-2 rounded-md bg-white border border-bpjs-border/60 text-[11px] text-bpjs-dark font-medium tabular-nums">
+                  {claim.risk_findings.length} temuan · {claim.medical_evidence.length} dokumen · {claim.similar_claims.length} klaim serupa tersedia sebagai konteks.
                 </div>
               </div>
             )}
@@ -608,8 +931,8 @@ export default function InvestigationWorkspacePage() {
 
           {/* Interactive Evidence Chips */}
           <div className="space-y-1.5">
-            <span className="text-[10px] font-bold text-jkn-dim uppercase tracking-wider block">
-              Cited Clinical Evidence (Click to highlight):
+            <span className="text-[10px] font-semibold text-jkn-dim uppercase tracking-wider block">
+              Dokumen Klaim (Klik untuk Membuka)
             </span>
             <div className="flex flex-wrap gap-1.5">
               {claim.medical_evidence.map((doc) => (
@@ -619,13 +942,13 @@ export default function InvestigationWorkspacePage() {
                     setActiveTab("EVIDENCE");
                     setHighlightedEvidenceId(doc.evidence_id);
                   }}
-                  className={`px-2 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+                  className={`px-2 py-1 rounded-md text-[10px] font-mono font-semibold border transition-all ${
                     highlightedEvidenceId === doc.evidence_id
-                      ? "bg-bpjs text-white border-bpjs shadow-xs"
+                      ? "bg-bpjs text-white border-bpjs shadow-subtle"
                       : "bg-surface-secondary text-jkn-text border-jkn-border hover:border-bpjs hover:bg-bpjs-soft"
                   }`}
                 >
-                  {doc.evidence_id} - {doc.document_type.replace(/_/g, " ")}
+                  {doc.evidence_id} · {doc.document_type.replace(/_/g, " ")}
                 </button>
               ))}
             </div>
@@ -633,14 +956,14 @@ export default function InvestigationWorkspacePage() {
 
           {/* Quick Prompts */}
           <div className="space-y-1.5">
-            <span className="text-[10px] font-bold text-jkn-dim uppercase tracking-wider block">
-              Suggested Investigative Prompts:
+            <span className="text-[10px] font-semibold text-jkn-dim uppercase tracking-wider block">
+              Pertanyaan yang Disarankan
             </span>
             <div className="space-y-1">
               {[
-                "Why is this claim categorized as CRITICAL?",
-                "Compare against 10 similar claims at RS Sehat Sentosa",
-                "Verify operating room log for procedure code 44.95",
+                "Mengapa klaim ini berisiko tinggi?",
+                "Dokumen mana yang membantah klaim ini?",
+                "Bagaimana perbandingannya dengan faskes dan klaim serupa?",
               ].map((prompt, idx) => (
                 <button
                   key={idx}
@@ -658,16 +981,17 @@ export default function InvestigationWorkspacePage() {
           <div className="flex items-center gap-2 pt-2 border-t border-jkn-divider">
             <input
               type="text"
-              placeholder="Ask AI Intelligence Assistant..."
+              placeholder="Tanya Arsa Copilot tentang klaim ini..."
               value={aiQuestion}
               onChange={(e) => setAiQuestion(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAskAI()}
-              className="w-full text-xs px-3 py-1.5 rounded-xl bg-surface-secondary border border-jkn-border text-jkn-text outline-hidden focus:border-bpjs"
+              className="w-full h-9 text-xs px-3 rounded-lg bg-surface-secondary border border-jkn-border text-jkn-text outline-hidden focus:border-bpjs focus:bg-white transition-colors"
             />
             <button
               onClick={() => handleAskAI()}
+              aria-label="Kirim pertanyaan"
               disabled={aiLoading || !aiQuestion.trim()}
-              className="p-2 rounded-xl bg-bpjs text-white hover:bg-bpjs-deep disabled:opacity-50 transition-colors shrink-0"
+              className="h-9 w-9 flex items-center justify-center rounded-lg bg-bpjs text-white hover:bg-bpjs-deep disabled:opacity-50 transition-colors shrink-0"
             >
               <Send className="w-3.5 h-3.5" />
             </button>
@@ -676,49 +1000,53 @@ export default function InvestigationWorkspacePage() {
       </div>
 
       {/* Persistent Bottom Action Bar */}
-      <div className="sticky bottom-4 bg-surface/95 backdrop-blur-md border border-jkn-border rounded-2xl p-4 shadow-elevated z-30 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="text-xs">
-          <span className="text-jkn-dim">Investigator Verdict:</span>{" "}
-          <span className="font-bold text-jkn-text">
-            Determine case disposition based on verified clinical evidence.
-          </span>
-        </div>
+      <div className="sticky bottom-3 bg-surface/95 backdrop-blur-md border border-jkn-border rounded-xl px-4 py-2.5 shadow-elevated z-30 space-y-2 mt-4">
+        {actionError && <div role="alert" className="text-[11px] text-risk-critical bg-risk-critical-bg border border-risk-critical-border rounded-lg px-3 py-1.5">{actionError}</div>}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          <div className="text-xs min-w-0">
+            <span className="text-jkn-dim font-medium">Disposisi Kasus:</span>{" "}
+            <span className="font-semibold text-jkn-text">Tetapkan status verifikasi berdasarkan bukti rekam medis.</span>
+            {!can("case.final_decision") && <div className="text-[10px] text-amber-700 flex items-center gap-1 mt-0.5"><Lock className="w-3 h-3" /> Peran {role} dapat meminta bukti & mencatat; keputusan akhir oleh Supervisor/Admin.</div>}
+          </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => handleStatusChange("NEED_EVIDENCE")}
-            disabled={updatingStatus}
-            className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors shadow-2xs"
-          >
-            Request Evidence
-          </button>
-
-          <button
-            onClick={() => handleStatusChange("FALSE_POSITIVE")}
-            disabled={updatingStatus}
-            className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors shadow-2xs"
-          >
-            Mark False Positive
-          </button>
-
-          <button
-            onClick={() => handleStatusChange("CONFIRMED_RISK")}
-            disabled={updatingStatus}
-            className="px-4 py-1.5 rounded-xl bg-risk-critical text-white text-xs font-bold hover:bg-rose-700 transition-all shadow-sm flex items-center gap-1.5"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Confirm Risk Anomaly</span>
-          </button>
-
-          <Link
-            href={`/reports/REP-${investigation.investigation_id}`}
-            className="px-3 py-1.5 rounded-xl bg-bpjs text-white text-xs font-bold hover:bg-bpjs-deep transition-all shadow-sm flex items-center gap-1.5"
-          >
-            <FileText className="w-4 h-4" />
-            <span>Generate Report</span>
-          </Link>
+          <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap shrink-0">
+            <button onClick={() => handleStatusChange("UNDER_INVESTIGATION")} disabled={updatingStatus || investigation.status === "UNDER_INVESTIGATION"} className="h-8 px-3 rounded-lg border border-bpjs-border bg-bpjs-soft text-bpjs-dark text-xs font-semibold hover:bg-bpjs-light disabled:opacity-50 transition-colors whitespace-nowrap">
+              Mulai Investigasi
+            </button>
+            <button onClick={() => handleStatusChange("NEED_EVIDENCE")} disabled={updatingStatus} className="h-8 px-3 rounded-lg border border-risk-medium-border bg-risk-medium-bg text-risk-medium text-xs font-semibold hover:bg-amber-100 transition-colors whitespace-nowrap">
+              Minta Bukti
+            </button>
+            <button onClick={() => setDecisionModal("FALSE_POSITIVE")} disabled={updatingStatus || !can("case.final_decision")} title={can("case.final_decision") ? "" : "Hanya Supervisor/Admin"} className="h-8 px-3 rounded-lg border border-jkn-border bg-white text-jkn-text text-xs font-semibold hover:bg-surface-secondary transition-colors disabled:opacity-50 whitespace-nowrap">
+              Positif Palsu
+            </button>
+            <button onClick={() => setDecisionModal("CONFIRMED_RISK")} disabled={updatingStatus || !can("case.final_decision")} title={can("case.final_decision") ? "" : "Hanya Supervisor/Admin"} className="h-8 px-3.5 rounded-lg bg-risk-critical text-white text-xs font-semibold hover:bg-red-700 transition-all shadow-subtle flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Konfirmasi Risiko</span>
+            </button>
+            <Link href={`/reports/${investigation.investigation_id}`} className="h-8 px-3 rounded-lg bg-bpjs text-white text-xs font-semibold hover:bg-bpjs-deep transition-all shadow-subtle flex items-center gap-1.5 whitespace-nowrap">
+              <FileText className="w-3.5 h-3.5" />
+              <span>Laporan</span>
+            </Link>
+          </div>
         </div>
       </div>
+
+      {decisionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" role="dialog" aria-modal="true" aria-label="Keputusan investigasi" onKeyDown={(e) => e.key === "Escape" && setDecisionModal(null)}>
+          <div className="bg-surface w-full max-w-md rounded-xl border border-jkn-border shadow-elevated p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-jkn-text">{decisionModal === "CONFIRMED_RISK" ? "Konfirmasi Risiko Klaim" : "Tandai Positif Palsu (Layak Bayar)"}</h3>
+              <button onClick={() => setDecisionModal(null)} aria-label="Tutup" className="p-1 rounded-lg hover:bg-surface-secondary"><X className="w-4 h-4" /></button>
+            </div>
+            <p className="text-[11px] text-jkn-muted">Keputusan ini tercatat permanen di audit trail ber-hash atas nama Anda. Tuliskan dasar keputusan (wajib).</p>
+            <textarea autoFocus aria-label="Dasar keputusan" value={decisionText} onChange={(e) => setDecisionText(e.target.value)} rows={4} placeholder="Dasar keputusan, merujuk bukti (mis. DOC-...)" className="w-full text-xs p-3 rounded-lg bg-surface-secondary border border-jkn-border outline-hidden focus:border-bpjs focus:bg-white transition-colors" />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDecisionModal(null)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-jkn-muted hover:bg-surface-secondary">Batal</button>
+              <button onClick={submitDecision} disabled={updatingStatus || decisionText.trim().length < 3} className="px-4 py-1.5 rounded-lg bg-bpjs text-white text-xs font-semibold hover:bg-bpjs-deep disabled:opacity-50">Simpan Keputusan</button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardShell>
   );
 }

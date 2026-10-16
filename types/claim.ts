@@ -68,6 +68,8 @@ export interface SimilarClaimRef {
   provider_id: string;
   provider_name: string;
   similarity_score: number; // 0 - 1.0 (e.g. 0.96 = 96%)
+  /** Tumpang tindih frasa 3-kata (0-1): gerbang deterministik kedua selain kemiripan vektor. */
+  lexical_overlap?: number;
   claim_amount: number;
   diagnosis_code: string;
   similarity_reasons: string[];

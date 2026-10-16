@@ -1,639 +1,772 @@
-import { CanonicalClaim, Patient, ProviderRef, Diagnosis, Procedure, EvidenceItem, SimilarClaimRef } from "@/types/claim";
-import { Provider, Doctor } from "@/types/provider";
-import { Investigation } from "@/types/investigation";
+import { CanonicalClaim, Diagnosis, EvidenceItem, Procedure } from "@/types/claim";
+import { Doctor, Provider } from "@/types/provider";
+import { ALL_RISK_TYPES, RiskType } from "@/types/risk";
 import { INDONESIA_PROVINCES } from "./indonesia-provinces";
-import { detectUpcoding, detectCloning, detectPhantomBilling, detectAbnormalLOS, calculateCompositeRisk } from "../risk/detectors";
-
-// 20 Indonesian Hospitals & Clinics
-export const SYNTHETIC_PROVIDERS: Provider[] = [
-  {
-    provider_id: "HOSP-01",
-    name: "RS Sehat Sentosa",
-    type: "RS_KELAS_B",
-    province_code: "ID-JK",
-    province_name: "DKI Jakarta",
-    city: "Jakarta Selatan",
-    address: "Jl. Jenderal Sudirman No. 45, Kebayoran Baru",
-    phone: "(021) 7289-1000",
-    risk_score: 94,
-    risk_level: "CRITICAL",
-    total_claims: 1248,
-    high_risk_claims: 184,
-    potential_exposure: 18450000000, // Rp 18,45 M
-    dominant_risk_type: "UPCODING",
-    risk_composition: {
-      upcoding_pct: 48.6,
-      phantom_billing_pct: 24.2,
-      cloning_pct: 15.8,
-      abnormal_los_pct: 11.4,
-    },
-    peer_comparison: {
-      severity_3_rate: { provider: 44.5, peer_median: 18.2 },
-      avg_los_days: { provider: 5.6, peer_median: 3.1 },
-      avg_claim_amount: { provider: 22400000, peer_median: 14200000 },
-      readmission_rate_pct: { provider: 8.4, peer_median: 3.2 },
-    },
-    doctors: [],
-    monthly_risk_trend: [
-      { month: "Apr 2026", risk_score: 72, claim_count: 310 },
-      { month: "May 2026", risk_score: 78, claim_count: 345 },
-      { month: "Jun 2026", risk_score: 85, claim_count: 380 },
-      { month: "Jul 2026", risk_score: 91, claim_count: 412 },
-      { month: "Aug 2026", risk_score: 94, claim_count: 428 },
-    ],
-  },
-  {
-    provider_id: "HOSP-02",
-    name: "RS Medika Utama",
-    type: "RS_KELAS_B",
-    province_code: "ID-JB",
-    province_name: "Jawa Barat",
-    city: "Kota Bandung",
-    address: "Jl. Pasteur No. 120, Sukajadi",
-    phone: "(022) 203-4567",
-    risk_score: 82,
-    risk_level: "HIGH",
-    total_claims: 980,
-    high_risk_claims: 88,
-    potential_exposure: 9240000000,
-    dominant_risk_type: "CLONING",
-    risk_composition: { upcoding_pct: 32.0, cloning_pct: 44.0, phantom_billing_pct: 14.0, abnormal_los_pct: 10.0 },
-    peer_comparison: {
-      severity_3_rate: { provider: 28.1, peer_median: 18.2 },
-      avg_los_days: { provider: 4.2, peer_median: 3.1 },
-      avg_claim_amount: { provider: 16800000, peer_median: 14200000 },
-      readmission_rate_pct: { provider: 5.1, peer_median: 3.2 },
-    },
-    doctors: [],
-    monthly_risk_trend: [
-      { month: "Apr 2026", risk_score: 65, claim_count: 240 },
-      { month: "Mei 2026", risk_score: 70, claim_count: 260 },
-      { month: "Jun 2026", risk_score: 75, claim_count: 290 },
-      { month: "Jul 2026", risk_score: 80, claim_count: 310 },
-      { month: "Agu 2026", risk_score: 82, claim_count: 325 },
-    ],
-  },
-  {
-    provider_id: "HOSP-03",
-    name: "RS Mitra Kasih Surabaya",
-    type: "RS_KELAS_A",
-    province_code: "ID-JI",
-    province_name: "Jawa Timur",
-    city: "Kota Surabaya",
-    address: "Jl. Raya Darmo No. 88, Wonokromo",
-    phone: "(031) 567-8901",
-    risk_score: 76,
-    risk_level: "HIGH",
-    total_claims: 1420,
-    high_risk_claims: 92,
-    potential_exposure: 11200000000,
-    dominant_risk_type: "PHANTOM_BILLING",
-    risk_composition: { upcoding_pct: 22.0, cloning_pct: 18.0, phantom_billing_pct: 48.0, abnormal_los_pct: 12.0 },
-    peer_comparison: {
-      severity_3_rate: { provider: 24.5, peer_median: 20.1 },
-      avg_los_days: { provider: 4.8, peer_median: 3.5 },
-      avg_claim_amount: { provider: 19500000, peer_median: 16200000 },
-      readmission_rate_pct: { provider: 4.8, peer_median: 3.2 },
-    },
-    doctors: [],
-    monthly_risk_trend: [
-      { month: "Apr 2026", risk_score: 60, claim_count: 320 },
-      { month: "Mei 2026", risk_score: 66, claim_count: 350 },
-      { month: "Jun 2026", risk_score: 71, claim_count: 370 },
-      { month: "Jul 2026", risk_score: 74, claim_count: 390 },
-      { month: "Agu 2026", risk_score: 76, claim_count: 410 },
-    ],
-  },
-  {
-    provider_id: "HOSP-04",
-    name: "RS Graha Medika Semarang",
-    type: "RS_KELAS_B",
-    province_code: "ID-JT",
-    province_name: "Jawa Tengah",
-    city: "Kota Semarang",
-    address: "Jl. Pandanaran No. 56",
-    phone: "(024) 841-2345",
-    risk_score: 58,
-    risk_level: "MEDIUM",
-    total_claims: 860,
-    high_risk_claims: 32,
-    potential_exposure: 3400000000,
-    dominant_risk_type: "ABNORMAL_LOS",
-    risk_composition: { upcoding_pct: 25.0, cloning_pct: 15.0, phantom_billing_pct: 20.0, abnormal_los_pct: 40.0 },
-    peer_comparison: {
-      severity_3_rate: { provider: 19.8, peer_median: 18.2 },
-      avg_los_days: { provider: 5.1, peer_median: 3.1 },
-      avg_claim_amount: { provider: 14900000, peer_median: 14200000 },
-      readmission_rate_pct: { provider: 3.8, peer_median: 3.2 },
-    },
-    doctors: [],
-    monthly_risk_trend: [
-      { month: "Apr 2026", risk_score: 52, claim_count: 200 },
-      { month: "Mei 2026", risk_score: 55, claim_count: 220 },
-      { month: "Jun 2026", risk_score: 56, claim_count: 240 },
-      { month: "Jul 2026", risk_score: 57, claim_count: 260 },
-      { month: "Agu 2026", risk_score: 58, claim_count: 280 },
-    ],
-  },
-  {
-    provider_id: "HOSP-05",
-    name: "RS Prima Husada Medan",
-    type: "RS_KELAS_B",
-    province_code: "ID-SU",
-    province_name: "Sumatera Utara",
-    city: "Kota Medan",
-    address: "Jl. S. Parman No. 102",
-    phone: "(061) 456-7890",
-    risk_score: 88,
-    risk_level: "HIGH",
-    total_claims: 740,
-    high_risk_claims: 72,
-    potential_exposure: 7800000000,
-    dominant_risk_type: "UPCODING",
-    risk_composition: { upcoding_pct: 55.0, cloning_pct: 18.0, phantom_billing_pct: 15.0, abnormal_los_pct: 12.0 },
-    peer_comparison: {
-      severity_3_rate: { provider: 38.2, peer_median: 18.2 },
-      avg_los_days: { provider: 4.9, peer_median: 3.1 },
-      avg_claim_amount: { provider: 20100000, peer_median: 14200000 },
-      readmission_rate_pct: { provider: 6.2, peer_median: 3.2 },
-    },
-    doctors: [],
-    monthly_risk_trend: [
-      { month: "Apr 2026", risk_score: 70, claim_count: 180 },
-      { month: "Mei 2026", risk_score: 75, claim_count: 200 },
-      { month: "Jun 2026", risk_score: 82, claim_count: 220 },
-      { month: "Jul 2026", risk_score: 86, claim_count: 240 },
-      { month: "Agu 2026", risk_score: 88, claim_count: 260 },
-    ],
-  },
-  {
-    provider_id: "HOSP-06",
-    name: "RS Bintang Kasih Makassar",
-    type: "RS_KELAS_B",
-    province_code: "ID-SN",
-    province_name: "Sulawesi Selatan",
-    city: "Kota Makassar",
-    address: "Jl. Perintis Kemerdekaan KM 11",
-    phone: "(0411) 587-1234",
-    risk_score: 64,
-    risk_level: "MEDIUM",
-    total_claims: 620,
-    high_risk_claims: 28,
-    potential_exposure: 2900000000,
-    dominant_risk_type: "PHANTOM_BILLING",
-    risk_composition: { upcoding_pct: 20.0, cloning_pct: 15.0, phantom_billing_pct: 45.0, abnormal_los_pct: 20.0 },
-    peer_comparison: {
-      severity_3_rate: { provider: 21.0, peer_median: 18.2 },
-      avg_los_days: { provider: 3.8, peer_median: 3.1 },
-      avg_claim_amount: { provider: 15200000, peer_median: 14200000 },
-      readmission_rate_pct: { provider: 3.9, peer_median: 3.2 },
-    },
-    doctors: [],
-    monthly_risk_trend: [
-      { month: "Apr 2026", risk_score: 55, claim_count: 150 },
-      { month: "Mei 2026", risk_score: 58, claim_count: 165 },
-      { month: "Jun 2026", risk_score: 60, claim_count: 180 },
-      { month: "Jul 2026", risk_score: 62, claim_count: 195 },
-      { month: "Agu 2026", risk_score: 64, claim_count: 210 },
-    ],
-  },
-  {
-    provider_id: "KLIN-01",
-    name: "Klinik Utama Sehat Bersama",
-    type: "KLINIK_UTAMA",
-    province_code: "ID-JK",
-    province_name: "DKI Jakarta",
-    city: "Jakarta Timur",
-    address: "Jl. Pemuda No. 78, Rawamangun",
-    phone: "(021) 478-9012",
-    risk_score: 79,
-    risk_level: "HIGH",
-    total_claims: 510,
-    high_risk_claims: 46,
-    potential_exposure: 3100000000,
-    dominant_risk_type: "CLONING",
-    risk_composition: { upcoding_pct: 15.0, cloning_pct: 65.0, phantom_billing_pct: 10.0, abnormal_los_pct: 10.0 },
-    peer_comparison: {
-      severity_3_rate: { provider: 12.0, peer_median: 8.5 },
-      avg_los_days: { provider: 1.2, peer_median: 1.0 },
-      avg_claim_amount: { provider: 4800000, peer_median: 3200000 },
-      readmission_rate_pct: { provider: 6.8, peer_median: 2.1 },
-    },
-    doctors: [],
-    monthly_risk_trend: [
-      { month: "Apr 2026", risk_score: 62, claim_count: 110 },
-      { month: "Mei 2026", risk_score: 68, claim_count: 130 },
-      { month: "Jun 2026", risk_score: 72, claim_count: 145 },
-      { month: "Jul 2026", risk_score: 77, claim_count: 160 },
-      { month: "Agu 2026", risk_score: 79, claim_count: 175 },
-    ],
-  },
-  {
-    provider_id: "HOSP-07",
-    name: "RS Surya Husada Bali",
-    type: "RS_KELAS_B",
-    province_code: "ID-BA",
-    province_name: "Bali",
-    city: "Kota Denpasar",
-    address: "Jl. Pulau Seram No. 1",
-    phone: "(0361) 223-789",
-    risk_score: 34,
-    risk_level: "LOW",
-    total_claims: 680,
-    high_risk_claims: 12,
-    potential_exposure: 890000000,
-    dominant_risk_type: "UPCODING",
-    risk_composition: { upcoding_pct: 30.0, cloning_pct: 20.0, phantom_billing_pct: 30.0, abnormal_los_pct: 20.0 },
-    peer_comparison: {
-      severity_3_rate: { provider: 16.5, peer_median: 18.2 },
-      avg_los_days: { provider: 2.9, peer_median: 3.1 },
-      avg_claim_amount: { provider: 13400000, peer_median: 14200000 },
-      readmission_rate_pct: { provider: 2.8, peer_median: 3.2 },
-    },
-    doctors: [],
-    monthly_risk_trend: [
-      { month: "Apr 2026", risk_score: 32, claim_count: 160 },
-      { month: "Mei 2026", risk_score: 33, claim_count: 170 },
-      { month: "Jun 2026", risk_score: 34, claim_count: 180 },
-      { month: "Jul 2026", risk_score: 35, claim_count: 190 },
-      { month: "Agu 2026", risk_score: 34, claim_count: 200 },
-    ],
-  },
-];
-
-// Doctors list
-export const SYNTHETIC_DOCTORS: Doctor[] = [
-  { doctor_id: "DR-01", name: "dr. Hendra Prasetyo, Sp.OT", specialty: "Orthopedic Surgery Specialist", sip_number: "SIP.440/1029/DSP/2023", total_claims_handled: 342, high_risk_claims_count: 68, risk_score: 91, provider_id: "HOSP-01" },
-  { doctor_id: "DR-02", name: "dr. Setiawan Santoso, Sp.PD", specialty: "Internal Medicine Specialist", sip_number: "SIP.440/0842/DSP/2022", total_claims_handled: 412, high_risk_claims_count: 42, risk_score: 76, provider_id: "HOSP-01" },
-  { doctor_id: "DR-03", name: "dr. Maya Wijaya, Sp.B", specialty: "General Surgery Specialist", sip_number: "SIP.440/1410/DSP/2024", total_claims_handled: 280, high_risk_claims_count: 51, risk_score: 84, provider_id: "HOSP-02" },
-  { doctor_id: "DR-04", name: "dr. Aisyah Nurul, Sp.A", specialty: "Pediatric Specialist", sip_number: "SIP.440/0612/DSP/2021", total_claims_handled: 390, high_risk_claims_count: 8, risk_score: 22, provider_id: "HOSP-02" },
-  { doctor_id: "DR-05", name: "dr. Budi Santoso, Sp.JP", specialty: "Cardiology & Vascular Specialist", sip_number: "SIP.440/1908/DSP/2023", total_claims_handled: 310, high_risk_claims_count: 48, risk_score: 79, provider_id: "HOSP-03" },
-  { doctor_id: "DR-06", name: "dr. Ratna Dewi, Sp.OG", specialty: "Obstetrics & Gynecology Specialist", sip_number: "SIP.440/0945/DSP/2022", total_claims_handled: 350, high_risk_claims_count: 14, risk_score: 35, provider_id: "HOSP-03" },
-];
-
-// Associate doctors to providers
-SYNTHETIC_PROVIDERS[0].doctors = [SYNTHETIC_DOCTORS[0], SYNTHETIC_DOCTORS[1]];
-SYNTHETIC_PROVIDERS[1].doctors = [SYNTHETIC_DOCTORS[2], SYNTHETIC_DOCTORS[3]];
-SYNTHETIC_PROVIDERS[2].doctors = [SYNTHETIC_DOCTORS[4], SYNTHETIC_DOCTORS[5]];
+import { DIAGNOSIS_REFERENCE, PROCEDURE_REFERENCE, BUNDLE_COMPONENTS, referenceFor } from "../risk/reference";
+import { anonymizePatient } from "../pii/anonymize";
 
 /**
- * Generator for synthetic claims
+ * Generator data sintetis BERLABEL & deterministik (seed tetap).
+ * - Label kebenaran (`labels`) dipisahkan dari klaim → dipakai untuk evaluasi precision/recall detector.
+ * - Detector TIDAK melihat label; ia hanya melihat klaim + dokumen.
+ * - Ada hard-negative (kasus berat yang sah, operasi sah dengan catatan, rawat lama karena komplikasi)
+ *   dan hard-positive (anomali tipis) agar metrik tidak semu 100%.
+ * - Data pasien mentah dibuat lalu langsung dianonimisasi (sama seperti jalur ingest).
  */
-export function generateSyntheticClaims(): { claims: CanonicalClaim[]; investigations: Investigation[] } {
-  const claims: CanonicalClaim[] = [];
-  const investigations: Investigation[] = [];
 
-  // 1. HERO CLAIM: CLM-10293 (RS Sehat Sentosa - Multi Risk: Upcoding + Phantom + Abnormal LOS)
-  const heroClaim: CanonicalClaim = {
-    claim_id: "CLM-10293",
-    sep_number: "0045R0010826V0010293",
-    patient: {
-      patient_id: "P-10842",
-      name: "Bambang Sudibyo",
-      age: 48,
-      gender: "L",
-      bpjs_card_number: "0001892837461",
-      nik: "3174051208750003",
-      province_code: "ID-JK",
-    },
-    provider: {
-      provider_id: "HOSP-01",
-      name: "RS Sehat Sentosa",
-      type: "RS_KELAS_B",
-      province_code: "ID-JK",
-      city: "Jakarta Selatan",
-    },
-    service: {
-      admission_date: "2026-08-01",
-      discharge_date: "2026-08-07",
-      submission_date: "2026-08-09",
-      length_of_stay: 6,
-      treatment_class: "KELAS_1",
-      doctor_id: "DR-01",
-      doctor_name: "dr. Hendra Prasetyo, Sp.OT",
-      doctor_specialty: "Orthopedic Surgery Specialist",
-    },
-    diagnoses: [
-      {
-        code: "A09",
-        description: "Infectious gastroenteritis and colitis, unspecified",
-        is_primary: true,
-        severity: 3, // Injected Anomaly: A09 with Severity 3 (expected 1)
-      },
-      {
-        code: "K52.9",
-        description: "Non-infective gastroenteritis and colitis, unspecified",
-        is_primary: false,
-        severity: 2,
-      },
-    ],
-    procedures: [
-      {
-        code: "44.95",
-        description: "Laparoscopic gastric banding / Digestive surgical procedure",
-        date: "2026-08-03",
-        cost: 12500000,
-      },
-      {
-        code: "99.18",
-        description: "Injection or infusion of electrolytes and hydration",
-        date: "2026-08-01",
-        cost: 950000,
-      },
-    ],
-    claim_amount: 18450000, // Rp 18.45M (Standard benchmark: ~Rp 3.8M)
-    approved_tariff: 3800000,
-    tariff_difference: 14650000,
-    medical_evidence: [
-      {
-        evidence_id: "DOC-01",
-        document_type: "RINGKASAN_MEDIS",
-        title: "Inpatient Clinical Discharge Summary",
-        date: "2026-08-07",
-        excerpt: "Patient admitted with diarrhea 4x watery stool without blood or mucus. Moderate general condition, vital signs stable, mild-moderate dehydration. Received IV hydration RL 20 tpm.",
-        content: "Patient admitted with watery bowel movements 4x since morning. Nausea (+), vomiting 1x, low-grade fever 37.6 C. Abdominal physical exam soft, bowel sounds moderately active. No acute peritonitis or distension. Patient improved on day 2 with normal oral intake. No severe comorbidities or complications recorded.",
-        status: "CONTRADICTS_CLAIM",
-        attached_file_name: "Discharge_Summary_CLM10293.pdf",
-      },
-      {
-        evidence_id: "DOC-02",
-        document_type: "CATATAN_TINDAKAN",
-        title: "Operating Room Log & Anesthesia Sheet",
-        date: "2026-08-03",
-        excerpt: "No digestive surgical procedure (44.95) entry found in DPJP physician order sheet or operating room registry log.",
-        content: "DPJP order on 03/08/2026: Continue IV fluids, recheck serum electrolytes, soft porridge diet. Patient bed-resting in standard Inpatient Ward Melati 3. No surgical scheduling or surgical consent filed with the central operating theater (IBS).",
-        status: "CONTRADICTS_CLAIM",
-        attached_file_name: "Physician_Orders_CLM10293.pdf",
-      },
-      {
-        evidence_id: "DOC-03",
-        document_type: "HASIL_LABORATORIUM",
-        title: "Complete Blood Count & Electrolyte Report",
-        date: "2026-08-01",
-        excerpt: "Hb: 14.2 g/dL, Leukocytes: 8,900/uL, Platelets: 245,000/uL, Potassium: 3.6 mEq/L, Sodium: 138 mEq/L.",
-        content: "Routine hematology parameters and serum electrolyte values are within normal reference range. No clinical evidence of sepsis, severe hypovolemic shock, or acute metabolic acidosis.",
-        status: "SUPPORTS_CLAIM",
-        attached_file_name: "Hematology_Report_010826.pdf",
-      },
-      {
-        evidence_id: "DOC-04",
-        document_type: "RESUME_PULANG",
-        title: "Discharge Certificate & DPJP Patient Instructions",
-        date: "2026-08-07",
-        excerpt: "Patient declared clinically stable on day 2, but discharge was delayed until day 6.",
-        content: "Discharge status: Symptom-free, normal vital signs. Discharge medication: Oral rehydration salts, Zinc 20mg 1x1, Probiotics 1x1.",
-        status: "NEEDS_REVIEW",
-        attached_file_name: "Discharge_Instructions_070826.pdf",
-      },
-    ],
-    similar_claims: [
-      {
-        claim_id: "CLM-09283",
-        provider_id: "HOSP-01",
-        provider_name: "RS Sehat Sentosa",
-        similarity_score: 0.96,
-        claim_amount: 17900000,
-        diagnosis_code: "A09",
-        similarity_reasons: [
-          "Clinical summary text structure is 96.4% identical to patient P-08912",
-          "Invoiced digestive surgery billing code on non-surgical gastroenteritis diagnosis",
-          "Attending physician (DPJP) is identical (dr. Hendra Prasetyo)",
-        ],
-        risk_score: 92,
-      },
-      {
-        claim_id: "CLM-08741",
-        provider_id: "HOSP-01",
-        provider_name: "RS Sehat Sentosa",
-        similarity_score: 0.91,
-        claim_amount: 18200000,
-        diagnosis_code: "A09",
-        similarity_reasons: ["Abnormal length of stay pattern (6 days) for mild gastroenteritis"],
-        risk_score: 88,
-      },
-    ],
-    risk_score: 94,
-    risk_level: "CRITICAL",
-    risk_signals: ["UPCODING", "PHANTOM_BILLING", "ABNORMAL_LOS", "CLONING"],
-    risk_findings: [],
-    status: "FLAGGED",
-    investigation_id: "INV-2026-010293",
-    created_at: "2026-08-09T08:30:00Z",
-    updated_at: "2026-08-23T08:30:00Z",
+export const AS_OF_DATE = "2026-09-30";
+export const SEED = 20261002;
+
+export type GroundTruth = Record<string, RiskType[]>;
+
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+type Rng = () => number;
+const pick = <T,>(rng: Rng, arr: T[]): T => arr[Math.floor(rng() * arr.length)];
+const between = (rng: Rng, lo: number, hi: number) => lo + rng() * (hi - lo);
+const intBetween = (rng: Rng, lo: number, hi: number) => Math.floor(between(rng, lo, hi + 1));
 
-  // Run detectors on Hero Claim
-  const heroFindings = [
-    detectUpcoding(heroClaim),
-    detectPhantomBilling(heroClaim),
-    detectAbnormalLOS(heroClaim),
-    detectCloning(heroClaim),
-  ].filter(Boolean) as any[];
+function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
-  heroClaim.risk_findings = heroFindings;
-  const heroComposite = calculateCompositeRisk(heroFindings);
-  heroClaim.risk_score = heroComposite.score;
-  heroClaim.risk_level = heroComposite.level;
-  heroClaim.risk_signals = heroComposite.signals;
+// ---------------------------------------------------------------------------
+// Faskes (34 provinsi) & dokter
+// ---------------------------------------------------------------------------
+const CAPITALS: Record<string, string> = {
+  "ID-AC": "Banda Aceh", "ID-SU": "Medan", "ID-SB": "Padang", "ID-RI": "Pekanbaru", "ID-KR": "Tanjung Pinang", "ID-JA": "Jambi",
+  "ID-SS": "Palembang", "ID-BE": "Bengkulu", "ID-BB": "Pangkal Pinang", "ID-LA": "Bandar Lampung", "ID-BT": "Serang", "ID-JK": "Jakarta Selatan",
+  "ID-JB": "Bandung", "ID-JT": "Semarang", "ID-YO": "Yogyakarta", "ID-JI": "Surabaya", "ID-BA": "Denpasar", "ID-NB": "Mataram",
+  "ID-NT": "Kupang", "ID-KB": "Pontianak", "ID-KT": "Palangka Raya", "ID-KS": "Banjarmasin", "ID-KI": "Samarinda", "ID-KU": "Tanjung Selor",
+  "ID-SA": "Manado", "ID-GO": "Gorontalo", "ID-ST": "Palu", "ID-SR": "Mamuju", "ID-SN": "Makassar", "ID-SG": "Kendari",
+  "ID-MU": "Sofifi", "ID-MA": "Ambon", "ID-PB": "Manokwari", "ID-PA": "Jayapura",
+};
 
-  claims.push(heroClaim);
+interface ProviderSeed {
+  id: string;
+  name: string;
+  type: Provider["type"];
+  province: string;
+  city?: string;
+  address: string;
+  weight: number;
+  rates: Partial<Record<RiskType, number>>;
+}
 
-  // Create Hero Investigation
-  investigations.push({
-    investigation_id: "INV-2026-010293",
-    claim_id: "CLM-10293",
-    claim: heroClaim,
-    status: "UNDER_INVESTIGATION",
-    priority: "CRITICAL",
-    risk_score: heroClaim.risk_score,
-    potential_exposure: heroClaim.claim_amount - (heroClaim.approved_tariff || 0),
-    assigned_to: {
-      user_id: "USR-001",
-      name: "Aril Indra Permana",
-      avatar: "AI",
-      role: "Senior Fraud Investigator",
-    },
-    ai_priority_rationale:
-      "Detected combination of 4 major anomalies: Severity Level 3 inflation for Diarrhea A09, surgical claim 44.95 lacking operating room records, 6-day abnormal length of stay, and 96.4% clinical text similarity with claim CLM-09283.",
-    primary_risk_signals: heroClaim.risk_signals,
-    notes: [
-      {
-        note_id: "NOT-001",
-        author: "AI Risk Intelligence",
-        role: "AI Co-Investigator",
-        content:
-          "System detected significant discrepancy on claim CLM-10293. Based on electronic medical records, patient only received supportive IV/oral hydration therapy. No anesthesia record or operating room log exists for the digestive surgical procedure invoiced at Rp 12,500,000.",
-        created_at: "2026-08-09T08:35:00Z",
-        type: "AI_ASSESSMENT",
-      },
-      {
-        note_id: "NOT-002",
-        author: "Aril Indra Permana",
-        role: "Senior Investigator",
-        content: "Issued formal audit inquiry for original paper records and operating room logs to RS Sehat Sentosa medical committee.",
-        created_at: "2026-08-11T14:20:00Z",
-        type: "USER_NOTE",
-      },
-    ],
-    created_at: "2026-08-09T08:30:00Z",
-    updated_at: "2026-08-23T08:30:00Z",
-  });
+const NAMED_PROVIDERS: ProviderSeed[] = [
+  { id: "HOSP-01", name: "RS Sehat Sentosa", type: "RS_KELAS_B", province: "ID-JK", city: "Jakarta Selatan", address: "Jl. Jenderal Sudirman No. 45, Kebayoran Baru", weight: 90, rates: { UPCODING: 0.34, PHANTOM_BILLING: 0.16, ABNORMAL_LOS: 0.14, CLONING: 0.1, UNBUNDLING: 0.06, INFLATED_BILLS: 0.04 } },
+  { id: "HOSP-02", name: "RS Medika Utama", type: "RS_KELAS_B", province: "ID-JB", city: "Kota Bandung", address: "Jl. Pasteur No. 120, Sukajadi", weight: 60, rates: { CLONING: 0.28, UPCODING: 0.12, PHANTOM_BILLING: 0.06, ABNORMAL_LOS: 0.05 } },
+  { id: "HOSP-03", name: "RS Mitra Kasih Surabaya", type: "RS_KELAS_A", province: "ID-JI", city: "Kota Surabaya", address: "Jl. Raya Darmo No. 88, Wonokromo", weight: 70, rates: { PHANTOM_BILLING: 0.22, UPCODING: 0.08, CLONING: 0.06, ABNORMAL_LOS: 0.05, UNBUNDLING: 0.07 } },
+  { id: "HOSP-04", name: "RS Graha Medika Semarang", type: "RS_KELAS_B", province: "ID-JT", city: "Kota Semarang", address: "Jl. Pandanaran No. 56", weight: 50, rates: { ABNORMAL_LOS: 0.2, UPCODING: 0.06, INFLATED_BILLS: 0.07 } },
+  { id: "HOSP-05", name: "RS Prima Husada Medan", type: "RS_KELAS_B", province: "ID-SU", city: "Kota Medan", address: "Jl. S. Parman No. 102", weight: 55, rates: { UPCODING: 0.3, ABNORMAL_LOS: 0.08, INFLATED_BILLS: 0.08, CLONING: 0.04 } },
+  { id: "HOSP-06", name: "RS Bintang Kasih Makassar", type: "RS_KELAS_B", province: "ID-SN", city: "Kota Makassar", address: "Jl. Perintis Kemerdekaan KM 11", weight: 45, rates: { PHANTOM_BILLING: 0.15, ABNORMAL_LOS: 0.08, UNBUNDLING: 0.08 } },
+  { id: "HOSP-07", name: "RS Surya Husada Bali", type: "RS_KELAS_B", province: "ID-BA", city: "Kota Denpasar", address: "Jl. Pulau Seram No. 1", weight: 40, rates: { UPCODING: 0.03, ABNORMAL_LOS: 0.02 } },
+  { id: "KLIN-01", name: "Klinik Utama Sehat Bersama", type: "KLINIK_UTAMA", province: "ID-JK", city: "Jakarta Timur", address: "Jl. Pemuda No. 78, Rawamangun", weight: 35, rates: { CLONING: 0.3, UNBUNDLING: 0.1, INFLATED_BILLS: 0.08 } },
+];
 
-  // 2. Generate remaining curated claims across Indonesia
-  const diagnosisPool = [
-    { code: "A09", desc: "Infectious gastroenteritis and colitis, unspecified", base_tariff: 3800000 },
-    { code: "K35.8", desc: "Other and unspecified acute appendicitis", base_tariff: 12500000 },
-    { code: "J18.9", desc: "Pneumonia, unspecified", base_tariff: 8900000 },
-    { code: "I10", desc: "Essential (primary) hypertension", base_tariff: 2400000 },
-    { code: "E11.9", desc: "Type 2 diabetes mellitus without complications", base_tariff: 6700000 },
-    { code: "O80.0", desc: "Spontaneous vertex delivery", base_tariff: 4500000 },
-    { code: "M54.5", desc: "Low back pain", base_tariff: 3100000 },
-  ];
+function buildProviderSeeds(): ProviderSeed[] {
+  const rng = mulberry32(SEED ^ 0x51ed);
+  const seeds = [...NAMED_PROVIDERS];
+  const covered = new Set(seeds.map((s) => s.province));
+  let n = 8;
+  for (const prov of INDONESIA_PROVINCES) {
+    if (covered.has(prov.code)) continue;
+    n++;
+    const city = CAPITALS[prov.code] || prov.name;
+    const rates: Partial<Record<RiskType, number>> = {};
+    const base = 0.02 + rng() * 0.03;
+    ALL_RISK_TYPES.forEach((t) => (rates[t] = base));
+    if (rng() < 0.22) rates[pick(rng, ["UPCODING", "PHANTOM_BILLING", "CLONING", "INFLATED_BILLS"] as RiskType[])] = 0.14 + rng() * 0.1;
+    seeds.push({
+      id: `HOSP-${String(n).padStart(2, "0")}`,
+      name: `RSUD ${city}`,
+      type: rng() < 0.3 ? "RS_KELAS_C" : "RS_KELAS_B",
+      province: prov.code,
+      city: `Kota ${city}`,
+      address: `Jl. Pelayanan Kesehatan No. ${intBetween(rng, 1, 120)}, ${city}`,
+      weight: intBetween(rng, 22, 34),
+      rates,
+    });
+  }
+  const hot = (id: string, t: RiskType, r: number) => {
+    const sd = seeds.find((x) => x.id === id);
+    if (sd) sd.rates[t] = r;
+  };
+  hot("HOSP-01", "READMISSION", 0.05);
+  hot("HOSP-03", "READMISSION", 0.07);
+  hot("HOSP-05", "REPEAT_BILLING", 0.06);
+  hot("KLIN-01", "REPEAT_BILLING", 0.05);
+  return seeds;
+}
 
-  const firstNames = ["Ahmad", "Siti", "Budi", "Dewi", "Eko", "Nur", "Hadi", "Sri", "Agus", "Rini", "Tri", "Wati", "Joko", "Lestari", "Dian"];
-  const lastNames = ["Kusuma", "Pratama", "Hidayat", "Saputra", "Wibowo", "Santoso", "Lestari", "Utami", "Nugroho", "Firmansyah", "Pramudya"];
+const FIRST = ["Ahmad", "Siti", "Budi", "Dewi", "Eko", "Nur", "Hadi", "Sri", "Agus", "Rini", "Tri", "Wati", "Joko", "Lestari", "Dian", "Fajar", "Indah", "Rizky", "Putri", "Bayu", "Maya", "Andi", "Yusuf", "Citra"];
+const LAST = ["Kusuma", "Pratama", "Hidayat", "Saputra", "Wibowo", "Santoso", "Lestari", "Utami", "Nugroho", "Firmansyah", "Pramudya", "Rahman", "Wijaya", "Susanto", "Hakim", "Permata"];
+const SPECIALTY = [
+  { code: "Sp.PD", label: "Spesialis Penyakit Dalam" },
+  { code: "Sp.B", label: "Spesialis Bedah Umum" },
+  { code: "Sp.A", label: "Spesialis Anak" },
+  { code: "Sp.OG", label: "Spesialis Obstetri & Ginekologi" },
+  { code: "Sp.JP", label: "Spesialis Jantung & Pembuluh Darah" },
+  { code: "Sp.OT", label: "Spesialis Bedah Ortopedi" },
+];
 
-  for (let i = 2; i <= 60; i++) {
-    const claimNum = 10293 + i;
-    const claimId = `CLM-${claimNum}`;
-    const prov = SYNTHETIC_PROVIDERS[(i - 2) % SYNTHETIC_PROVIDERS.length];
-    const diag = diagnosisPool[i % diagnosisPool.length];
-    const isAnomaly = i <= 24; // First 24 are high/critical risks
-    const severity = isAnomaly && i % 3 === 0 ? 3 : isAnomaly ? 2 : 1;
-    const los = isAnomaly && i % 4 === 0 ? 7 : isAnomaly ? 5 : 2;
-    const tariffMultiplier = isAnomaly ? (i % 2 === 0 ? 2.4 : 1.9) : 1.0;
-    const amount = Math.round(diag.base_tariff * tariffMultiplier);
-    
-    const pName = `${firstNames[i % firstNames.length]} ${lastNames[(i * 3) % lastNames.length]}`;
-    const doc = prov.doctors[0] || SYNTHETIC_DOCTORS[0];
-
-    const currentClaim: CanonicalClaim = {
-      claim_id: claimId,
-      sep_number: `0045R0010826V00${claimNum}`,
-      patient: {
-        patient_id: `P-${10000 + i}`,
-        name: pName,
-        age: 25 + (i * 3) % 50,
-        gender: i % 2 === 0 ? "L" : "P",
-        bpjs_card_number: `00018928${1000 + i}`,
-        province_code: prov.province_code,
-      },
-      provider: {
-        provider_id: prov.provider_id,
-        name: prov.name,
-        type: prov.type,
-        province_code: prov.province_code,
-        city: prov.city,
-      },
-      service: {
-        admission_date: `2026-08-${String(1 + (i % 20)).padStart(2, "0")}`,
-        discharge_date: `2026-08-${String(1 + (i % 20) + los).padStart(2, "0")}`,
-        submission_date: `2026-08-${String(3 + (i % 20) + los).padStart(2, "0")}`,
-        length_of_stay: los,
-        treatment_class: "KELAS_1",
-        doctor_id: doc.doctor_id,
-        doctor_name: doc.name,
-        doctor_specialty: doc.specialty,
-      },
-      diagnoses: [
-        {
-          code: diag.code,
-          description: diag.desc,
-          is_primary: true,
-          severity: severity as 1 | 2 | 3,
-        },
-      ],
-      procedures: isAnomaly && i % 2 === 0 ? [
-        { code: "44.95", description: "Specialized laparoscopic digestive procedure", date: `2026-08-${String(2 + (i % 20)).padStart(2, "0")}` }
-      ] : [
-        { code: "99.18", description: "Electrolyte infusion and rehydration therapy", date: `2026-08-${String(1 + (i % 20)).padStart(2, "0")}` }
-      ],
-      claim_amount: amount,
-      approved_tariff: diag.base_tariff,
-      tariff_difference: Math.max(0, amount - diag.base_tariff),
-      medical_evidence: [
-        {
-          evidence_id: `DOC-${claimNum}-01`,
-          document_type: "RINGKASAN_MEDIS",
-          title: `Inpatient Medical Summary - ${claimId}`,
-          date: `2026-08-${String(1 + (i % 20)).padStart(2, "0")}`,
-          excerpt: `Clinical record for patient ${pName} with primary complaint of ${diag.desc.toLowerCase()}. General condition stable.`,
-          content: `Patient ${pName} was admitted with primary diagnosis of ${diag.desc}. Physical exam showed stable hemodynamics. Therapy administered consisted of supportive medication.`,
-          status: isAnomaly ? "CONTRADICTS_CLAIM" : "SUPPORTS_CLAIM",
-        }
-      ],
-      similar_claims: isAnomaly && i % 3 === 0 ? [
-        {
-          claim_id: "CLM-10293",
-          provider_id: "HOSP-01",
-          provider_name: "RS Sehat Sentosa",
-          similarity_score: 0.89,
-          claim_amount: 18450000,
-          diagnosis_code: "A09",
-          similarity_reasons: ["Referral form narrative layout structure is identical"],
-          risk_score: 88,
-        }
-      ] : [],
-      risk_score: 15,
-      risk_level: "LOW",
-      risk_signals: [],
-      risk_findings: [],
-      status: isAnomaly ? "FLAGGED" : "RESOLVED_VALID",
-      created_at: `2026-08-${String(2 + (i % 20)).padStart(2, "0")}T08:00:00Z`,
-      updated_at: `2026-08-23T08:00:00Z`,
-    };
-
-    // Calculate findings
-    const findings = [
-      detectUpcoding(currentClaim),
-      detectCloning(currentClaim),
-      detectPhantomBilling(currentClaim),
-      detectAbnormalLOS(currentClaim),
-    ].filter(Boolean) as any[];
-
-    currentClaim.risk_findings = findings;
-    const comp = calculateCompositeRisk(findings);
-    currentClaim.risk_score = comp.score;
-    currentClaim.risk_level = comp.level;
-    currentClaim.risk_signals = comp.signals;
-
-    claims.push(currentClaim);
-
-    // Create investigation for high/critical claims
-    if (currentClaim.risk_level === "CRITICAL" || currentClaim.risk_level === "HIGH") {
-      const invId = `INV-2026-${String(claimNum).padStart(6, "0")}`;
-      currentClaim.investigation_id = invId;
-      investigations.push({
-        investigation_id: invId,
-        claim_id: currentClaim.claim_id,
-        claim: currentClaim,
-        status: i % 4 === 0 ? "NEW" : i % 4 === 1 ? "UNDER_INVESTIGATION" : i % 4 === 2 ? "NEED_EVIDENCE" : "CONFIRMED_RISK",
-        priority: currentClaim.risk_level,
-        risk_score: currentClaim.risk_score,
-        potential_exposure: currentClaim.claim_amount - (currentClaim.approved_tariff || 0),
-        assigned_to: {
-          user_id: "USR-001",
-          name: "Aril Indra Permana",
-          avatar: "AI",
-          role: "Senior Fraud Investigator",
-        },
-        ai_priority_rationale: `Strong indication of ${currentClaim.risk_signals.join(" & ")} with tariff exposure of Rp ${(currentClaim.tariff_difference || 0).toLocaleString("id-ID")}.`,
-        primary_risk_signals: currentClaim.risk_signals,
-        notes: [
-          {
-            note_id: `NOT-${claimNum}-1`,
-            author: "AI Intelligence System",
-            role: "AI Risk Engine",
-            content: `Case automatically triaged to high priority queue due to risk score reaching ${currentClaim.risk_score} (${currentClaim.risk_level}).`,
-            created_at: currentClaim.created_at,
-            type: "AI_ASSESSMENT",
-          },
-        ],
-        created_at: currentClaim.created_at,
-        updated_at: currentClaim.updated_at,
+function buildDoctors(seeds: ProviderSeed[]): Doctor[] {
+  const rng = mulberry32(SEED ^ 0xd0c);
+  const out: Doctor[] = [];
+  seeds.forEach((s, idx) => {
+    for (let i = 0; i < 3; i++) {
+      const sp = SPECIALTY[(idx + i) % SPECIALTY.length];
+      const fixed = s.id === "HOSP-01" && i === 0;
+      out.push({
+        doctor_id: fixed ? "DR-01" : `DR-${String(idx + 1).padStart(2, "0")}${i + 1}`,
+        name: fixed ? "dr. Hendra Prasetyo, Sp.OT" : `dr. ${pick(rng, FIRST)} ${pick(rng, LAST)}, ${sp.code}`,
+        specialty: fixed ? "Spesialis Bedah Ortopedi" : sp.label,
+        sip_number: `SIP.440/${intBetween(rng, 1000, 1999)}/DSP/${2021 + (i % 4)}`,
+        total_claims_handled: 0,
+        high_risk_claims_count: 0,
+        risk_score: 0,
+        provider_id: s.id,
       });
+    }
+  });
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Narasi klinis per diagnosis
+// ---------------------------------------------------------------------------
+interface Narrative {
+  complaints: string[];
+  exams: string[];
+  labs: string[];
+  therapies: string[];
+  evals: string[];
+  discharges: string[];
+  severe: string[];
+}
+
+const NARRATIVES: Record<string, Narrative> = {
+  A09: {
+    complaints: ["diare cair 4 kali sejak pagi tanpa darah dan lendir", "diare cair 5 kali disertai mual dan muntah 1 kali", "BAB cair berulang sejak 2 hari dengan demam ringan"],
+    exams: ["Abdomen supel, bising usus meningkat ringan", "Turgor kulit sedikit menurun, mukosa agak kering", "Nyeri tekan epigastrium ringan, tidak ada distensi"],
+    labs: ["Hemoglobin 14,1 g/dL, leukosit 8.700/uL, elektrolit dalam batas normal", "Leukosit 9.100/uL, natrium 137 mEq/L, kalium 3,6 mEq/L", "Darah rutin normal, feses tanpa leukosit bermakna"],
+    therapies: ["Rehidrasi oral dan infus RL 20 tpm, zinc 20 mg 1x1", "Cairan RL intravena, probiotik, oralit sesuai kebutuhan", "Terapi cairan dan zinc, diet lunak bertahap"],
+    evals: ["Pada hari ke-2 pasien membaik, asupan oral baik, kondisi stabil", "Keluhan berkurang bermakna hari ke-2, keadaan umum baik", "Pasien pulih dengan terapi suportif, tanpa komplikasi"],
+    discharges: ["pulang dalam kondisi stabil, tanpa gejala, tanda vital normal", "pulang kondisi membaik, kontrol rawat jalan bila perlu", "dinyatakan sembuh klinis, tanda vital normal"],
+    severe: ["Terjadi dehidrasi berat dengan hipotensi dan perburukan klinis, diperlukan resusitasi cairan agresif dan perawatan intensif ICU", "Disertai sepsis dan syok hipovolemik, kondisi kritis"],
+  },
+  "K35.8": {
+    complaints: ["nyeri perut kanan bawah sejak 1 hari disertai mual", "nyeri periumbilikal berpindah ke fossa iliaka kanan dengan demam", "nyeri perut kanan bawah dan muntah 2 kali"],
+    exams: ["Nyeri tekan McBurney positif, defans muskular ringan", "Rovsing sign positif, tidak ada tanda peritonitis difus", "Nyeri lepas ringan di kuadran kanan bawah"],
+    labs: ["Leukosit 13.400/uL, CRP meningkat ringan", "Leukosit 12.800/uL, USG menunjang apendisitis akut", "Leukosit 14.100/uL, neutrofil dominan"],
+    therapies: ["Antibiotik intravena dan puasa, direncanakan apendektomi", "Analgesik, antibiotik profilaksis, persiapan operasi", "Resusitasi cairan, antibiotik, persiapan tindakan"],
+    evals: ["Pascaoperasi pasien membaik dan stabil, luka bersih", "Pemulihan pascatindakan baik, mobilisasi dini berhasil", "Kondisi stabil, nyeri terkontrol, tanpa komplikasi"],
+    discharges: ["pulang hari ke-3 dalam kondisi stabil", "pulang kondisi membaik, kontrol luka rawat jalan", "dinyatakan boleh pulang, tanda vital normal"],
+    severe: ["Apendisitis perforasi dengan peritonitis difus dan sepsis, dirawat ICU dengan perburukan klinis"],
+  },
+  "J18.9": {
+    complaints: ["batuk berdahak 5 hari dengan demam dan sesak ringan", "demam, batuk produktif, nyeri dada pleuritik", "sesak napas ringan, batuk dan demam 4 hari"],
+    exams: ["Ronki basah kasar di lapang paru kanan bawah", "Retraksi ringan, ronki basah basal bilateral", "Saturasi 95% udara ruangan, napas 22 kali per menit"],
+    labs: ["Leukosit 14.200/uL; foto thorax infiltrat lobus kanan bawah", "Leukosit 13.000/uL; infiltrat bercak pada foto dada", "CRP meningkat, foto dada konsisten dengan pneumonia"],
+    therapies: ["Antibiotik intravena, nebulisasi, oksigen nasal", "Seftriakson IV, mukolitik, terapi suportif", "Antibiotik empiris dan hidrasi"],
+    evals: ["Demam turun hari ke-3, sesak berkurang, kondisi stabil", "Respons baik terhadap antibiotik, membaik bertahap", "Pasien membaik, saturasi normal tanpa oksigen"],
+    discharges: ["pulang dengan antibiotik oral, kondisi stabil", "pulang kondisi membaik, kontrol 1 minggu", "dinyatakan stabil dan boleh pulang"],
+    severe: ["Terjadi gagal napas dengan kebutuhan ventilator dan perawatan ICU, disertai sepsis"],
+  },
+  I10: {
+    complaints: ["pusing dan tengkuk berat dengan tekanan darah tinggi", "sakit kepala berdenyut, tekanan darah 170/100", "keluhan pusing dan berdebar"],
+    exams: ["Tekanan darah 168/98 mmHg, tidak ada defisit neurologis", "Tekanan darah 172/102 mmHg, jantung dan paru dalam batas normal", "Funduskopi tanpa kelainan bermakna"],
+    labs: ["EKG sinus ritme, ureum kreatinin normal", "Profil lipid sedikit meningkat, fungsi ginjal normal", "EKG tanpa iskemia akut"],
+    therapies: ["Amlodipin dan ACE inhibitor, observasi tekanan darah", "Antihipertensi oral, edukasi diet rendah garam", "Penyesuaian dosis antihipertensi"],
+    evals: ["Tekanan darah terkontrol 135/85, keluhan hilang, stabil", "Tekanan darah membaik bertahap, kondisi stabil", "Pasien membaik, tanpa komplikasi"],
+    discharges: ["pulang kondisi stabil dengan obat oral", "pulang membaik, kontrol poliklinik 1 minggu", "dinyatakan stabil, tekanan darah terkontrol"],
+    severe: ["Krisis hipertensi dengan ensefalopati dan komplikasi organ target, memburuk dan dirawat ICU"],
+  },
+  "E11.9": {
+    complaints: ["lemas, banyak minum dan sering kencing", "gula darah tinggi dengan keluhan lemas", "polidipsia dan poliuria sejak seminggu"],
+    exams: ["Kesadaran compos mentis, tanpa luka diabetik", "Tanda vital stabil, turgor baik", "Tidak ada ulkus kaki, refleks normal"],
+    labs: ["Glukosa darah sewaktu 312 mg/dL, HbA1c 9,2%", "Gula darah puasa 245 mg/dL, keton negatif", "HbA1c 8,8%, fungsi ginjal normal"],
+    therapies: ["Insulin subkutan dan edukasi diet", "Metformin dan titrasi insulin basal", "Pengaturan gula darah dan diet diabetes"],
+    evals: ["Gula darah terkontrol bertahap, kondisi stabil", "Keluhan membaik, gula darah menurun", "Stabil tanpa hipoglikemia atau komplikasi"],
+    discharges: ["pulang dengan regimen insulin, stabil", "pulang kondisi membaik, kontrol rutin", "dinyatakan stabil, edukasi diberikan"],
+    severe: ["Ketoasidosis diabetik dengan asidosis berat dan penurunan kesadaran, dirawat ICU"],
+  },
+  "O80.0": {
+    complaints: ["inpartu kala I dengan kontraksi teratur", "ibu hamil aterm datang dengan mulas teratur", "G2P1 hamil 39 minggu, kontraksi sejak malam"],
+    exams: ["Pembukaan 6 cm, denyut jantung janin 144 per menit", "Kontraksi adekuat, DJJ baik, presentasi kepala", "Pembukaan lengkap, ketuban jernih"],
+    labs: ["Hb 11,8 g/dL, golongan darah dan urin rutin normal", "Hb 12,1 g/dL, tidak ada proteinuria", "Laboratorium prapersalinan normal"],
+    therapies: ["Pertolongan persalinan normal dengan pemantauan partograf", "Persalinan pervaginam spontan, manajemen aktif kala III", "Partus spontan tanpa penyulit"],
+    evals: ["Bayi lahir spontan, ibu dan bayi stabil", "Pasca persalinan ibu stabil, perdarahan normal", "Ibu dan bayi sehat tanpa komplikasi"],
+    discharges: ["pulang hari ke-2 ibu dan bayi sehat", "pulang kondisi baik, kontrol nifas", "dinyatakan stabil, boleh pulang"],
+    severe: ["Perdarahan pascapersalinan masif dengan syok, transfusi dan perawatan ICU, kondisi kritis"],
+  },
+  "M54.5": {
+    complaints: ["nyeri punggung bawah sejak 3 hari setelah mengangkat beban", "nyeri pinggang menjalar ke bokong", "nyeri punggung bawah mekanik tanpa defisit"],
+    exams: ["Nyeri tekan paravertebral, SLR negatif", "Gerak lumbal terbatas ringan, kekuatan motorik normal", "Tanpa defisit neurologis"],
+    labs: ["Pemeriksaan penunjang tidak diperlukan, tidak ada tanda bahaya", "Foto lumbal dalam batas normal", "Tidak ada red flag"],
+    therapies: ["Analgesik, relaksan otot, fisioterapi", "NSAID dan edukasi postur, fisioterapi", "Terapi konservatif dan istirahat"],
+    evals: ["Nyeri berkurang bermakna, kondisi stabil", "Keluhan membaik dengan terapi konservatif", "Mobilisasi membaik tanpa komplikasi"],
+    discharges: ["pulang kondisi membaik", "pulang stabil, kontrol poliklinik", "dinyatakan membaik, boleh pulang"],
+    severe: ["Defisit neurologis progresif dengan sindrom kauda equina, komplikasi berat dan perburukan klinis"],
+  },
+  "S06.0": {
+    complaints: ["riwayat jatuh dengan pingsan singkat dan sakit kepala", "cedera kepala kecelakaan motor, sempat tidak sadar sebentar", "pusing dan mual pascatrauma kepala"],
+    exams: ["GCS 15, tidak ada defisit neurologis fokal", "Hematoma kecil di pelipis, pupil isokor", "Kesadaran compos mentis, tanda vital stabil"],
+    labs: ["CT scan kepala tidak tampak perdarahan intrakranial", "CT kepala normal, laboratorium normal", "Tidak ada fraktur pada CT scan"],
+    therapies: ["Observasi neurologis, analgesik, tirah baring", "Observasi 24 jam dan terapi simtomatik", "Terapi suportif dan observasi GCS"],
+    evals: ["GCS tetap 15, keluhan membaik, stabil", "Tidak ada penurunan kesadaran, membaik bertahap", "Pasien pulih tanpa komplikasi"],
+    discharges: ["pulang kondisi stabil dengan edukasi tanda bahaya", "pulang membaik, kontrol poliklinik", "dinyatakan stabil, boleh pulang"],
+    severe: ["Perburukan kesadaran dengan perdarahan intrakranial, dirawat ICU dan komplikasi berat"],
+  },
+};
+
+function narrativeFor(code: string): Narrative {
+  return NARRATIVES[code] || NARRATIVES["A09"];
+}
+
+interface BuiltNarrative {
+  summary: string;
+  excerpt: string;
+  resume: string;
+  resumeExcerpt: string;
+}
+
+/** Variasi angka klinis (lab, vital) agar tiap narasi unik per pasien, seperti rekam medis nyata. */
+function jitterNumbers(rng: Rng, text: string): string {
+  return text.replace(/\d+(?:[.,]\d+)?/g, (m) => {
+    const hasDec = /[.,]/.test(m) && !/^\d{1,3}(?:\.\d{3})+$/.test(m);
+    if (/^\d{1,3}(?:\.\d{3})+$/.test(m)) {
+      const v = Number(m.replace(/\./g, ""));
+      return Math.round((v * between(rng, 0.85, 1.18)) / 100) * 100 >= 1000 ? (Math.round((v * between(rng, 0.85, 1.18)) / 100) * 100).toLocaleString("id-ID") : m;
+    }
+    if (hasDec) return (Number(m.replace(",", ".")) * between(rng, 0.9, 1.12)).toFixed(1).replace(".", ",");
+    const v = Number(m);
+    return v <= 3 ? m : String(Math.max(1, Math.round(v * between(rng, 0.88, 1.15))));
+  });
+}
+
+function buildNarrative(rng: Rng, code: string, age: number, gender: "L" | "P", severe: boolean): BuiltNarrative {
+  const n = narrativeFor(code);
+  const complaint = pick(rng, n.complaints);
+  const exam = jitterNumbers(rng, pick(rng, n.exams));
+  const lab = jitterNumbers(rng, pick(rng, n.labs));
+  const therapy = pick(rng, n.therapies);
+  const evalText = severe ? pick(rng, n.severe) : pick(rng, n.evals);
+  const discharge = pick(rng, n.discharges);
+  const vitals = `TD ${intBetween(rng, 105, 135)}/${intBetween(rng, 68, 88)} mmHg, nadi ${intBetween(rng, 72, 98)}/menit, suhu ${(36.4 + rng() * 1.3).toFixed(1)} C`;
+  const sex = gender === "L" ? "laki-laki" : "perempuan";
+  const summary = `Pasien ${sex} usia ${age} tahun datang dengan keluhan ${complaint}. Pemeriksaan fisik: ${exam}. ${vitals}. Penunjang: ${lab}. Terapi: ${therapy}. Evaluasi: ${evalText}.`;
+  const resume = severe
+    ? `Kondisi pulang: setelah perawatan intensif, pasien ${discharge}. ${pick(rng, n.severe)}.`
+    : `Kondisi pulang: pasien ${discharge}.`;
+  return { summary, excerpt: `${complaint}. ${evalText}.`, resume, resumeExcerpt: `Pasien ${discharge}.` };
+}
+
+/** Mutasi kecil agar klon tidak identik 100% (sering terjadi pada copy-paste nyata). */
+function microEdit(rng: Rng, text: string): string {
+  let t = text.replace(/usia (\d+) tahun/, (_m, a) => `usia ${Number(a) + intBetween(rng, -2, 2)} tahun`);
+  t = t.replace(/nadi (\d+)/, (_m, a) => `nadi ${Number(a) + intBetween(rng, -3, 3)}`);
+  return t;
+}
+
+// ---------------------------------------------------------------------------
+// Pembuat klaim
+// ---------------------------------------------------------------------------
+interface MakeOpts {
+  claimNum: number;
+  provider: ProviderSeed;
+  doctor: Doctor;
+  code: string;
+  forced: RiskType[];
+  admissionDate: string;
+  recentBoost: boolean;
+  cloneFrom?: CanonicalClaim;
+  patientRaw: { id: string; name: string; card: string; nik: string; age: number; gender: "L" | "P" };
+}
+
+function median(values: number[]): number {
+  const s = [...values].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function makeClaim(rng: Rng, o: MakeOpts, providerGeo: { name: string; province: string }): { claim: CanonicalClaim; labels: RiskType[] } {
+  const ref = referenceFor(o.code);
+  const labels = new Set<RiskType>(o.forced);
+  const claimId = `CLM-${o.claimNum}`;
+
+  // --- baseline normal ---
+  let severity: 1 | 2 | 3 = ref.expected_severity;
+  let los = Math.max(1, Math.round(ref.expected_los + between(rng, -0.6, 0.9)));
+  let amount = Math.round(ref.expected_tariff * between(rng, 0.9, 1.12));
+  const procedures: Procedure[] = ref.package_procedures.slice(0, 1 + intBetween(rng, 0, 1)).map((c) => ({
+    code: c,
+    description: PROCEDURE_REFERENCE[c]?.description || c,
+    date: o.admissionDate,
+  }));
+  let severeNarrative = false;
+  const extraDocs: EvidenceItem[] = [];
+  let extraLegitSurgeryDoc = false;
+  let legitProc: Procedure | undefined;
+
+  // --- hard negatives (sah) ---
+  const clean = labels.size === 0; // kasus sah hanya dibuat pada klaim tanpa anomali lain (agar narasi konsisten)
+  const legitSevere = clean && rng() < 0.07 && severity < 3;
+  if (legitSevere) {
+    severity = Math.min(3, severity + 1) as 1 | 2 | 3;
+    severeNarrative = true;
+    amount = Math.round(amount * between(rng, 1.18, 1.4));
+    los = Math.max(los + 1, Math.round(ref.expected_los * between(rng, 1.3, 1.6)));
+  }
+  const legitLongLos = clean && !legitSevere && rng() < 0.04;
+  if (legitLongLos) {
+    severeNarrative = true;
+    los = Math.ceil(ref.expected_los * between(rng, 2.0, 2.6));
+  }
+  if (o.code === "K35.8" && !labels.has("PHANTOM_BILLING")) {
+    legitProc = { code: "47.01", description: PROCEDURE_REFERENCE["47.01"].description, date: o.admissionDate, cost: undefined };
+    procedures.push(legitProc);
+    extraLegitSurgeryDoc = true;
+  } else if (!labels.has("PHANTOM_BILLING") && rng() < 0.05 && o.code !== "O80.0") {
+    legitProc = { code: "45.13", description: PROCEDURE_REFERENCE["45.13"].description, date: o.admissionDate, cost: PROCEDURE_REFERENCE["45.13"].reference_price };
+    procedures.push(legitProc);
+    amount += PROCEDURE_REFERENCE["45.13"].reference_price;
+    extraLegitSurgeryDoc = true;
+  }
+
+  // --- injeksi anomali ---
+  if (labels.has("UPCODING")) {
+    const subtle = rng() < 0.12;
+    const gap = ref.expected_severity === 1 ? (rng() < 0.55 ? 2 : 1) : 1;
+    severity = Math.min(3, ref.expected_severity + gap) as 1 | 2 | 3;
+    if (severity === ref.expected_severity) severity = Math.min(3, severity + 1) as 1 | 2 | 3;
+    amount = Math.round(ref.expected_tariff * (subtle ? between(rng, 1.05, 1.25) : between(rng, 1.7, 2.8)));
+    severeNarrative = false;
+  }
+  if (labels.has("ABNORMAL_LOS")) {
+    los = Math.ceil(ref.expected_los * between(rng, 2.0, 3.2));
+    severeNarrative = false;
+    amount = Math.round(amount * between(rng, 1.05, 1.2));
+  }
+  if (labels.has("PHANTOM_BILLING")) {
+    const code = o.code === "K35.8" ? "47.01" : pick(rng, ["44.95", "45.13", "47.01"]);
+    const price = PROCEDURE_REFERENCE[code].reference_price;
+    const idx = procedures.findIndex((p) => p.code === code);
+    if (idx >= 0) procedures.splice(idx, 1);
+    procedures.push({ code, description: PROCEDURE_REFERENCE[code].description, date: addDays(o.admissionDate, 1), cost: price });
+    amount += price;
+    extraLegitSurgeryDoc = false;
+    const explicit = rng() < 0.55;
+    extraDocs.push({
+      evidence_id: `DOC-${o.claimNum}-04`,
+      document_type: "CATATAN_TINDAKAN",
+      title: "Catatan Perintah DPJP & Registri Kamar Tindakan",
+      date: addDays(o.admissionDate, 1),
+      excerpt: explicit
+        ? `Tidak ada catatan tindakan (${code}) pada lembar perintah DPJP maupun registri kamar operasi.`
+        : "Perintah DPJP: lanjutkan terapi cairan, evaluasi elektrolit, diet lunak.",
+      content: explicit
+        ? `Perintah DPJP tanggal ${addDays(o.admissionDate, 1)}: lanjutkan terapi cairan dan observasi. Tidak ada catatan tindakan (${code}) pada lembar perintah DPJP maupun registri kamar operasi; tidak ada persetujuan tindakan maupun jadwal ke instalasi bedah sentral.`
+        : `Perintah DPJP tanggal ${addDays(o.admissionDate, 1)}: lanjutkan terapi cairan, evaluasi elektrolit, diet lunak. Pasien tirah baring di bangsal.`,
+      status: "NEEDS_REVIEW",
+    });
+  }
+  if (labels.has("UNBUNDLING")) {
+    // Komponen yang SUDAH termasuk paket: prosedur paket diagnosis + komponen dari prosedur induk yang ditagih.
+    const pool = new Set<string>(ref.package_procedures);
+    procedures.forEach((p) => (BUNDLE_COMPONENTS[p.code] || []).forEach((c) => pool.add(c)));
+    const chosen = Array.from(pool);
+    const take = chosen.slice(0, Math.max(1, Math.min(chosen.length, intBetween(rng, 1, 3))));
+    for (const c of take) {
+      const price = Math.round(PROCEDURE_REFERENCE[c].reference_price * between(rng, 0.9, 1.1));
+      const idx = procedures.findIndex((p) => p.code === c);
+      if (idx >= 0) procedures.splice(idx, 1);
+      procedures.push({ code: c, description: PROCEDURE_REFERENCE[c].description, date: o.admissionDate, cost: price });
+      amount += price;
+    }
+  }
+  if (labels.has("INFLATED_BILLS")) {
+    if (rng() < 0.5) {
+      amount = Math.round(ref.expected_tariff * between(rng, 1.75, 2.5));
+    } else {
+      const packaged = new Set(ref.package_procedures);
+      const cand = ["89.52", "87.44", "90.39", "93.11", "99.04", "96.56"].filter((c) => !packaged.has(c) && !procedures.some((p) => p.code === c));
+      const c = pick(rng, cand);
+      const price = Math.round(PROCEDURE_REFERENCE[c].reference_price * between(rng, 2.1, 3.4));
+      procedures.push({ code: c, description: PROCEDURE_REFERENCE[c].description, date: o.admissionDate, cost: price });
+      amount += price;
+    }
+    if (severity > ref.expected_severity) severity = ref.expected_severity;
+  }
+
+  // --- narasi & dokumen ---
+  const dischargeDate = addDays(o.admissionDate, los);
+  const submissionDate = addDays(dischargeDate, intBetween(rng, 1, 3));
+  const { patient: anon } = anonymizePatient({ id: o.patientRaw.id, name: o.patientRaw.name, card_number: o.patientRaw.card, nik: o.patientRaw.nik, age: o.patientRaw.age, gender: o.patientRaw.gender });
+  const patient = { ...anon, province_code: o.provider.province };
+
+  let built = buildNarrative(rng, o.code, o.patientRaw.age, o.patientRaw.gender, severeNarrative);
+  if (o.cloneFrom) {
+    const srcSummary = o.cloneFrom.medical_evidence.find((e) => e.document_type === "RINGKASAN_MEDIS");
+    const srcResume = o.cloneFrom.medical_evidence.find((e) => e.document_type === "RESUME_PULANG");
+    if (srcSummary) {
+      built = {
+        summary: microEdit(rng, srcSummary.content),
+        excerpt: srcSummary.excerpt,
+        resume: srcResume?.content || built.resume,
+        resumeExcerpt: srcResume?.excerpt || built.resumeExcerpt,
+      };
     }
   }
 
-  return { claims, investigations };
+  const evidence: EvidenceItem[] = [
+    { evidence_id: `DOC-${o.claimNum}-01`, document_type: "RINGKASAN_MEDIS", title: "Ringkasan Medis Rawat Inap", date: o.admissionDate, excerpt: built.excerpt, content: built.summary, status: "NEEDS_REVIEW", attached_file_name: `Ringkasan_Medis_${claimId}.pdf` },
+    { evidence_id: `DOC-${o.claimNum}-02`, document_type: "RESUME_PULANG", title: "Resume Pulang & Instruksi DPJP", date: dischargeDate, excerpt: built.resumeExcerpt, content: built.resume, status: "NEEDS_REVIEW", attached_file_name: `Resume_Pulang_${claimId}.pdf` },
+  ];
+
+  if (extraLegitSurgeryDoc && legitProc) {
+    const proc = legitProc;
+    evidence.push({
+      evidence_id: `DOC-${o.claimNum}-04`,
+      document_type: "CATATAN_TINDAKAN",
+      title: "Laporan Operasi & Catatan Anestesi",
+      date: o.admissionDate,
+      excerpt: `Tindakan ${proc.description} (${proc.code}) dilaksanakan, sesuai laporan operasi.`,
+      content: `Laporan operasi: tindakan ${proc.description} (${proc.code}) dilaksanakan oleh DPJP dengan anestesi umum, perdarahan minimal, tidak ada penyulit intraoperatif.`,
+      status: "SUPPORTS_CLAIM",
+      attached_file_name: `Laporan_Operasi_${claimId}.pdf`,
+    });
+  }
+  evidence.push(...extraDocs);
+
+  const lineItems = [`Paket INA-CBG ${o.code}: Rp ${Math.round(ref.expected_tariff).toLocaleString("id-ID")}`, ...procedures.filter((p) => (p.cost ?? 0) > 0).map((p) => `${p.description} [${p.code}]: Rp ${(p.cost as number).toLocaleString("id-ID")}`)];
+  evidence.push({
+    evidence_id: `DOC-${o.claimNum}-03`,
+    document_type: "BUKTI_BILLING",
+    title: "Rincian Tagihan Faskes",
+    date: submissionDate,
+    excerpt: lineItems.slice(0, 2).join("; "),
+    content: `Rincian tagihan: ${lineItems.join("; ")}. Total tagihan Rp ${amount.toLocaleString("id-ID")}.`,
+    status: "NEEDS_REVIEW",
+    attached_file_name: `Billing_${claimId}.pdf`,
+  });
+
+  const diagnoses: Diagnosis[] = [{ code: o.code, description: ref.description, is_primary: true, severity }];
+
+  const claim: CanonicalClaim = {
+    claim_id: claimId,
+    sep_number: `0045R001${o.admissionDate.slice(2, 4)}${o.admissionDate.slice(5, 7)}V${String(o.claimNum).padStart(7, "0")}`,
+    patient,
+    provider: { provider_id: o.provider.id, name: providerGeo.name, type: o.provider.type, province_code: o.provider.province, city: o.provider.city || "—" },
+    service: {
+      admission_date: o.admissionDate,
+      discharge_date: dischargeDate,
+      submission_date: submissionDate,
+      length_of_stay: los,
+      treatment_class: "KELAS_1",
+      doctor_id: o.doctor.doctor_id,
+      doctor_name: o.doctor.name,
+      doctor_specialty: o.doctor.specialty,
+    },
+    diagnoses,
+    procedures,
+    claim_amount: amount,
+    medical_evidence: evidence,
+    risk_score: 0,
+    risk_level: "LOW",
+    risk_signals: [],
+    risk_findings: [],
+    similar_claims: [],
+    status: "PENDING_REVIEW",
+    created_at: `${submissionDate}T08:00:00Z`,
+    updated_at: `${submissionDate}T08:00:00Z`,
+  };
+  return { claim, labels: Array.from(labels) };
 }
+
+/** Geser semua tanggal klaim agar submission_date = target (distribusi submit seragam, tren 7 hari wajar). */
+function daysBetweenIso(a: string, b: string): number {
+  return Math.round((new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / 86_400_000);
+}
+
+function shiftToSubmitDate(c: CanonicalClaim, target: string) {
+  shiftDates(c, daysBetweenIso(c.service.submission_date, target));
+}
+
+function shiftDates(c: CanonicalClaim, delta: number) {
+  if (delta === 0) return;
+  const sh = (d: string) => addDays(d, delta);
+  c.service.admission_date = sh(c.service.admission_date);
+  c.service.discharge_date = sh(c.service.discharge_date);
+  c.service.submission_date = sh(c.service.submission_date);
+  c.procedures.forEach((p) => (p.date = sh(p.date)));
+  c.medical_evidence.forEach((e) => (e.date = sh(e.date)));
+  c.created_at = `${c.service.submission_date}T08:00:00Z`;
+  c.updated_at = c.created_at;
+  c.sep_number = c.sep_number.replace(/^(0045R001)\d{4}/, `$1${c.service.admission_date.slice(2, 4)}${c.service.admission_date.slice(5, 7)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Dataset utama
+// ---------------------------------------------------------------------------
+export interface SyntheticDataset {
+  claims: CanonicalClaim[];
+  providers: Provider[];
+  doctors: Doctor[];
+  labels: GroundTruth;
+}
+
+const DX_CODES = Object.keys(DIAGNOSIS_REFERENCE);
+
+export function generateSyntheticDataset(): SyntheticDataset {
+  const rng = mulberry32(SEED);
+  const seeds = buildProviderSeeds();
+  const doctors = buildDoctors(seeds);
+  const claims: CanonicalClaim[] = [];
+  const labels: GroundTruth = {};
+  const byDx = new Map<string, CanonicalClaim[]>();
+
+  const register = (c: CanonicalClaim, l: RiskType[]) => {
+    claims.push(c);
+    labels[c.claim_id] = l;
+    const code = c.diagnoses[0].code;
+    const arr = byDx.get(code) || [];
+    arr.push(c);
+    byDx.set(code, arr);
+  };
+
+  // ---- Klaim pahlawan (hero) CLM-10293 beserta pasangan klonnya ----
+  const hero = buildHeroClaims(rng);
+  hero.forEach((h) => register(h.claim, h.labels));
+
+  // ---- Klaim massal ----
+  let counter = 10300;
+  const patientPool = new Map<string, { id: string; name: string; card: string; nik: string; age: number; gender: "L" | "P" }[]>();
+  const asOf = AS_OF_DATE;
+  type PatientRaw = { id: string; name: string; card: string; nik: string; age: number; gender: "L" | "P" };
+  const rawByClaim = new Map<string, PatientRaw>();
+  const patientDx = new Map<string, Set<string>>();
+  const usedPriors = new Set<string>();
+
+  for (const prov of seeds) {
+    const provDoctors = doctors.filter((d) => d.provider_id === prov.id);
+    const pool = patientPool.get(prov.id) || [];
+    patientPool.set(prov.id, pool);
+    for (let i = 0; i < prov.weight; i++) {
+      const dayOffset = intBetween(rng, 0, 83);
+      const admission = addDays(asOf, -(dayOffset + 9)); // digeser setelah klaim dibuat agar TANGGAL SUBMIT seragam hingga tanggal acuan
+      const recent = dayOffset <= 14;
+
+      // Pemilihan diagnosis: bias ke A09 untuk RS panas (agar sinyal emergent terlihat)
+      let code = prov.rates.UPCODING && prov.rates.UPCODING > 0.2 && rng() < 0.35 ? "A09" : pick(rng, DX_CODES);
+      const forced: RiskType[] = [];
+      ALL_RISK_TYPES.forEach((t) => {
+        let rate = prov.rates[t] ?? 0.02;
+        if (recent && t === "UPCODING" && code === "A09") rate *= 1.9;
+        if (recent && t === "PHANTOM_BILLING") rate *= 1.4;
+        if (rng() < rate) forced.push(t);
+      });
+
+      // Repeat Billing / Readmission: butuh episode sebelumnya pada pasien & faskes yang sama (diagnosis sama).
+      if (forced.includes("REPEAT_BILLING") && forced.includes("READMISSION")) forced.splice(forced.indexOf("READMISSION"), 1);
+      let priorFor: CanonicalClaim | undefined;
+      if (forced.includes("REPEAT_BILLING") || forced.includes("READMISSION")) {
+        const elig = claims.filter(
+          (c) => c.provider.provider_id === prov.id && Number(c.claim_id.slice(4)) >= 10300 && labels[c.claim_id]?.length === 0 && c.service.submission_date <= addDays(asOf, -16) && rawByClaim.has(c.claim_id) && !usedPriors.has(c.claim_id)
+        );
+        if (elig.length) {
+          priorFor = pick(rng, elig);
+          usedPriors.add(priorFor.claim_id);
+          code = priorFor.diagnoses[0].code;
+        } else {
+          for (const t of ["REPEAT_BILLING", "READMISSION"] as RiskType[]) if (forced.includes(t)) forced.splice(forced.indexOf(t), 1);
+        }
+      }
+
+      let cloneFrom: CanonicalClaim | undefined;
+      if (forced.includes("CLONING")) {
+        const sameDx = (byDx.get(code) || []).filter((c) => !c.claim_id.startsWith("CLM-1029") && !c.medical_evidence.some((e) => e.excerpt.includes("Tidak ada catatan tindakan")));
+        const sameProv = sameDx.filter((c) => c.provider.provider_id === prov.id);
+        const pool2 = sameProv.length && rng() < 0.65 ? sameProv : sameDx;
+        if (pool2.length) cloneFrom = pick(rng, pool2);
+        else forced.splice(forced.indexOf("CLONING"), 1);
+      }
+
+      // pasien (12% pasien lama → peluang readmisi)
+      let patientRaw: PatientRaw;
+      const reuse = pool.length && rng() < 0.12 ? pick(rng, pool) : undefined;
+      if (priorFor) patientRaw = rawByClaim.get(priorFor.claim_id) as PatientRaw;
+      else if (reuse && !patientDx.get(reuse.id)?.has(code)) patientRaw = reuse; // pasien lama hanya dengan diagnosis BERBEDA (bukan readmisi sengaja)
+      else {
+        const gender: "L" | "P" = rng() < 0.5 ? "L" : "P";
+        patientRaw = {
+          id: `RAW-${counter}-${i}`,
+          name: `${pick(rng, FIRST)} ${pick(rng, LAST)}`,
+          card: `000${String(1_000_000_000 + intBetween(rng, 0, 899_999_999))}`,
+          nik: `${intBetween(rng, 1000, 9999)}${String(intBetween(rng, 0, 999_999_999_999)).padStart(12, "0")}`,
+          age: intBetween(rng, 5, 78),
+          gender,
+        };
+        pool.push(patientRaw);
+      }
+
+      // dokter: anomali terkonsentrasi di dokter pertama (cluster)
+      const doctor = forced.length > 0 && rng() < 0.62 ? provDoctors[0] : pick(rng, provDoctors);
+
+      const { claim, labels: l } = makeClaim(
+        rng,
+        { claimNum: counter++, provider: prov, doctor, code, forced, admissionDate: admission, recentBoost: recent, cloneFrom, patientRaw },
+        { name: prov.name, province: prov.province }
+      );
+      shiftToSubmitDate(claim, addDays(asOf, -dayOffset));
+      if (priorFor) {
+        const repeat = l.includes("REPEAT_BILLING");
+        const gap = repeat ? intBetween(rng, -1, 1) : intBetween(rng, 3, 12);
+        shiftDates(claim, daysBetweenIso(claim.service.admission_date, addDays(priorFor.service.discharge_date, gap)));
+        if (repeat && l.length === 1) claim.claim_amount = Math.round(priorFor.claim_amount * between(rng, 0.97, 1.03));
+      }
+      rawByClaim.set(claim.claim_id, patientRaw);
+      (patientDx.get(patientRaw.id) ?? patientDx.set(patientRaw.id, new Set()).get(patientRaw.id)!).add(code);
+      register(claim, l);
+      // Kedua anggota pasangan klon dianggap bagian dari klaster cloning.
+      if (cloneFrom && !labels[cloneFrom.claim_id].includes("CLONING")) labels[cloneFrom.claim_id].push("CLONING");
+    }
+  }
+
+  // ---- Provider ----
+  const providers: Provider[] = seeds.map((s) => {
+    const geo = INDONESIA_PROVINCES.find((p) => p.code === s.province)!;
+    return {
+      provider_id: s.id,
+      name: s.name,
+      type: s.type,
+      province_code: s.province,
+      province_name: geo.name,
+      city: s.city || CAPITALS[s.province],
+      address: s.address,
+      phone: `(021) ${intBetween(rng, 200, 899)}-${intBetween(rng, 1000, 9999)}`,
+      risk_score: 0,
+      risk_level: "LOW",
+      total_claims: 0,
+      high_risk_claims: 0,
+      potential_exposure: 0,
+      dominant_risk_type: "UPCODING",
+      risk_composition: { upcoding_pct: 0, cloning_pct: 0, phantom_billing_pct: 0, abnormal_los_pct: 0 },
+      peer_comparison: {
+        severity_3_rate: { provider: 0, peer_median: 0 },
+        avg_los_days: { provider: 0, peer_median: 0 },
+        avg_claim_amount: { provider: 0, peer_median: 0 },
+        readmission_rate_pct: { provider: 0, peer_median: 0 },
+      },
+      doctors: doctors.filter((d) => d.provider_id === s.id),
+      monthly_risk_trend: [],
+    };
+  });
+
+  return { claims, providers, doctors, labels };
+}
+
+// ---------------------------------------------------------------------------
+// Klaim pahlawan (diperkirakan sebagai kasus demo utama) — teks Indonesia, pasien teranonimisasi
+// ---------------------------------------------------------------------------
+function buildHeroClaims(rng: Rng): { claim: CanonicalClaim; labels: RiskType[] }[] {
+  const heroDoctor: Doctor = { doctor_id: "DR-01", name: "dr. Hendra Prasetyo, Sp.OT", specialty: "Spesialis Bedah Ortopedi", sip_number: "SIP.440/1029/DSP/2023", total_claims_handled: 0, high_risk_claims_count: 0, risk_score: 0, provider_id: "HOSP-01" };
+  const heroProvider = { provider_id: "HOSP-01", name: "RS Sehat Sentosa", type: "RS_KELAS_B" as const, province_code: "ID-JK", city: "Jakarta Selatan" };
+
+  const baseSummary =
+    "Pasien laki-laki usia 48 tahun datang dengan keluhan diare cair 4 kali sejak pagi tanpa darah dan lendir, mual dan muntah 1 kali, demam ringan 37,6 C. Pemeriksaan fisik: abdomen supel, bising usus meningkat ringan, tidak ada distensi maupun tanda peritonitis. TD 118/76 mmHg, nadi 84/menit. Penunjang: hemoglobin 14,2 g/dL, leukosit 8.900/uL, kalium 3,6 mEq/L, natrium 138 mEq/L, dalam batas normal. Terapi: rehidrasi oral dan infus RL 20 tpm, zinc 20 mg 1x1, probiotik. Evaluasi: pada hari ke-2 pasien membaik, asupan oral baik, kondisi stabil tanpa komplikasi.";
+  const baseResume = "Kondisi pulang: pasien dinyatakan stabil secara klinis sejak hari ke-2, tanda vital normal, tanpa gejala. Obat pulang: oralit, zinc 20 mg 1x1, probiotik.";
+  const baseExcerpt = "Diare cair 4 kali tanpa darah dan lendir. Pada hari ke-2 pasien membaik, kondisi stabil tanpa komplikasi.";
+
+  const mk = (num: number, patientIdx: number, amount: number, los: number, admission: string, withHeroSurgery: boolean, summary: string): CanonicalClaim => {
+    const { patient: anon } = anonymizePatient({ id: `RAW-HERO-${patientIdx}`, name: ["Bambang Sudibyo", "Hartono Wijaya", "Slamet Riyadi"][patientIdx], card_number: `00018928${37460 + patientIdx}`, nik: `31740512087500${String(patientIdx).padStart(2, "0")}`, age: 48 - patientIdx, gender: "L" });
+    const patient = { ...anon, province_code: "ID-JK" };
+    const dischargeDate = addDays(admission, los);
+    const submission = addDays(dischargeDate, 2);
+    const procs: Procedure[] = withHeroSurgery
+      ? [
+          { code: "44.95", description: PROCEDURE_REFERENCE["44.95"].description, date: addDays(admission, 2), cost: 12_500_000 },
+          { code: "99.18", description: PROCEDURE_REFERENCE["99.18"].description, date: admission, cost: 950_000 },
+        ]
+      : [{ code: "99.18", description: PROCEDURE_REFERENCE["99.18"].description, date: admission }];
+    const evidence: EvidenceItem[] = [
+      { evidence_id: `DOC-${num}-01`, document_type: "RINGKASAN_MEDIS", title: "Ringkasan Medis Rawat Inap", date: admission, excerpt: baseExcerpt, content: summary, status: "CONTRADICTS_CLAIM", attached_file_name: `Discharge_Summary_CLM${num}.pdf` },
+      { evidence_id: `DOC-${num}-02`, document_type: "RESUME_PULANG", title: "Resume Pulang & Instruksi DPJP", date: dischargeDate, excerpt: "Pasien dinyatakan stabil secara klinis sejak hari ke-2, namun pemulangan ditunda hingga hari ke-6.", content: baseResume, status: "NEEDS_REVIEW", attached_file_name: `Discharge_Instructions_CLM${num}.pdf` },
+      { evidence_id: `DOC-${num}-03`, document_type: "BUKTI_BILLING", title: "Rincian Tagihan Faskes", date: submission, excerpt: `Paket INA-CBG A09: Rp 3.800.000; ${withHeroSurgery ? "Prosedur bedah digestif laparoskopik [44.95]: Rp 12.500.000" : ""}`, content: `Rincian tagihan: Paket INA-CBG A09: Rp 3.800.000${withHeroSurgery ? "; Prosedur bedah digestif laparoskopik [44.95]: Rp 12.500.000; Infus elektrolit & hidrasi [99.18]: Rp 950.000" : ""}. Total tagihan Rp ${amount.toLocaleString("id-ID")}.`, status: "NEEDS_REVIEW", attached_file_name: `Billing_CLM${num}.pdf` },
+    ];
+    if (withHeroSurgery) {
+      evidence.push({
+        evidence_id: `DOC-${num}-04`,
+        document_type: "CATATAN_TINDAKAN",
+        title: "Lembar Perintah DPJP & Registri Kamar Operasi",
+        date: addDays(admission, 2),
+        excerpt: "Tidak ada catatan tindakan bedah digestif (44.95) pada lembar perintah DPJP maupun registri kamar operasi.",
+        content: `Perintah DPJP ${addDays(admission, 2)}: lanjutkan infus, cek ulang elektrolit, diet bubur lunak. Pasien tirah baring di bangsal Melati 3. Tidak ada catatan tindakan bedah digestif (44.95) pada lembar perintah DPJP maupun registri kamar operasi; tidak ada persetujuan tindakan atau penjadwalan ke instalasi bedah sentral (IBS).`,
+        status: "CONTRADICTS_CLAIM",
+        attached_file_name: `Physician_Orders_CLM${num}.pdf`,
+      });
+      evidence.push({
+        evidence_id: `DOC-${num}-05`,
+        document_type: "HASIL_LABORATORIUM",
+        title: "Hematologi & Elektrolit",
+        date: admission,
+        excerpt: "Hb 14,2 g/dL, leukosit 8.900/uL, trombosit 245.000/uL, kalium 3,6, natrium 138.",
+        content: "Parameter hematologi dan elektrolit dalam rentang normal. Tidak ada bukti sepsis, syok hipovolemik, maupun asidosis metabolik akut.",
+        status: "SUPPORTS_CLAIM",
+        attached_file_name: `Hematology_Report_CLM${num}.pdf`,
+      });
+    }
+    return {
+      claim_id: `CLM-${num}`,
+      sep_number: `0045R0010826V00${num}`,
+      patient,
+      provider: heroProvider,
+      service: { admission_date: admission, discharge_date: dischargeDate, submission_date: submission, length_of_stay: los, treatment_class: "KELAS_1", doctor_id: heroDoctor.doctor_id, doctor_name: heroDoctor.name, doctor_specialty: heroDoctor.specialty },
+      diagnoses: [
+        { code: "A09", description: DIAGNOSIS_REFERENCE["A09"].description, is_primary: true, severity: 3 },
+        { code: "K52.9", description: "Gastroenteritis non-infeksi", is_primary: false, severity: 2 },
+      ],
+      procedures: procs,
+      claim_amount: amount,
+      medical_evidence: evidence,
+      risk_score: 0,
+      risk_level: "LOW",
+      risk_signals: [],
+      risk_findings: [],
+      similar_claims: [],
+      status: "FLAGGED",
+      created_at: `${submission}T08:30:00Z`,
+      updated_at: `${submission}T08:30:00Z`,
+    };
+  };
+
+  const partner = mk(9283, 1, 17_900_000, 5, addDays(AS_OF_DATE, -40), false, microEdit(rng, baseSummary));
+  partner.claim_id = "CLM-09283";
+  partner.sep_number = "0045R0010826V0009283";
+  partner.procedures = [{ code: "99.18", description: PROCEDURE_REFERENCE["99.18"].description, date: partner.service.admission_date, cost: 900_000 }];
+  const third = mk(8741, 2, 18_200_000, 6, addDays(AS_OF_DATE, -55), false, "Pasien laki-laki usia 51 tahun dengan gastroenteritis akut, keluhan diare dan muntah 2 hari. Pemeriksaan fisik: turgor sedikit menurun, abdomen supel. Terapi: cairan intravena dan antiemetik. Evaluasi: keluhan membaik hari ke-2, kondisi stabil.");
+  third.claim_id = "CLM-08741";
+  third.sep_number = "0045R0010826V0008741";
+  const heroClaim = mk(10293, 0, 18_450_000, 6, addDays(AS_OF_DATE, -30), true, baseSummary);
+  heroClaim.claim_id = "CLM-10293";
+  heroClaim.sep_number = "0045R0010826V0010293";
+  heroClaim.investigation_id = "INV-2026-010293";
+
+  return [
+    { claim: heroClaim, labels: ["UPCODING", "PHANTOM_BILLING", "ABNORMAL_LOS", "CLONING", "UNBUNDLING"] },
+    { claim: partner, labels: ["UPCODING", "CLONING", "ABNORMAL_LOS", "UNBUNDLING"] },
+    { claim: third, labels: ["UPCODING", "ABNORMAL_LOS"] },
+  ];
+}
+
+export { median };

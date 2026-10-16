@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -14,65 +14,79 @@ import {
   FileSpreadsheet,
   Settings,
   Sparkles,
-  ChevronRight,
-  ShieldCheck,
-  Search,
+  Gauge,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   queueCount?: number;
   onOpenCopilot?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ queueCount = 47, onOpenCopilot }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  queueCount: queueOverride,
+  isCollapsed = false,
+  isMobileOpen = false,
+  onCloseMobile,
+}) => {
   const pathname = usePathname();
+  const [queueCount, setQueueCount] = useState<number | null>(queueOverride ?? null);
+  const [ai, setAi] = useState<{ available: boolean; mode: string; source: string; label?: string; reason?: string } | null>(null);
+
+  const refreshCountsAndStatus = useCallback(() => {
+    fetch("/api/investigations?limit=1&status=NEW")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setQueueCount(j.total_count))
+      .catch(() => {});
+    fetch("/api/system/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setAi({ available: j.ai.available, mode: j.ai.mode, source: j.ai.credential_source, label: j.ai.provider_label, reason: j.ai.reason }))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshCountsAndStatus();
+  }, [pathname, refreshCountsAndStatus]);
+
+  useEffect(() => {
+    const onStoreUpdated = () => refreshCountsAndStatus();
+    window.addEventListener("arsa:store-updated", onStoreUpdated);
+    return () => window.removeEventListener("arsa:store-updated", onStoreUpdated);
+  }, [refreshCountsAndStatus]);
 
   const navGroups = [
     {
-      group: "COMMAND",
+      group: "OPERASIONAL & AUDIT",
       items: [
         {
           name: "Command Center",
           href: "/",
           icon: LayoutDashboard,
-          badge: "Live",
-          badgeColor: "bg-emerald-100 text-emerald-800",
         },
         {
-          name: "Landing Page Portal",
-          href: "/landing",
-          icon: Sparkles,
-        },
-      ],
-    },
-    {
-      group: "INVESTIGATION",
-      items: [
-        {
-          name: "Investigation Queue",
+          name: "Pemeriksaan Klaim",
           href: "/investigation-queue",
           icon: ShieldAlert,
-          badge: queueCount.toString(),
-          badgeColor: "bg-risk-critical text-white font-bold",
+          badge: queueCount === null ? undefined : queueCount.toString(),
+          badgeColor: "bg-risk-critical text-white font-mono tabular-nums font-bold",
         },
         {
-          name: "Claims Intelligence",
-          href: "/claims",
-          icon: FileText,
-        },
-        {
-          name: "Provider Profiles",
+          name: "Profil Faskes",
           href: "/providers",
           icon: Building2,
         },
       ],
     },
     {
-      group: "INTELLIGENCE",
+      group: "INTELIJEN & DETEKTOR",
       items: [
         {
-          name: "Risk Intelligence",
+          name: "Peta Risiko & Graf",
           href: "/risk-intelligence",
           icon: Network,
         },
@@ -80,31 +94,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ queueCount = 47, onOpenCopilot
           name: "AI Copilot",
           href: "/copilot",
           icon: Bot,
-          badge: "AI",
-          badgeColor: "bg-indigo-100 text-indigo-700 font-semibold",
+          badge: ai ? (ai.available ? "LLM" : "Lokal") : undefined,
+          badgeColor: ai?.available
+            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-semibold"
+            : "bg-amber-500/20 text-amber-200 border border-amber-400/30 font-semibold",
+        },
+        {
+          name: "Evaluasi & Kalibrasi",
+          href: "/model-performance",
+          icon: Gauge,
         },
       ],
     },
     {
-      group: "DATA ONBOARDING",
+      group: "DATA & TATA KELOLA",
       items: [
         {
-          name: "Data Management",
+          name: "Manajemen Dataset",
           href: "/data-management",
           icon: Database,
         },
-      ],
-    },
-    {
-      group: "OUTPUT & AUDIT",
-      items: [
         {
-          name: "Audit Reports & Dossiers",
-          href: "/reports",
-          icon: FileSpreadsheet,
-        },
-        {
-          name: "Settings & Audit Trail",
+          name: "Pengaturan & Audit",
           href: "/settings",
           icon: Settings,
         },
@@ -112,36 +123,67 @@ export const Sidebar: React.FC<SidebarProps> = ({ queueCount = 47, onOpenCopilot
     },
   ];
 
-  return (
-    <aside className="w-64 bg-surface border-r border-jkn-border flex flex-col shrink-0 h-screen sticky top-0 select-none z-30 print:hidden">
+  const renderSidebarContent = (collapsed: boolean, isMobile: boolean) => (
+    <div className="relative flex flex-col h-full bg-[#071A12] text-white overflow-hidden">
+      {/* Subtle architectural ambient glow */}
+      <div
+        className="pointer-events-none absolute -top-24 -left-24 w-64 h-64 rounded-full opacity-25 blur-3xl"
+        style={{ background: "radial-gradient(circle, #00A859 0%, transparent 70%)" }}
+      />
+
       {/* Brand Header */}
-      <div className="p-4 border-b border-jkn-divider flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-white border border-bpjs-border flex items-center justify-center shadow-xs overflow-hidden p-1 shrink-0">
-          <img src="/arsa_logo.png" alt="ARSA JKN Risk Intelligence" className="w-full h-full object-contain" />
-        </div>
-        <div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-sm tracking-tight text-jkn-text">JKN RISK</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-bpjs-light text-bpjs-dark font-bold tracking-wider uppercase">
-              PRO
-            </span>
+      <div
+        className={cn(
+          "relative h-16 px-4 border-b border-white/[0.08] flex items-center shrink-0",
+          collapsed ? "justify-center" : "justify-between gap-3"
+        )}
+      >
+        <Link href="/" className="flex items-center gap-3 min-w-0 group">
+          <div className="w-9 h-9 rounded-xl bg-white/95 border border-white/20 group-hover:border-[#34D399] flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.25)] overflow-hidden p-1 shrink-0 transition-all duration-200 group-hover:scale-[1.02]">
+            <img src="/arsa_logo.png" alt="ARSA JKN Risk Intelligence" className="w-full h-full object-contain" />
           </div>
-          <p className="text-[11px] text-jkn-muted font-medium">BPJS Intelligence Suite</p>
-        </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-sm tracking-tight text-white truncate">ARSA JKN</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#00A859]/20 text-[#6EE7B7] border border-[#00A859]/35 font-mono font-semibold uppercase tracking-wider">
+                  BPJS
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-100/55 truncate">Audit & Intelijen Klaim</p>
+            </div>
+          )}
+        </Link>
+        {isMobile && onCloseMobile && (
+          <button
+            onClick={onCloseMobile}
+            aria-label="Tutup navigasi"
+            className="p-1.5 rounded-lg text-emerald-100/60 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6 custom-scrollbar">
+      <div className="relative flex-1 overflow-y-auto px-3 py-4 space-y-5 custom-scrollbar">
         {navGroups.map((group) => (
-          <div key={group.group} className="space-y-1">
-            <h4 className="px-3 text-[10px] font-bold text-jkn-dim tracking-wider uppercase">
-              {group.group}
-            </h4>
-            <div className="space-y-0.5">
+          <div key={group.group} className="space-y-1.5">
+            {!collapsed && (
+              <h4 className="px-2.5 text-[10px] font-bold text-emerald-100/40 tracking-[0.14em] uppercase">
+                {group.group}
+              </h4>
+            )}
+            <div className="space-y-1">
               {group.items.map((item) => {
                 const isActive =
                   item.href === "/"
                     ? pathname === "/"
+                    : item.href === "/investigation-queue"
+                    ? pathname.startsWith("/investigation-queue") ||
+                      pathname.startsWith("/investigations") ||
+                      pathname.startsWith("/claims") ||
+                      pathname.startsWith("/reports")
                     : pathname.startsWith(item.href);
                 const Icon = item.icon;
 
@@ -149,33 +191,47 @@ export const Sidebar: React.FC<SidebarProps> = ({ queueCount = 47, onOpenCopilot
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => isMobile && onCloseMobile?.()}
+                    title={collapsed ? item.name : undefined}
                     className={cn(
-                      "flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all group",
+                      "flex items-center rounded-xl text-xs transition-all duration-150 group relative",
+                      collapsed ? "justify-center p-2.5" : "justify-between px-3 py-2.5",
                       isActive
-                        ? "bg-bpjs-soft text-bpjs-dark font-semibold border border-bpjs-border shadow-xs"
-                        : "text-jkn-text hover:bg-surface-secondary hover:text-jkn-text"
+                        ? "bg-gradient-to-r from-[#00A859]/25 via-[#00A859]/12 to-white/[0.03] text-white font-semibold border border-[#00A859]/40 shadow-[0_2px_12px_-3px_rgba(0,168,89,0.3)]"
+                        : "text-emerald-50/70 font-medium border border-transparent hover:bg-white/[0.06] hover:text-white"
                     )}
                   >
-                    <div className="flex items-center gap-2.5">
+                    {isActive && !collapsed && (
+                      <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#34D399] shadow-[0_0_8px_#34D399]" />
+                    )}
+                    <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-2.5")}>
                       <Icon
                         className={cn(
-                          "w-4 h-4 transition-colors",
+                          "w-4 h-4 shrink-0 transition-colors",
                           isActive
-                            ? "text-bpjs"
-                            : "text-jkn-muted group-hover:text-jkn-text"
+                            ? "text-[#34D399]"
+                            : "text-emerald-100/50 group-hover:text-emerald-200"
                         )}
                       />
-                      <span>{item.name}</span>
+                      {!collapsed && <span className="tracking-[-0.01em]">{item.name}</span>}
                     </div>
-                    {item.badge && (
+                    {!collapsed && item.badge && (
                       <span
                         className={cn(
-                          "text-[10px] px-1.5 py-0.2 rounded-full",
-                          item.badgeColor || "bg-surface-secondary text-jkn-muted"
+                          "text-[10px] px-1.5 py-0.5 rounded-md leading-none",
+                          item.badgeColor || "bg-white/10 text-emerald-100"
                         )}
                       >
                         {item.badge}
                       </span>
+                    )}
+                    {collapsed && item.badge && (
+                      <span
+                        className={cn(
+                          "absolute top-1.5 right-1.5 w-2 h-2 rounded-full ring-2 ring-[#071A12]",
+                          item.href === "/investigation-queue" ? "bg-rose-500" : "bg-[#34D399]"
+                        )}
+                      />
                     )}
                   </Link>
                 );
@@ -185,18 +241,81 @@ export const Sidebar: React.FC<SidebarProps> = ({ queueCount = 47, onOpenCopilot
         ))}
       </div>
 
-      {/* System Status Footer */}
-      <div className="p-3 border-t border-jkn-divider bg-surface-secondary/40">
-        <div className="flex items-center justify-between px-2 py-1">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-bpjs animate-pulse" />
-            <span className="text-[11px] font-semibold text-jkn-muted">ARSA Engine v2.4</span>
+      {/* System Status Footer: status AI nyata + tautan ikhtisar */}
+      <div className="relative p-3 border-t border-white/[0.08] bg-black/20 space-y-2">
+        <div
+          className={cn(
+            "flex items-center rounded-xl bg-white/[0.04] border border-white/[0.08] py-2",
+            collapsed ? "justify-center px-1" : "justify-between px-3"
+          )}
+          title={ai?.reason || (ai?.available ? `${ai.label || "LLM"} aktif` : "AI: mode deterministik")}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className={cn(
+                "w-2 h-2 rounded-full shrink-0",
+                ai === null
+                  ? "bg-emerald-100/40"
+                  : ai.available
+                  ? "bg-[#34D399] shadow-[0_0_8px_#34D399] animate-pulse"
+                  : "bg-amber-400"
+              )}
+            />
+            {!collapsed && (
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold text-white/90 truncate leading-tight">
+                  {ai === null
+                    ? "Memeriksa Mesin..."
+                    : ai.available
+                    ? `${ai.label || "Gemini LLM"} Aktif`
+                    : "Mesin Deterministik"}
+                </div>
+                <div className="text-[10px] text-emerald-100/45 truncate">
+                  8 Detektor Forensik JKN
+                </div>
+              </div>
+            )}
           </div>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-jkn-border text-jkn-dim font-mono">
-            Active
-          </span>
         </div>
+        {!collapsed && (
+          <Link
+            href="/landing"
+            className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-emerald-100/55 hover:text-white hover:bg-white/[0.05] transition-colors"
+          >
+            <span>Ikhtisar Eksekutif</span>
+            <span className="font-mono text-[10px] text-emerald-300/70">↗</span>
+          </Link>
+        )}
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside
+        className={cn(
+          "hidden lg:flex bg-[#071A12] border-r border-[#0E291E] flex-col shrink-0 h-screen sticky top-0 select-none z-30 print:hidden transition-all duration-200",
+          isCollapsed ? "w-[74px]" : "w-64"
+        )}
+      >
+        {renderSidebarContent(isCollapsed, false)}
+      </aside>
+
+      {/* Mobile Drawer Overlay */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex print:hidden">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={onCloseMobile}
+            aria-hidden="true"
+          />
+          <aside className="relative w-64 max-w-[82vw] bg-[#071A12] border-r border-white/10 flex flex-col h-full z-10 shadow-2xl animate-in slide-in-from-left duration-200">
+            {renderSidebarContent(false, true)}
+          </aside>
+        </div>
+      )}
+    </>
   );
 };
+

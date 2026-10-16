@@ -12,12 +12,13 @@ import {
   ArrowLeft,
   Printer,
   FileSpreadsheet,
+  Download,
 } from "lucide-react";
 
 const verdictLabel: Record<string, string> = {
-  CONFIRMED_RISK: "CONFIRMED RISK (TARIFF DOWN-CORRECTION)",
-  FALSE_POSITIVE: "FALSE POSITIVE (CLAIM APPROVED)",
-  NEED_EVIDENCE: "PENDING — ADDITIONAL EVIDENCE REQUESTED",
+  CONFIRMED_RISK: "RISIKO TERKONFIRMASI (KOREKSI TARIF / DISALLOW)",
+  FALSE_POSITIVE: "POSITIF PALSU (KLAIM WAJAR)",
+  NEED_EVIDENCE: "TERTUNDA — BUKTI TAMBAHAN DIMINTA",
 };
 
 export default function ReportDetailPage() {
@@ -52,7 +53,7 @@ export default function ReportDetailPage() {
   if (loading) {
     return (
       <DashboardShell>
-        <PageLoader label={`Loading audit dossier for ${id}...`} />
+        <PageLoader label={`Memuat dosier audit untuk ${id}...`} />
       </DashboardShell>
     );
   }
@@ -62,10 +63,12 @@ export default function ReportDetailPage() {
       <DashboardShell>
         <div className="flex flex-col items-center justify-center gap-3 py-20 text-center print:hidden">
           <FileSpreadsheet className="w-8 h-8 text-jkn-dim" />
-          <p className="text-sm font-bold text-jkn-text">Report not found</p>
-          <p className="text-xs text-jkn-muted">No investigation matches "{investigationId}".</p>
-          <Link href="/reports" className="text-xs font-bold text-bpjs-dark hover:underline">
-            Back to Reports Directory
+          <p className="text-sm font-bold text-jkn-text">Laporan tidak ditemukan</p>
+          <p className="text-xs text-jkn-muted">
+            Tidak ada berkas investigasi dengan nomor &ldquo;{investigationId}&rdquo;.
+          </p>
+          <Link href="/reports" className="text-xs font-semibold text-bpjs-dark hover:underline">
+            Kembali ke Register Dosier
           </Link>
         </div>
       </DashboardShell>
@@ -84,147 +87,231 @@ export default function ReportDetailPage() {
           className="flex items-center gap-2 text-xs font-semibold text-jkn-muted hover:text-jkn-text"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Reports Directory</span>
+          <span>Kembali ke Register Dosier</span>
         </Link>
-        <button
-          onClick={() => window.print()}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-bpjs text-white text-xs font-bold hover:bg-bpjs-deep transition-all shadow-sm"
-        >
-          <Printer className="w-4 h-4" />
-          <span>Print / Export PDF Dossier</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.print()}
+            className="h-9 flex items-center gap-1.5 px-3.5 rounded-lg border border-jkn-border bg-white text-jkn-text text-xs font-semibold hover:bg-surface-secondary transition-colors"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Cetak</span>
+          </button>
+          <a
+            href={`/api/reports/${investigation.investigation_id}/pdf`}
+            className="h-9 flex items-center gap-1.5 px-4 rounded-lg bg-bpjs text-white text-xs font-semibold hover:bg-bpjs-deep transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Unduh PDF (Hash SHA-256)</span>
+          </a>
+        </div>
       </div>
 
       {/* Formal Printable Document Canvas */}
-      <div className="max-w-4xl mx-auto bg-white border border-jkn-border p-8 md:p-12 rounded-2xl shadow-card space-y-6 print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full print-page">
+      <div className="max-w-4xl mx-auto bg-white border border-jkn-border p-8 md:p-10 rounded-xl shadow-subtle space-y-6 print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full print-page tabular-nums">
         {/* Institutional Header */}
         <div className="flex items-center justify-between border-b-2 border-bpjs pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-xl bg-white border border-bpjs-border flex items-center justify-center p-1.5 shadow-xs shrink-0">
+            <div className="w-12 h-12 rounded-lg bg-white border border-jkn-border flex items-center justify-center p-1.5 shrink-0">
               <img src="/arsa_logo.png" alt="ARSA JKN" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h2 className="text-base font-black text-jkn-text tracking-tight uppercase">
-                SOCIAL SECURITY ADMINISTRATOR FOR HEALTH (BPJS KESEHATAN)
+              <h2 className="text-sm font-bold text-jkn-text tracking-tight uppercase">
+                BPJS KESEHATAN · DIREKTORAT JAMINAN PELAYANAN KESEHATAN
               </h2>
-              <p className="text-xs text-bpjs font-bold">
-                NATIONAL CLAIM INTEGRITY AUDIT & FORENSIC INVESTIGATION TASKFORCE (JKN RISK INTELLIGENCE)
+              <p className="text-xs text-bpjs-dark font-semibold mt-0.5">
+                DOSIER PEMERIKSAAN INTEGRITAS KLAIM INA-CBG (ARSA AI)
               </p>
             </div>
           </div>
           <div className="text-right text-xs">
-            <span className="font-mono text-jkn-dim block">REP-{investigation.investigation_id}</span>
-            <span className="font-bold text-risk-critical">CONFIDENTIAL AUDIT</span>
+            <span className="font-mono font-bold text-jkn-text block">
+              REP-{investigation.investigation_id}
+            </span>
+            <span className="text-[10px] font-bold text-risk-critical uppercase tracking-wider">
+              DOKUMEN AUDIT TERBATAS
+            </span>
           </div>
         </div>
 
         {/* Report Metadata */}
-        <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-surface-secondary/70 border border-jkn-divider text-xs">
-          <div>
-            <span className="text-[10px] text-jkn-dim font-medium block">Claim Dossier Reference:</span>
-            <span className="font-bold text-jkn-text">{claim.claim_id} (SEP: {claim.sep_number})</span>
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-jkn-divider rounded-lg bg-surface-secondary/70 border border-jkn-border text-xs">
+          <div className="p-3">
+            <span className="text-[10px] text-jkn-dim font-bold uppercase block">Referensi Klaim</span>
+            <span className="font-mono font-semibold text-jkn-text mt-0.5 block">
+              {claim.claim_id}
+            </span>
+            <span className="font-mono text-[10px] text-jkn-muted block">SEP: {claim.sep_number}</span>
           </div>
-          <div>
-            <span className="text-[10px] text-jkn-dim font-medium block">Audited Healthcare Facility:</span>
-            <span className="font-bold text-jkn-text">{claim.provider.name} ({claim.provider.city})</span>
+          <div className="p-3">
+            <span className="text-[10px] text-jkn-dim font-bold uppercase block">Faskes Diaudit</span>
+            <span className="font-semibold text-jkn-text mt-0.5 block">{claim.provider.name}</span>
+            <span className="text-[10px] text-jkn-muted block">{claim.provider.city}</span>
           </div>
-          <div>
-            <span className="text-[10px] text-jkn-dim font-medium block">Participant / Patient Name:</span>
-            <span className="font-bold text-jkn-text">{claim.patient.name} ({claim.patient.patient_id})</span>
+          <div className="p-3">
+            <span className="text-[10px] text-jkn-dim font-bold uppercase block">
+              Peserta (Pseudonim)
+            </span>
+            <span className="font-semibold text-jkn-text mt-0.5 block">{claim.patient.name}</span>
+            <span className="font-mono text-[10px] text-jkn-muted block">
+              {claim.patient.patient_id}
+            </span>
           </div>
-          <div>
-            <span className="text-[10px] text-jkn-dim font-medium block">Report Publication Date:</span>
-            <span className="font-bold text-jkn-text">{formatDate(decision?.decided_at || investigation.updated_at)}</span>
+          <div className="p-3">
+            <span className="text-[10px] text-jkn-dim font-bold uppercase block">
+              Tanggal Dosier
+            </span>
+            <span className="font-semibold text-jkn-text mt-0.5 block">
+              {formatDate(decision?.decided_at || investigation.updated_at)}
+            </span>
+            <span className="font-mono text-[10px] text-jkn-muted block">
+              Skor Risiko: {claim.risk_score}/100
+            </span>
           </div>
         </div>
 
         {/* Executive Summary */}
         <div className="space-y-2">
-          <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider border-b border-jkn-divider pb-1">
-            I. Executive Finding Summary
+          <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider border-b border-jkn-divider pb-1.5">
+            I. Ringkasan Eksekutif Pemeriksaan
           </h3>
           <p className="text-xs text-jkn-text leading-relaxed">
             {claim.risk_findings.length > 0 ? (
               <>
-                Based on forensic examination of electronic medical records, integrated physician notes (CPPT), and
-                INA-CBG tariff schedule benchmarks, the audit taskforce determines that claim{" "}
-                <strong>{claim.claim_id}</strong> contains indicators of{" "}
+                Berdasarkan pemeriksaan dokumen rekam medis dan pembandingan terhadap distribusi faskes sejawat (peer group), detektor deterministik mengidentifikasi bahwa berkas klaim{" "}
+                <strong className="font-mono">{claim.claim_id}</strong> memuat indikator{" "}
                 {claim.risk_findings.map((f, i) => (
                   <React.Fragment key={i}>
-                    {i > 0 && (i === claim.risk_findings.length - 1 ? " and " : ", ")}
+                    {i > 0 && (i === claim.risk_findings.length - 1 ? " serta " : ", ")}
                     <strong>{f.title}</strong>
                   </React.Fragment>
                 ))}
-                .{claim.tariff_difference ? ` An unwarranted financial variance of ` : ""}
-                {claim.tariff_difference && <strong>{formatRupiah(claim.tariff_difference)}</strong>}
-                {claim.tariff_difference ? " has been identified." : ""}
+                .
+                {claim.tariff_difference
+                  ? ` Teridentifikasi potensi selisih tagihan terhadap tarif standar sebesar `
+                  : ""}
+                {claim.tariff_difference ? (
+                  <strong className="font-mono text-risk-critical">
+                    {formatRupiah(claim.tariff_difference)}
+                  </strong>
+                ) : null}
+                {claim.tariff_difference ? "." : ""}
               </>
             ) : (
-              <>No automated risk indicators were raised for claim <strong>{claim.claim_id}</strong>.</>
+              <>
+                Tidak ditemukan indikator anomali otomatis pada berkas klaim{" "}
+                <strong className="font-mono">{claim.claim_id}</strong>.
+              </>
             )}
           </p>
         </div>
 
         {/* Evidence Matrix */}
-        <div className="space-y-2">
-          <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider border-b border-jkn-divider pb-1">
-            II. Clinical Evidence & Record Contradictions
+        <div className="space-y-2.5">
+          <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider border-b border-jkn-divider pb-1.5">
+            II. Rincian Temuan Detektor & Bukti Rekam Medis Verbatim
           </h3>
-          <div className="space-y-2 text-xs">
+          <div className="divide-y divide-jkn-divider border border-jkn-border rounded-lg overflow-hidden text-xs">
             {claim.risk_findings.length > 0 ? (
               claim.risk_findings.map((finding, idx) => (
-                <div key={idx} className="p-3 rounded-xl border border-risk-critical-border bg-risk-critical-bg/30 space-y-1">
-                  <div className="font-bold text-risk-critical">
-                    {idx + 1}. {finding.title}
+                <div key={idx} className="p-4 bg-white space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-risk-critical">
+                      {idx + 1}. {finding.title}
+                    </span>
+                    <span className="font-mono text-[11px] text-jkn-muted">
+                      Keyakinan: {(finding.confidence * 100).toFixed(0)}%
+                    </span>
                   </div>
-                  <p className="text-[11px] text-jkn-muted">{finding.summary}</p>
+                  <p className="text-xs text-jkn-muted leading-relaxed">{finding.summary}</p>
+                  <div className="space-y-1.5 pt-1">
+                    {finding.evidence.map((e, i) => (
+                      <div
+                        key={i}
+                        className="text-[11px] pl-3 border-l-2 border-bpjs py-0.5 space-y-0.5"
+                      >
+                        <div>
+                          <span className="font-mono text-[10px] font-semibold text-bpjs-dark">
+                            [{e.evidence_id}]
+                          </span>{" "}
+                          <span className="text-jkn-text">{e.claim_statement}</span>
+                        </div>
+                        {e.excerpt && (
+                          <div className="italic text-jkn-muted">&ldquo;{e.excerpt}&rdquo;</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {finding.ai_explanation && (
+                    <div className="text-[11px] text-jkn-text bg-surface-secondary border border-jkn-border rounded p-2.5 mt-2">
+                      <strong>
+                        Sintesis Analisis (
+                        {finding.ai_explanation.source === "llm"
+                          ? "LLM · Sitasi Tervalidasi"
+                          : "Deterministik"}
+                        ):
+                      </strong>{" "}
+                      {finding.ai_explanation.text}
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
-              <p className="text-[11px] text-jkn-muted">No contradicting or missing evidence was identified for this claim.</p>
+              <p className="p-4 text-xs text-jkn-muted">
+                Tidak ada bukti kontradiksi pada berkas klaim ini.
+              </p>
             )}
           </div>
         </div>
 
         {/* Decision & Signatures */}
-        <div className="space-y-4 pt-4">
-          <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider border-b border-jkn-divider pb-1">
-            III. Remediation Order & Fund Recovery Plan
+        <div className="space-y-4 pt-2">
+          <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider border-b border-jkn-divider pb-1.5">
+            III. Penetapan Keputusan Audit & Rencana Tindak Lanjut
           </h3>
-          <div className="p-4 rounded-xl bg-bpjs-soft/50 border border-bpjs-border text-xs space-y-2">
-            <div className="flex justify-between font-bold text-bpjs-dark">
-              <span>Remediation Order:</span>
-              <span>{decision ? verdictLabel[decision.verdict] || decision.verdict : "AWAITING INVESTIGATOR DETERMINATION"}</span>
+          <div className="p-4 rounded-lg bg-surface-secondary border border-jkn-border text-xs space-y-2">
+            <div className="flex justify-between font-bold text-jkn-text">
+              <span>Status Keputusan:</span>
+              <span className="font-mono text-bpjs-dark">
+                {decision
+                  ? verdictLabel[decision.verdict] || decision.verdict
+                  : "MENUNGGU PENETAPAN KEPUTUSAN"}
+              </span>
             </div>
-            <p className="text-[11px] text-jkn-muted leading-relaxed">
+            <p className="text-xs text-jkn-muted leading-relaxed">
               {decision?.rationale ||
                 (topFinding
-                  ? `Recommended: down-correction to standard INA-CBG tariff and disallowance of unsupported charges pending final investigator sign-off, based on: ${topFinding.recommended_actions.join("; ") || topFinding.summary}.`
-                  : "No remediation action is required at this time.")}
+                  ? `Rekomendasi tindak lanjut: koreksi ke kode tarif INA-CBG yang sesuai bukti klinis atau penangguhan komponen biaya yang tidak didukung dokumen (${
+                      topFinding.recommended_actions.join("; ") || topFinding.summary
+                    }).`
+                  : "Tidak diperlukan tindakan koreksi pada klaim ini.")}
             </p>
             {decision?.recommended_recovery_amount ? (
-              <p className="text-[11px] font-bold text-risk-critical">
-                Recommended recovery amount: {formatRupiah(decision.recommended_recovery_amount)}
+              <p className="text-xs font-mono font-bold text-risk-critical pt-1">
+                Nilai Pemulihan / Koreksi Tagihan:{" "}
+                {formatRupiah(decision.recommended_recovery_amount)}
               </p>
             ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-8 pt-8 text-xs text-center">
             <div className="space-y-12">
-              <span className="text-jkn-dim font-medium">Lead Investigating Auditor,</span>
+              <span className="text-jkn-dim font-medium">Verifikator Pemeriksa,</span>
               <div>
-                <span className="font-bold text-jkn-text underline block">{investigation.assigned_to.name}</span>
+                <span className="font-bold text-jkn-text underline block">
+                  {investigation.assigned_to.name}
+                </span>
                 <span className="text-[10px] text-jkn-dim">{investigation.assigned_to.role}</span>
               </div>
             </div>
             <div className="space-y-12">
-              <span className="text-jkn-dim font-medium">Determination,</span>
+              <span className="text-jkn-dim font-medium">Pejabat Penetap Keputusan,</span>
               <div>
                 <span className="font-bold text-jkn-text underline block">
-                  {decision?.decided_by || "Pending"}
+                  {decision?.decided_by || "Menunggu Otorisasi"}
                 </span>
                 <span className="text-[10px] text-jkn-dim">
-                  {decision ? formatDate(decision.decided_at) : "Investigation still in progress"}
+                  {decision ? formatDate(decision.decided_at) : "Pemeriksaan masih berlangsung"}
                 </span>
               </div>
             </div>

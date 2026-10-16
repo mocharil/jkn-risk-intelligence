@@ -34,16 +34,17 @@ export const Pagination: React.FC<PaginationProps> = ({ page, pageSize, total, o
   }
 
   return (
-    <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 ${className || ""}`}>
-      <span className="text-[11px] text-jkn-muted">
-        Showing <strong className="text-jkn-text">{from}-{to}</strong> of <strong className="text-jkn-text">{total}</strong>
+    <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 tabular-nums ${className || ""}`}>
+      <span className="text-xs text-jkn-muted">
+        Menampilkan <strong className="font-semibold text-jkn-text">{from}–{to}</strong> dari <strong className="font-semibold text-jkn-text">{total}</strong> data
       </span>
       <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={() => onPageChange(page - 1)}
+          aria-label="Halaman sebelumnya"
           disabled={page <= 1}
-          className="p-1.5 rounded-lg border border-jkn-border text-jkn-muted hover:bg-surface-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-jkn-border bg-white text-jkn-muted hover:bg-surface-secondary hover:text-jkn-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
@@ -56,9 +57,13 @@ export const Pagination: React.FC<PaginationProps> = ({ page, pageSize, total, o
             <button
               type="button"
               key={p}
+              aria-label={`Halaman ${p}`}
+              aria-current={p === page ? "page" : undefined}
               onClick={() => onPageChange(p)}
-              className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-colors ${
-                p === page ? "bg-bpjs text-white" : "text-jkn-muted hover:bg-surface-secondary"
+              className={`min-w-[32px] h-8 px-2 rounded-md text-xs font-semibold transition-colors ${
+                p === page
+                  ? "bg-bpjs text-white border border-bpjs"
+                  : "border border-transparent text-jkn-muted hover:bg-surface-secondary hover:text-jkn-text"
               }`}
             >
               {p}
@@ -68,8 +73,9 @@ export const Pagination: React.FC<PaginationProps> = ({ page, pageSize, total, o
         <button
           type="button"
           onClick={() => onPageChange(page + 1)}
+          aria-label="Halaman berikutnya"
           disabled={page >= totalPages}
-          className="p-1.5 rounded-lg border border-jkn-border text-jkn-muted hover:bg-surface-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-jkn-border bg-white text-jkn-muted hover:bg-surface-secondary hover:text-jkn-text disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronRight className="w-3.5 h-3.5" />
         </button>

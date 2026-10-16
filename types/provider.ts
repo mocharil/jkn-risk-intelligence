@@ -31,6 +31,10 @@ export interface Provider {
     cloning_pct: number;
     phantom_billing_pct: number;
     abnormal_los_pct: number;
+    unbundling_pct?: number;
+    inflated_bills_pct?: number;
+    repeat_billing_pct?: number;
+    readmission_pct?: number;
   };
   peer_comparison: {
     severity_3_rate: { provider: number; peer_median: number };

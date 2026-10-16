@@ -6,6 +6,7 @@ import { Building2, Stethoscope, User, FileText, Activity, Layers, X, ZoomIn, Zo
 import { formatRupiah } from "@/lib/formatting/currency";
 import { RiskPill } from "../ui/RiskPill";
 import Link from "next/link";
+import type { GraphData, GraphNode, GraphEdge } from "@/lib/analytics/graph";
 
 interface VisNetworkGraphProps {
   claimId?: string;
@@ -13,15 +14,7 @@ interface VisNetworkGraphProps {
   className?: string;
 }
 
-interface NodeData {
-  id: string;
-  label: string;
-  type: string;
-  subtitle: string;
-  risk_score?: number;
-  risk_level?: string;
-  cluster?: string;
-}
+type NodeData = GraphNode;
 
 export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
   claimId,
@@ -33,32 +26,23 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
   const [selectedNode, setSelectedNode] = useState<NodeData | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
 
-  const rawNodes: NodeData[] = [
-    { id: "HOSP-01", label: "RS Sehat Sentosa", type: "PROVIDER", subtitle: "Primary Facility (Hero Hospital)", risk_score: 94, risk_level: "CRITICAL", cluster: "CLUSTER-42" },
-    { id: "DR-01", label: "dr. Hendra Prasetyo, Sp.OT", type: "DOCTOR", subtitle: "Attending DPJP Physician", risk_score: 91, risk_level: "CRITICAL", cluster: "CLUSTER-42" },
-    { id: "DR-02", label: "dr. Setiawan Santoso, Sp.PD", type: "DOCTOR", subtitle: "Internal Medicine Consultant", risk_score: 76, risk_level: "HIGH" },
-    { id: "CLM-10293", label: "CLM-10293 (Hero)", type: "CLAIM", subtitle: "Hero Claim (Rp 18.45M)", risk_score: 94, risk_level: "CRITICAL", cluster: "CLUSTER-42" },
-    { id: "CLM-09283", label: "CLM-09283 (Duplicate)", type: "CLAIM", subtitle: "96.4% Text Match", risk_score: 92, risk_level: "CRITICAL", cluster: "CLUSTER-42" },
-    { id: "CLM-08741", label: "CLM-08741 (LOS Outlier)", type: "CLAIM", subtitle: "LOS Deviation +6 Days", risk_score: 88, risk_level: "HIGH", cluster: "CLUSTER-42" },
-    { id: "P-10842", label: "Bambang Sudibyo", type: "PATIENT", subtitle: "Inpatient Participant (48 yo)" },
-    { id: "P-08912", label: "Eko Nugroho", type: "PATIENT", subtitle: "Linked Participant" },
-    { id: "DIAG-A09", label: "A09 - Diarrhea & Gastroenteritis", type: "DIAGNOSIS", subtitle: "Primary Diagnosis Sev 3" },
-    { id: "PROC-4495", label: "44.95 - Laparoscopic Surgery", type: "PROCEDURE", subtitle: "Unrecorded Procedure Code", risk_score: 96, risk_level: "CRITICAL", cluster: "CLUSTER-42" },
-  ];
+  const [graph, setGraph] = useState<GraphData | null>(null);
+  const [error, setError] = useState("");
+  const rawNodes: NodeData[] = graph?.nodes || [];
+  const rawEdges: GraphEdge[] = graph?.edges || [];
 
-  const rawEdges = [
-    { from: "HOSP-01", to: "DR-01", label: "DPJP", color: "#00A651" },
-    { from: "HOSP-01", to: "DR-02", label: "Consult", color: "#64748B" },
-    { from: "DR-01", to: "CLM-10293", label: "Billed", color: "#D92D20", dashes: true, width: 2.5 },
-    { from: "DR-01", to: "CLM-09283", label: "Repeated Pattern", color: "#D92D20", dashes: true, width: 2 },
-    { from: "DR-01", to: "CLM-08741", label: "LOS Deviation", color: "#F79009", dashes: true, width: 1.5 },
-    { from: "CLM-10293", to: "P-10842", label: "Patient", color: "#94A3B8" },
-    { from: "CLM-09283", to: "P-08912", label: "Patient", color: "#94A3B8" },
-    { from: "CLM-10293", to: "DIAG-A09", label: "Upcoding", color: "#7A5AF8", dashes: true, width: 2 },
-    { from: "CLM-10293", to: "PROC-4495", label: "Phantom", color: "#D92D20", dashes: true, width: 2.5 },
-    { from: "CLM-09283", to: "PROC-4495", label: "Phantom Duplicate", color: "#D92D20", dashes: true, width: 2 },
-    { from: "CLM-10293", to: "CLM-09283", label: "96.4% Semantic", color: "#D92D20", dashes: true, width: 2.5 },
-  ];
+  // Graf dibangun server dari data analisis (faskes-dokter-klaim-pasien-diagnosis-tindakan), bukan data tetap.
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (claimId) qs.set("claim_id", claimId);
+    if (providerId) qs.set("provider_id", providerId);
+    setGraph(null);
+    setError("");
+    fetch(`/api/graph?${qs}`)
+      .then((r) => r.json())
+      .then((j) => (j.data ? setGraph(j.data) : setError(j.error || "Gagal memuat graf")))
+      .catch(() => setError("Gagal memuat graf"));
+  }, [claimId, providerId]);
 
   const getNodeColor = (type: string, risk_level?: string) => {
     switch (type) {
@@ -101,10 +85,10 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
   };
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !graph) return;
 
     const filteredNodes = activeFilter === "CLUSTER_ONLY"
-      ? rawNodes.filter((n) => n.cluster === "CLUSTER-42")
+      ? rawNodes.filter((n) => !!n.cluster)
       : rawNodes;
 
     const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
@@ -183,7 +167,7 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
     return () => {
       network.destroy();
     };
-  }, [activeFilter]);
+  }, [activeFilter, graph]);
 
   const handleZoomIn = () => {
     if (!networkRef.current) return;
@@ -203,18 +187,18 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
   };
 
   return (
-    <div className={`relative bg-surface rounded-2xl border border-jkn-border p-4 shadow-sm overflow-hidden flex flex-col ${className || ""}`}>
+    <div className={`relative bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle overflow-hidden flex flex-col ${className || ""}`}>
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 border-b border-jkn-divider pb-2.5">
         <div>
-          <h3 className="text-sm font-bold text-jkn-text flex items-center gap-2">
-            <span>Entity Relation Graph & Syndicate Cluster (#42)</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-risk-critical-bg text-risk-critical border border-risk-critical-border font-bold uppercase">
-              4 Suspicious Relations
+          <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider flex items-center gap-2">
+            <span>Graf Relasi Entitas{graph?.nodes.find((n) => n.cluster)?.cluster ? ` · ${graph.nodes.find((n) => n.cluster)?.cluster}` : ""}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-md bg-risk-critical-bg text-risk-critical border border-risk-critical-border font-bold uppercase">
+              {graph ? `${graph.stats.flagged} klaim berisiko tinggi` : "memuat…"}
             </span>
           </h3>
           <p className="text-[11px] text-jkn-muted mt-0.5">
-            Cross-entity relationship graph linking attending doctors, hospitals, anomalous claims, and phantom procedures
+            Relasi dokter DPJP, faskes, klaim anomali, pasien (pseudonim), diagnosis, dan tindakan tanpa jejak dokumen, dibangun dari data analisis.
           </p>
         </div>
 
@@ -222,23 +206,23 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
         <div className="flex items-center gap-2 text-[10px] text-jkn-dim bg-surface-secondary px-3 py-1.5 rounded-lg border border-jkn-border flex-wrap">
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded bg-bpjs" />
-            <span>Facility</span>
+            <span>Faskes</span>
           </div>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded bg-bpjs-deep" />
-            <span>Physician</span>
+            <span>Dokter</span>
           </div>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded bg-risk-critical" />
-            <span>Anomaly Claim</span>
+            <span>Klaim</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded bg-purple-600" />
+            <span className="w-2 h-2 rounded bg-intel" />
             <span>Diagnosis</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded bg-rose-600" />
-            <span>Procedure</span>
+            <span className="w-2 h-2 rounded bg-amber-600" />
+            <span>Tindakan</span>
           </div>
         </div>
       </div>
@@ -254,7 +238,7 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
                 : "bg-surface-secondary text-jkn-text border-jkn-border hover:bg-bpjs-soft"
             }`}
           >
-            All Entities (10)
+            Semua entitas ({rawNodes.length})
           </button>
           <button
             onClick={() => setActiveFilter("CLUSTER_ONLY")}
@@ -264,7 +248,7 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
                 : "bg-surface-secondary text-jkn-text border-jkn-border hover:bg-risk-critical-bg"
             }`}
           >
-            Focus Anomaly Cluster #42
+            Fokus klaster anomali
           </button>
         </div>
 
@@ -297,6 +281,8 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
       {/* Network Canvas Container */}
       <div className="relative w-full h-[420px] bg-gradient-to-b from-[#F2F8F5]/50 to-white rounded-xl border border-jkn-divider overflow-hidden shadow-inner">
         <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+        {!graph && !error && <div className="absolute inset-0 flex items-center justify-center text-xs text-jkn-muted">Membangun graf dari data…</div>}
+        {error && <div className="absolute inset-0 flex items-center justify-center text-xs text-risk-critical">{error}</div>}
 
         {/* Selected Node Inspector Drawer */}
         {selectedNode && (
@@ -326,18 +312,18 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
 
             <div className="py-2.5 space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-jkn-muted">Entity Type:</span>
+                <span className="text-jkn-muted">Jenis entitas:</span>
                 <span className="font-semibold text-jkn-text">{selectedNode.type}</span>
               </div>
               {selectedNode.risk_score && (
                 <div className="flex items-center justify-between">
-                  <span className="text-jkn-muted">Risk Score:</span>
+                  <span className="text-jkn-muted">Skor risiko:</span>
                   <RiskPill score={selectedNode.risk_score} level={selectedNode.risk_level as any} size="sm" />
                 </div>
               )}
               {selectedNode.cluster && (
                 <div className="flex items-center justify-between">
-                  <span className="text-jkn-muted">Syndicate Cluster:</span>
+                  <span className="text-jkn-muted">Klaster:</span>
                   <span className="font-bold text-risk-critical">{selectedNode.cluster}</span>
                 </div>
               )}
@@ -345,10 +331,10 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
 
             {selectedNode.type === "CLAIM" && (
               <Link
-                href={`/investigations/INV-2026-010293`}
+                href={`/investigations/INV-2026-${selectedNode.id.replace(/\D/g, "").padStart(6, "0")}`}
                 className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-bpjs text-white text-xs font-bold hover:bg-bpjs-deep transition-all shadow-xs"
               >
-                <span>Open Case Investigation</span>
+                <span>Buka investigasi</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             )}
