@@ -3,8 +3,9 @@ import { DataQualitySummary, FieldMapping, RejectedRow } from "@/types/dataset";
 import { Provider } from "@/types/provider";
 import { INDONESIA_PROVINCES } from "../data/indonesia-provinces";
 import { initialsOnly, maskCardNumber, pseudonymPatientId, scrubText } from "../pii/anonymize";
-import { PROCEDURE_REFERENCE, referenceFor } from "../risk/reference";
-import { CANONICAL_FIELDS, REQUIRED_FIELDS, normName } from "./canonical";
+import { DIAGNOSIS_REFERENCE, PROCEDURE_REFERENCE, referenceFor } from "../risk/reference";
+import { icdDescription } from "../data/bpjs-national";
+import { CANONICAL_FIELDS, REQUIRED_FIELDS, missingRequiredFields, normName } from "./canonical";
 
 export interface NormalizeContext {
   existingClaimIds: Set<string>;
@@ -94,14 +95,41 @@ function parseSeverity(v: string): 1 | 2 | 3 | null {
   return n && n >= 1 && n <= 3 ? (Math.round(n) as 1 | 2 | 3) : null;
 }
 
+/** Kode wilayah Kemendagri/BPS 2 digit (dipakai pada data BPJS) -> kode ID-XX. */
+export const KEMENDAGRI_PROVINCE: Record<string, string> = {
+  "11": "ID-AC", "12": "ID-SU", "13": "ID-SB", "14": "ID-RI", "15": "ID-JA", "16": "ID-SS", "17": "ID-BE", "18": "ID-LA", "19": "ID-BB", "21": "ID-KR",
+  "31": "ID-JK", "32": "ID-JB", "33": "ID-JT", "34": "ID-YO", "35": "ID-JI", "36": "ID-BT", "51": "ID-BA", "52": "ID-NB", "53": "ID-NT",
+  "61": "ID-KB", "62": "ID-KT", "63": "ID-KS", "64": "ID-KI", "65": "ID-KU", "71": "ID-SA", "72": "ID-ST", "73": "ID-SN", "74": "ID-SG", "75": "ID-GO", "76": "ID-SR",
+  "81": "ID-MA", "82": "ID-MU", "91": "ID-PB", "92": "ID-PB", "94": "ID-PA",
+};
+
 function provinceCode(v: string): string | null {
   const s = v.trim();
   if (!s) return null;
+  if (/^\d{2}$/.test(s) && KEMENDAGRI_PROVINCE[s]) return KEMENDAGRI_PROVINCE[s];
   const byCode = INDONESIA_PROVINCES.find((p) => p.code.toLowerCase() === s.toLowerCase());
   if (byCode) return byCode.code;
   const n = normName(s);
   const byName = INDONESIA_PROVINCES.find((p) => normName(p.name) === n || normName(p.name).includes(n) || n.includes(normName(p.name)));
   return byName?.code ?? null;
+}
+
+/** "1", "KELAS 2", "III", "Kelas I" -> KELAS_n; kosong/tak dikenal -> TIDAK_DIKETAHUI (faktor biaya netral). */
+export function parseTreatmentClass(v: string): "KELAS_1" | "KELAS_2" | "KELAS_3" | "TIDAK_DIKETAHUI" {
+  const t = v.trim().toLowerCase().replace(/^kelas\s*/, "").replace(/^kls\s*/, "");
+  if (["1", "i", "satu"].includes(t)) return "KELAS_1";
+  if (["2", "ii", "dua"].includes(t)) return "KELAS_2";
+  if (["3", "iii", "tiga"].includes(t)) return "KELAS_3";
+  return "TIDAK_DIKETAHUI";
+}
+
+/** RITL / RJTL / rawat jalan / rawat inap. Angka mengikuti konvensi SEP: 1 = rawat inap, 2 = rawat jalan. */
+export function parseCareLevel(v: string): "INAP" | "JALAN" | null {
+  const t = v.trim().toLowerCase();
+  if (!t) return null;
+  if (/^(2|rj|rjtl|rjtp|rawat\s*jalan|jalan|outpatient|op)$/.test(t)) return "JALAN";
+  if (/^(1|ri|ritl|ritp|rawat\s*inap|inap|inpatient|ip)$/.test(t)) return "INAP";
+  return null;
 }
 
 function splitList(v: string): string[] {
@@ -111,6 +139,18 @@ function splitList(v: string): string[] {
 // ---------------------------------------------------------------------------
 // Normalisasi utama
 // ---------------------------------------------------------------------------
+/** Nama diagnosis: tabel referensi aplikasi, lalu nama resmi ICD-10 dari statistik BPJS, terakhir "Diagnosis lain". */
+function describeDx(code: string): string {
+  return DIAGNOSIS_REFERENCE[code]?.description || icdDescription(code) || referenceFor(code).description;
+}
+
+function providerTypeOf(tier: string): Provider["type"] {
+  const t = tier.trim().toUpperCase().replace(/^TIPE\s*/, "");
+  if (t === "A") return "RS_KELAS_A";
+  if (t === "C") return "RS_KELAS_C";
+  return "RS_KELAS_B";
+}
+
 export function normalizeRows(rows: Record<string, string>[], mappings: FieldMapping[], ctx: NormalizeContext): NormalizeResult {
   const colFor = new Map<string, string>();
   mappings.forEach((m) => {
@@ -121,10 +161,9 @@ export function normalizeRows(rows: Record<string, string>[], mappings: FieldMap
     return c ? (row[c] ?? "").trim() : "";
   };
 
-  const missingRequired = REQUIRED_FIELDS.filter((f) => !colFor.has(f));
-  // claim_id wajib; tanggal: butuh admission/discharge atau LOS
-  const hasDates = colFor.has("admission_date") || colFor.has("discharge_date");
-  if (!hasDates) missingRequired.push("admission_date / discharge_date");
+  const missingRequired = missingRequiredFields(new Set(colFor.keys()));
+  // Tanpa kolom kode faskes (data mikro BPJS): faskes diturunkan sebagai strata dari provinsi/kota/kepemilikan/jenis/tipe.
+  const deriveProvider = !colFor.has("provider_id");
 
   const rejected: RejectedRow[] = [];
   const claims: CanonicalClaim[] = [];
@@ -148,6 +187,7 @@ export function normalizeRows(rows: Record<string, string>[], mappings: FieldMap
     const reject = (reason: string) => rejected.push({ row: rowNo, reason });
 
     REQUIRED_FIELDS.forEach((f) => {
+      if (f === "provider_id" && deriveProvider) return;
       requiredTotal++;
       if (get(row, f)) requiredFilled++;
     });
@@ -165,7 +205,15 @@ export function normalizeRows(rows: Record<string, string>[], mappings: FieldMap
     const amount = parseNumber(get(row, "claim_amount"));
     if (amount === null || amount <= 0) return reject(`Total tagihan tidak valid: "${get(row, "claim_amount")}"`);
 
-    const providerRaw = get(row, "provider_id");
+    let providerRaw = get(row, "provider_id");
+    let derivedName = "";
+    if (!providerRaw && deriveProvider) {
+      const pv = provinceCode(get(row, "province")) || "ID-UNK";
+      const parts = [pv, get(row, "city"), get(row, "provider_ownership"), get(row, "provider_kind"), get(row, "provider_tier")].map((x) => normName(x).toUpperCase()).filter(Boolean);
+      providerRaw = `FKRTL-${parts.join("-")}`.slice(0, 80);
+      const tier = get(row, "provider_tier");
+      derivedName = ["Strata faskes", get(row, "provider_kind"), tier ? `tipe ${tier}` : "", get(row, "provider_ownership"), get(row, "city")].filter(Boolean).join(" ");
+    }
     if (!providerRaw) return reject("Kode faskes kosong");
 
     let admission = parseDate(get(row, "admission_date"));
@@ -203,11 +251,12 @@ export function normalizeRows(rows: Record<string, string>[], mappings: FieldMap
       const geo = INDONESIA_PROVINCES.find((p) => p.code === provCode);
       provider = {
         provider_id: providerRaw,
-        name: get(row, "provider_name") || providerRaw,
-        type: "RS_KELAS_B",
+        name: get(row, "provider_name") || derivedName || providerRaw,
+        type: providerTypeOf(get(row, "provider_tier")),
+        // note: tipe A/B/C/D diambil dari data bila ada
         province_code: provCode,
         province_name: geo?.name || "Tidak diketahui",
-        city: "—",
+        city: get(row, "city") ? (/^\d+$/.test(get(row, "city")) ? `Kab/kota ${get(row, "city")}` : get(row, "city")) : "—",
         address: "—",
         phone: "—",
         risk_score: 0,
@@ -234,10 +283,10 @@ export function normalizeRows(rows: Record<string, string>[], mappings: FieldMap
     const sevParsed = parseSeverity(get(row, "severity_level"));
     const allDxCodes = parseAllIcd10(get(row, "primary_diagnosis"));
     const diagnoses: Diagnosis[] = [
-      { code: dx, description: get(row, "diagnosis_description") || ref.description, is_primary: true, severity: sevParsed ?? ref.expected_severity },
+      { code: dx, description: get(row, "diagnosis_description") || describeDx(dx), is_primary: true, severity: sevParsed ?? ref.expected_severity },
       ...allDxCodes.slice(1).map((secCode) => {
         const secRef = referenceFor(secCode);
-        return { code: secCode, description: secRef.description, is_primary: false, severity: secRef.expected_severity };
+        return { code: secCode, description: describeDx(secCode), is_primary: false, severity: secRef.expected_severity };
       }),
     ];
 
@@ -250,6 +299,8 @@ export function normalizeRows(rows: Record<string, string>[], mappings: FieldMap
       date: admission as string,
       cost: costs[idx] && (costs[idx] as number) > 0 ? (costs[idx] as number) : undefined,
     }));
+
+    const careLevel = parseCareLevel(get(row, "care_level"));
 
     // ---- dokter ----
     const doctorName = get(row, "doctor_name");
@@ -300,7 +351,7 @@ export function normalizeRows(rows: Record<string, string>[], mappings: FieldMap
         discharge_date: discharge as string,
         submission_date: submission,
         length_of_stay: Math.round(los),
-        treatment_class: "KELAS_1",
+        treatment_class: careLevel === "JALAN" ? "RAWAT_JALAN" : parseTreatmentClass(get(row, "treatment_class")),
         doctor_id: doctorId,
         doctor_name: doctorName || "Tidak dicantumkan",
         doctor_specialty: "—",

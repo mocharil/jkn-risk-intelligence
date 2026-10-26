@@ -9,12 +9,12 @@ const Body = z.object({
 });
 
 const DEMO_FALLBACK_ACCOUNTS: Record<"INVESTIGATOR" | "SUPERVISOR" | "ADMIN", { uid: string; email: string; name: string }> = {
-  INVESTIGATOR: { uid: "USR-001", email: "investigator@arsa.id", name: "dr. Rina Kartika, AAK" },
-  SUPERVISOR: { uid: "USR-002", email: "supervisor@arsa.id", name: "dr. Hendra Wijaya, M.Kes" },
-  ADMIN: { uid: "USR-003", email: "admin@arsa.id", name: "Budi Santoso, S.Kom" },
+  INVESTIGATOR: { uid: "USR-001", email: "investigator@arsa.id", name: "dr. Ratna Sari, Sp.PK" },
+  SUPERVISOR: { uid: "USR-002", email: "supervisor@arsa.id", name: "dr. Agung Prakoso, MARS" },
+  ADMIN: { uid: "USR-003", email: "admin@arsa.id", name: "Ir. Bambang Suryono" },
 };
 
-/** Ganti peran akun demo 1-klik untuk kelancaran demonstrasi langsung. Dinonaktifkan pada mode produksi ketat. */
+/** Ganti peran akun demo 1-klik untuk kelancaran demonstrasi langsung. Dinonaktifkan jika ARSA_DISABLE_DEMO=1 atau ARSA_STRICT_PRODUCTION=1. */
 export async function POST(req: NextRequest) {
   if (process.env.ARSA_DISABLE_DEMO === "1" || process.env.ARSA_STRICT_PRODUCTION === "1") {
     return NextResponse.json({ error: "Fitur ganti peran demo cepat dinonaktifkan pada mode produksi ketat." }, { status: 403 });

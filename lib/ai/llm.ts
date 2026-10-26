@@ -88,7 +88,7 @@ export async function getAIStatus(opts: { force?: boolean } = {}): Promise<AISta
     let status: AIStatus;
     if (!provider) {
       const forced = process.env.LLM_PROVIDER;
-      status = { ...base, available: false, reason: forced ? `LLM_PROVIDER="${forced}" tidak dikenal (gunakan gemini | openai | anthropic).` : "Tidak ada kredensial LLM (gemini_sa.json / GEMINI_API_KEY / OPENAI_API_KEY / OPENAI_BASE_URL / ANTHROPIC_API_KEY).", checked_at: new Date().toISOString() };
+      status = { ...base, available: false, reason: forced ? `Provider LLM "${forced}" tidak terdaftar.` : "Kredensial penyedia layanan LLM belum diaktifkan.", checked_at: new Date().toISOString() };
     } else if (!provider.configured()) {
       status = { ...base, available: false, reason: `Provider ${provider.label} dipilih tetapi kredensialnya belum diatur.`, checked_at: new Date().toISOString() };
     } else {

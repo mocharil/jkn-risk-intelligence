@@ -10,6 +10,7 @@ import { Investigation, InvestigationStatus } from "@/types/investigation";
 import { CanonicalClaim } from "@/types/claim";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
 import { formatDate, formatRelativeTime } from "@/lib/formatting/date";
+import { FacilityMark, PersonAvatar } from "@/components/ui/Avatar";
 import { useSession } from "@/lib/auth/client";
 import { AuditEntry } from "@/lib/audit/chain";
 import { NetworkGraphView } from "@/components/network/NetworkGraphView";
@@ -63,12 +64,15 @@ export default function InvestigationWorkspacePage() {
   const [highlightedEvidenceId, setHighlightedEvidenceId] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setNotFound(false);
+    setInvestigation(null);
     fetch(`/api/investigations/${id}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.data) {
+        if (cancelled) return;
+        if (data?.data) {
           setInvestigation(data.data);
         } else {
           setNotFound(true);
@@ -76,10 +80,14 @@ export default function InvestigationWorkspacePage() {
         setLoading(false);
       })
       .catch((err) => {
+        if (cancelled) return;
         console.error(err);
         setNotFound(true);
         setLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const patchInvestigation = async (body: Record<string, unknown>) => {
@@ -121,7 +129,9 @@ export default function InvestigationWorkspacePage() {
 
   const loadAudit = async () => {
     try {
-      const res = await fetch(`/api/audit?claim_id=${encodeURIComponent(investigation?.claim_id || id.replace(/^INV-2026-0*/, "CLM-"))}&limit=50`);
+      const claimId = investigation?.claim_id;
+      if (!claimId) return;
+      const res = await fetch(`/api/audit?claim_id=${encodeURIComponent(claimId)}&limit=50`);
       if (!res.ok) return;
       const j = await res.json();
       setAudit({ entries: j.data, valid: j.verification.valid, length: j.verification.length, reason: j.verification.reason, head: j.verification.head_hash });
@@ -137,7 +147,7 @@ export default function InvestigationWorkspacePage() {
       const res = await fetch(`/api/claims/${investigation.claim_id}/explain${force ? "?force=1" : ""}`, { method: "POST" });
       const j = await res.json();
       if (res.ok) {
-        setInvestigation({ ...investigation, claim: j.data });
+        setInvestigation((cur) => (cur ? { ...cur, claim: j.data } : cur));
         setExplainInfo({ mode: j.explanation_mode, reason: j.fallback_reason });
       }
     } finally {
@@ -220,10 +230,11 @@ export default function InvestigationWorkspacePage() {
   const tariffRatioPct = approvedTariff > 0 ? Math.round(((claim.claim_amount - approvedTariff) / approvedTariff) * 100) : 0;
   const maxTariffScale = Math.max(claim.claim_amount, approvedTariff, 1) * 1.12;
 
-  const supportsCount = claim.medical_evidence.filter((d) => d.status === "SUPPORTS_CLAIM").length;
-  const reviewCount = claim.medical_evidence.filter((d) => d.status === "NEEDS_REVIEW").length;
-  const contradictsCount = claim.medical_evidence.filter((d) => d.status === "CONTRADICTS_CLAIM").length;
-  const totalEvidence = Math.max(claim.medical_evidence.length, 1);
+  const evidenceDocs = claim.medical_evidence ?? [];
+  const supportsCount = evidenceDocs.filter((d) => d.status === "SUPPORTS_CLAIM").length;
+  const reviewCount = evidenceDocs.filter((d) => d.status === "NEEDS_REVIEW").length;
+  const contradictsCount = evidenceDocs.filter((d) => d.status === "CONTRADICTS_CLAIM").length;
+  const totalEvidence = Math.max(evidenceDocs.length, 1);
 
   return (
     <DashboardShell>
@@ -254,7 +265,7 @@ export default function InvestigationWorkspacePage() {
         <div className="flex items-center gap-2">
           <div className="text-right text-xs">
             <span className="text-[10px] text-jkn-dim block mb-0.5">
-              Status Kasus{investigation.assigned_to.user_id !== "UNASSIGNED" ? ` · ${investigation.assigned_to.name}` : " · Belum Ditugaskan"}
+              Status Kasus{investigation.assigned_to && investigation.assigned_to.user_id !== "UNASSIGNED" ? ` · ${investigation.assigned_to.name}` : " · Belum Ditugaskan"}
             </span>
             <span className="inline-block font-semibold text-bpjs-dark bg-bpjs-soft px-2.5 py-0.5 rounded-md border border-bpjs-border text-xs">
               {investigation.status === "NEW"
@@ -285,9 +296,9 @@ export default function InvestigationWorkspacePage() {
               { id: "OVERVIEW", label: "Ringkasan Klaim" },
               { id: "EVIDENCE", label: `Papan Bukti (${claim.medical_evidence.length})` },
               { id: "TIMELINE", label: "Kronologi" },
-              { id: "SIMILAR", label: `Klaim Serupa (${claim.similar_claims.length})` },
+              { id: "SIMILAR", label: `Klaim Serupa (${(claim.similar_claims ?? []).length})` },
               { id: "NETWORK", label: "Graf Relasi" },
-              { id: "NOTES", label: `Catatan & Audit Trail (${investigation.notes.length})` },
+              { id: "NOTES", label: `Catatan & Audit Trail (${(investigation.notes ?? []).length})` },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -309,27 +320,42 @@ export default function InvestigationWorkspacePage() {
               {/* Patient & Service Details Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="bg-surface rounded-xl border border-jkn-border p-3.5 shadow-subtle space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-jkn-dim">
                     <User className="w-3.5 h-3.5 text-bpjs" />
                     <span>Profil Peserta (Anonim)</span>
                   </div>
                   <div className="text-xs font-bold text-jkn-text">{claim.patient.name}</div>
                   <div className="text-[11px] text-jkn-muted font-mono tabular-nums">Kartu: {claim.patient.bpjs_card_number}</div>
-                  <div className="text-[11px] text-jkn-dim tabular-nums">{claim.patient.age} thn · {claim.patient.gender === "L" ? "Laki-laki" : "Perempuan"}</div>
+                  <div className="text-[11px] text-jkn-dim tabular-nums">{claim.patient.age > 0 ? `${claim.patient.age} thn` : "usia tidak tercatat"} · {claim.patient.gender === "L" ? "Laki-laki" : claim.patient.gender === "P" ? "Perempuan" : "jenis kelamin tidak tercatat"}</div>
                 </div>
 
-                <div className="bg-surface rounded-xl border border-jkn-border p-3.5 shadow-subtle space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">
+                <div className="bg-surface rounded-xl border border-jkn-border p-3.5 shadow-subtle space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-jkn-dim">
                     <Building2 className="w-3.5 h-3.5 text-bpjs" />
-                    <span>Faskes Penagih</span>
+                    <span>Faskes Penagih & DPJP</span>
                   </div>
-                  <div className="text-xs font-bold text-jkn-text truncate">{claim.provider.name}</div>
-                  <div className="text-[11px] text-jkn-muted">{claim.provider.city}</div>
-                  <div className="text-[11px] text-jkn-dim truncate">DPJP: {claim.service.doctor_name}</div>
+                  <div className="flex items-center gap-2.5">
+                    <FacilityMark size={32} />
+                    <div className="min-w-0">
+                      <Link
+                        href={`/providers/${claim.provider.provider_id}`}
+                        className="text-xs font-bold text-jkn-text hover:text-bpjs truncate block"
+                      >
+                        {claim.provider.name}
+                      </Link>
+                      <div className="text-[11px] text-jkn-muted truncate">{claim.provider.city}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1 border-t border-jkn-divider/70">
+                    <PersonAvatar name={claim.service.doctor_name} size={24} />
+                    <span className="text-[11px] font-medium text-jkn-text truncate">
+                      {claim.service.doctor_name}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="bg-surface rounded-xl border border-jkn-border p-3.5 shadow-subtle space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-jkn-dim">
                     <Calendar className="w-3.5 h-3.5 text-bpjs" />
                     <span>Episode Perawatan</span>
                   </div>
@@ -354,7 +380,7 @@ export default function InvestigationWorkspacePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 items-stretch">
                   {/* Left: Multi-detector bar breakdown */}
                   <div className="space-y-2.5 p-3 rounded-lg bg-surface-secondary/60 border border-jkn-divider">
-                    <div className="text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">Kontribusi Sinyal per Detektor</div>
+                    <div className="text-xs font-semibold text-jkn-dim">Kontribusi Sinyal per Detektor</div>
                     {claim.risk_findings.length === 0 ? (
                       <div className="text-xs text-jkn-muted">Tidak ada sinyal anomali.</div>
                     ) : (
@@ -380,7 +406,7 @@ export default function InvestigationWorkspacePage() {
                   {/* Right: Stacked Document Verification Status + Interactive Document List */}
                   <div className="space-y-2.5 p-3 rounded-lg bg-surface-secondary/60 border border-jkn-divider flex flex-col justify-between">
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">
+                      <div className="flex items-center justify-between text-xs font-semibold text-jkn-dim">
                         <span>Kesesuaian Dokumen Medis ({claim.medical_evidence.length} Dokumen)</span>
                         <button onClick={() => setActiveTab("EVIDENCE")} className="text-bpjs hover:underline font-semibold normal-case">
                           Lihat bukti →
@@ -489,7 +515,7 @@ export default function InvestigationWorkspacePage() {
                     <span className="text-sm font-mono font-bold text-jkn-text tabular-nums">{formatRupiah(claim.claim_amount)}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-jkn-dim font-medium block">Median Peer (Diagnosis Setara)</span>
+                    <span className="text-[10px] text-jkn-dim font-medium block">Median peer (diagnosis dan kelas setara)</span>
                     <span className="text-sm font-mono font-bold text-bpjs-dark tabular-nums">{formatRupiah(approvedTariff)}</span>
                   </div>
                   <div>
@@ -527,10 +553,51 @@ export default function InvestigationWorkspacePage() {
                 </div>
               </div>
 
+              {/* Posisi terhadap statistik resmi BPJS */}
+              {claim.national && claim.national.cost_ref > 0 && (
+                <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <h3 className="text-sm font-bold text-jkn-text">Dibanding statistik resmi BPJS {claim.national.year}</h3>
+                    <Link href="/acuan-nasional" className="text-xs font-semibold text-bpjs hover:underline">
+                      Lihat acuan nasional
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs tabular-nums">
+                    <div className="p-3 rounded-lg bg-surface-secondary/70 border border-jkn-divider">
+                      <span className="text-jkn-dim block">Rerata {claim.national.class_label.toLowerCase()} {claim.national.level === "INAP" ? "per admisi" : "per kunjungan"}</span>
+                      <span className="text-sm font-mono font-bold text-jkn-text block mt-1">{formatRupiah(claim.national.cost_ref)}</span>
+                      <span className={`font-mono font-semibold ${(claim.national.cost_ratio ?? 0) >= 2 ? "text-risk-critical" : (claim.national.cost_ratio ?? 0) >= 1.35 ? "text-risk-high" : "text-jkn-muted"}`}>
+                        klaim ini {claim.national.cost_ratio?.toLocaleString("id-ID", { maximumFractionDigits: 1 }) ?? "-"}x
+                      </span>
+                    </div>
+                    {claim.national.province_cost ? (
+                      <div className="p-3 rounded-lg bg-surface-secondary/70 border border-jkn-divider">
+                        <span className="text-jkn-dim block">Rerata {claim.national.province_name}</span>
+                        <span className="text-sm font-mono font-bold text-jkn-text block mt-1">{formatRupiah(claim.national.province_cost)}</span>
+                        <span className="font-mono font-semibold text-jkn-muted">klaim ini {(claim.national.province_ratio || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 })}x</span>
+                      </div>
+                    ) : null}
+                    {claim.national.los_ref ? (
+                      <div className="p-3 rounded-lg bg-surface-secondary/70 border border-jkn-divider">
+                        <span className="text-jkn-dim block">Lama rawat rerata kelas</span>
+                        <span className="text-sm font-mono font-bold text-jkn-text block mt-1">{claim.national.los_ref.toLocaleString("id-ID")} hari</span>
+                        <span className={`font-mono font-semibold ${(claim.national.los_ratio || 0) >= 2 ? "text-risk-critical" : "text-jkn-muted"}`}>klaim ini {claim.service.length_of_stay} hari</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-jkn-muted leading-relaxed">
+                    {claim.national.dx
+                      ? `Diagnosis ${claim.national.dx.code} berada di peringkat ${claim.national.dx.rank} nasional dengan ${claim.national.dx.admissions.toLocaleString("id-ID")} ${claim.national.level === "INAP" ? "admisi rawat inap" : "kunjungan rawat jalan"} pada ${claim.national.year}.`
+                      : `Diagnosis ini tidak termasuk 100 diagnosis ${claim.national.level === "INAP" ? "rawat inap" : "rawat jalan"} terbanyak nasional ${claim.national.year}.`}{" "}
+                    Rerata nasional mencakup seluruh jenis kasus, jadi dipakai sebagai konteks kewajaran. Pembanding utama tetap median peer pada diagnosis yang sama.
+                  </p>
+                </div>
+              )}
+
               {/* Detected Risk Findings Cards */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider">Analisis Multi-Detektor</h3>
+                  <h3 className="text-xs font-bold text-jkn-text">Analisis Multi-Detektor</h3>
                   <button onClick={() => explain(false)} disabled={explaining || claim.risk_findings.length === 0} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bpjs text-white text-[11px] font-semibold hover:bg-bpjs-deep disabled:opacity-50 transition-colors">
                     <Sparkles className={`w-3.5 h-3.5 ${explaining ? "animate-spin" : ""}`} />
                     {explaining ? "Menyusun penjelasan…" : claim.risk_findings.some((f) => f.ai_explanation) ? "Perbarui penjelasan AI" : "Jelaskan dengan AI"}
@@ -559,7 +626,7 @@ export default function InvestigationWorkspacePage() {
                     {/* Bukti terkutip (verbatim dari dokumen) */}
                     {finding.evidence.length > 0 && (
                       <div className="space-y-1.5">
-                        <span className="text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">Bukti Terkutip</span>
+                        <span className="text-xs font-semibold text-jkn-dim">Bukti Terkutip</span>
                         {finding.evidence.map((ev, i) => (
                           <button
                             key={i}
@@ -571,7 +638,7 @@ export default function InvestigationWorkspacePage() {
                             className={`w-full text-left p-2.5 rounded-lg border text-[11px] ${ev.supports_finding ? "bg-risk-critical-bg/50 border-risk-critical-border" : "bg-bpjs-soft/50 border-bpjs-border"} hover:ring-1 hover:ring-bpjs transition-all`}
                           >
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-mono text-[10px] font-semibold text-jkn-dim">{ev.evidence_id}</span>
+                              <span className="font-mono text-xs font-semibold text-jkn-dim">{ev.evidence_id}</span>
                               <span className={`text-[10px] font-semibold ${ev.supports_finding ? "text-risk-critical" : "text-bpjs-dark"}`}>{ev.supports_finding ? "Mendukung temuan" : "Membantah temuan"}</span>
                             </div>
                             <div className="text-jkn-text font-medium mt-0.5">{ev.claim_statement}</div>
@@ -693,7 +760,7 @@ export default function InvestigationWorkspacePage() {
           {/* TAB 3: TIMELINE */}
           {activeTab === "TIMELINE" && (
             <div className="bg-surface rounded-xl border border-jkn-border p-5 shadow-subtle space-y-4 animate-in fade-in duration-100">
-              <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider">
+              <h3 className="text-xs font-bold text-jkn-text">
                 Kronologi Klinis & Anomali Waktu
               </h3>
               <div className="relative pl-6 space-y-5 border-l-2 border-bpjs-border ml-2">
@@ -830,7 +897,7 @@ export default function InvestigationWorkspacePage() {
           {activeTab === "NOTES" && (
             <div className="space-y-4 animate-in fade-in duration-100">
               <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3">
-                <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider">Catatan Investigator</h3>
+                <h3 className="text-xs font-bold text-jkn-text">Catatan Investigator</h3>
                 <form onSubmit={handleAddNote} className="space-y-2">
                   <textarea value={newNoteText} onChange={(e) => setNewNoteText(e.target.value)} placeholder="Tambahkan temuan, hasil wawancara komite medik, dsb..." rows={3} className="w-full text-xs p-3 rounded-lg bg-surface-secondary border border-jkn-border text-jkn-text outline-hidden focus:border-bpjs focus:bg-white transition-colors" />
                   <button type="submit" disabled={!newNoteText.trim()} className="px-4 py-1.5 rounded-lg bg-bpjs text-white text-xs font-semibold hover:bg-bpjs-deep transition-colors disabled:opacity-50">Simpan Catatan</button>
@@ -853,7 +920,7 @@ export default function InvestigationWorkspacePage() {
 
               <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-bpjs" /> Audit Trail Append-Only (Hash Chain SHA-256)</h3>
+                  <h3 className="text-xs font-bold text-jkn-text flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-bpjs" /> Audit Trail Append-Only (Hash Chain SHA-256)</h3>
                   {audit && (
                     <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold flex items-center gap-1 border ${audit.valid ? "bg-bpjs-soft text-bpjs-dark border-bpjs-border" : "bg-risk-critical-bg text-risk-critical border-risk-critical-border"}`}>
                       <ShieldCheck className="w-3 h-3" /> {audit.valid ? `Rantai Valid (${audit.length} Entri)` : `RANTAI RUSAK: ${audit.reason}`}
@@ -904,7 +971,7 @@ export default function InvestigationWorkspacePage() {
               </div>
             ) : aiResponse ? (
               <div className="space-y-2">
-                <div className="whitespace-pre-line leading-relaxed text-xs">{renderCitedText(aiResponse.text, "inv-ai")}</div>
+                <div className="leading-relaxed text-xs">{renderCitedText(aiResponse.text, "inv-ai")}</div>
                 {aiResponse.citations.length > 0 && (
                   <div className="space-y-1 pt-1 border-t border-jkn-divider">
                     {aiResponse.citations.map((c) => (
@@ -931,7 +998,7 @@ export default function InvestigationWorkspacePage() {
 
           {/* Interactive Evidence Chips */}
           <div className="space-y-1.5">
-            <span className="text-[10px] font-semibold text-jkn-dim uppercase tracking-wider block">
+            <span className="text-xs font-semibold text-jkn-dim block">
               Dokumen Klaim (Klik untuk Membuka)
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -956,7 +1023,7 @@ export default function InvestigationWorkspacePage() {
 
           {/* Quick Prompts */}
           <div className="space-y-1.5">
-            <span className="text-[10px] font-semibold text-jkn-dim uppercase tracking-wider block">
+            <span className="text-xs font-semibold text-jkn-dim block">
               Pertanyaan yang Disarankan
             </span>
             <div className="space-y-1">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guard } from "@/lib/auth/guard";
 import { getStore } from "@/lib/data/store";
 import { evaluate } from "@/lib/eval/evaluate";
+import { loadBpjsSampleLabels } from "@/lib/eval/bpjs-labels";
 
 /** Precision/recall/F1 per detector terhadap label kebenaran dataset sintetis bawaan. */
 export async function GET(request: NextRequest) {
@@ -9,6 +10,9 @@ export async function GET(request: NextRequest) {
   if (g.error) return g.error;
   const store = getStore();
   const report = evaluate(store.claims, store.labels);
+  const bpjsLabels = loadBpjsSampleLabels();
+  const bpjsClaims = bpjsLabels ? store.claims.filter((c) => store.ingestedClaimIds.has(c.claim_id) && bpjsLabels[c.claim_id] !== undefined) : [];
+  const bpjsReport = bpjsClaims.length > 0 && bpjsLabels ? evaluate(bpjsClaims, bpjsLabels) : null;
 
   // Instrumentasi waktu penanganan nyata dari audit log: dari mulai investigasi hingga keputusan akhir (jam).
   const starts = new Map<string, number>();
@@ -25,6 +29,7 @@ export async function GET(request: NextRequest) {
   const handling = { cases_measured: durations.length, median_hours: durations.length ? Number(durations[Math.floor(durations.length / 2)].toFixed(2)) : null };
   return NextResponse.json({
     data: report,
+    bpjs_sample: bpjsReport,
     handling_time: handling,
     embedding_model: store.meta.embedding_model,
     disclaimer:

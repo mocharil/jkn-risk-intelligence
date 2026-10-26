@@ -95,6 +95,8 @@ export async function buildInvestigationPdf(inv: Investigation, audit: AuditEntr
   };
 
   const claim = inv.claim;
+  const assignee = inv.assigned_to ?? { name: "-", role: "-" };
+  const findings = claim.risk_findings ?? [];
 
   // ---- Kop ----
   page.drawRectangle({ x: 0, y: A4[1] - 74, width: A4[0], height: 74, color: rgb(0.03, 0.4, 0.22) });
@@ -110,7 +112,7 @@ export async function buildInvestigationPdf(inv: Investigation, audit: AuditEntr
     ["Faskes", `${claim.provider.name} - ${claim.provider.city}`],
     ["Peserta (pseudonim)", `${claim.patient.patient_id}, ${claim.patient.age} th`],
     ["DPJP", claim.service.doctor_name],
-    ["Diagnosis utama", `${claim.diagnoses[0]?.code} ${claim.diagnoses[0]?.description} (severity ${claim.diagnoses[0]?.severity})`],
+    ["Diagnosis utama", claim.diagnoses?.[0] ? `${claim.diagnoses[0].code} ${claim.diagnoses[0].description} (severity ${claim.diagnoses[0].severity})` : "-"],
     ["Episode", `${claim.service.admission_date} s/d ${claim.service.discharge_date} (${claim.service.length_of_stay} hari)`],
     ["Tagihan / median peer", `${rp(claim.claim_amount)} / ${rp(claim.approved_tariff || 0)}`],
     ["Potensi eksposur", rp(claim.tariff_difference || 0)],
@@ -125,27 +127,27 @@ export async function buildInvestigationPdf(inv: Investigation, audit: AuditEntr
 
   // ---- I. Ringkasan ----
   heading("I. Ringkasan temuan");
-  if (claim.risk_findings.length === 0) write("Tidak ada indikator risiko yang dinaikkan oleh detector pada klaim ini.");
+  if (findings.length === 0) write("Tidak ada indikator risiko yang dinaikkan oleh detector pada klaim ini.");
   else
     write(
-      `Detector deterministik menemukan ${claim.risk_findings.length} sinyal risiko: ${claim.risk_findings.map((f) => f.title).join("; ")}. Potensi selisih terhadap median peer ${rp(claim.tariff_difference || 0)}. Seluruh pernyataan di bawah dapat ditelusuri ke dokumen sumber melalui id bukti.`
+      `Detector deterministik menemukan ${findings.length} sinyal risiko: ${findings.map((f) => f.title).join("; ")}. Potensi selisih terhadap median peer ${rp(claim.tariff_difference || 0)}. Seluruh pernyataan di bawah dapat ditelusuri ke dokumen sumber melalui id bukti.`
     );
 
   // ---- II. Temuan & bukti ----
   heading("II. Temuan, bukti terkutip, dan penjelasan");
-  claim.risk_findings.forEach((f, i) => {
+  findings.forEach((f, i) => {
     ensure(40);
     write(`${i + 1}. ${f.title}`, { f: bold, size: 10.5, color: RED });
     write(`${f.risk_type} - skor ${f.risk_score}, keyakinan ${(f.confidence * 100).toFixed(0)}%, aturan ${f.rule_id || "-"}`, { size: 8.5, color: MUTED });
     write(f.summary, { gap: 2 });
-    if (f.evidence.length) {
+    if (f.evidence?.length) {
       write("Bukti terkutip:", { f: bold, size: 9 });
       f.evidence.forEach((e) => {
         write(`[${e.evidence_id}] ${e.supports_finding ? "(mendukung temuan)" : "(membantah temuan)"} ${e.claim_statement}`, { indent: 10, size: 8.8 });
         if (e.excerpt) write(`"${e.excerpt}"`, { indent: 18, size: 8.5, color: MUTED });
       });
     }
-    if (f.missing_evidence.length) write(`Bukti belum tersedia: ${f.missing_evidence.join("; ")}`, { size: 8.8, color: rgb(0.6, 0.35, 0) });
+    if (f.missing_evidence?.length) write(`Bukti belum tersedia: ${f.missing_evidence.join("; ")}`, { size: 8.8, color: rgb(0.6, 0.35, 0) });
     if (f.ai_explanation) {
       write(`Penjelasan (${f.ai_explanation.source === "llm" ? `${f.ai_explanation.provider || "LLM"} ${f.ai_explanation.model || ""}, sitasi tervalidasi` : "deterministik, tanpa LLM"}):`, { f: bold, size: 9 });
       write(f.ai_explanation.text, { indent: 10, size: 8.8 });
@@ -165,10 +167,10 @@ export async function buildInvestigationPdf(inv: Investigation, audit: AuditEntr
   } else {
     write("Belum ada keputusan akhir. Keputusan ditetapkan oleh Supervisor/Admin setelah verifikasi bukti.", { color: MUTED });
   }
-  write(`Petugas: ${inv.assigned_to.name} (${inv.assigned_to.role})`, { size: 8.5, color: MUTED });
+  write(`Petugas: ${assignee.name} (${assignee.role})`, { size: 8.5, color: MUTED });
 
   // ---- IV. Catatan ----
-  if (inv.notes.length) {
+  if (inv.notes?.length) {
     heading("IV. Catatan investigasi");
     inv.notes.slice(0, 12).forEach((n) => write(`${n.created_at.slice(0, 10)} - ${n.author}: ${n.content}`, { size: 8.8 }));
   }
@@ -188,7 +190,7 @@ export async function buildInvestigationPdf(inv: Investigation, audit: AuditEntr
   page.drawText("Investigator,", { x: M + 20, y: y - 9, size: 9, font, color: MUTED });
   page.drawText("Menyetujui,", { x: A4[0] / 2 + 40, y: y - 9, size: 9, font, color: MUTED });
   y -= 56;
-  page.drawText(clean(inv.assigned_to.name), { x: M + 20, y: y - 9, size: 9.5, font: bold, color: DARK });
+  page.drawText(clean(assignee.name), { x: M + 20, y: y - 9, size: 9.5, font: bold, color: DARK });
   page.drawText(clean(d?.decided_by || "(menunggu keputusan)"), { x: A4[0] / 2 + 40, y: y - 9, size: 9.5, font: bold, color: DARK });
 
   // ---- Footer semua halaman ----

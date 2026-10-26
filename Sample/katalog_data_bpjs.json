@@ -1,0 +1,464 @@
+[
+  {
+    "filename": "01_100_Penyakit_Terbanyak_pada_RITL_Tahun_2018.xlsx",
+    "sizeBytes": 15236,
+    "sizeKB": 14.9,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "02_100_Penyakit_Terbanyak_pada_RJTL_Tahun_2018.xlsx",
+    "sizeBytes": 15179,
+    "sizeKB": 14.8,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "03_100_Penyakit_Terbanyak_pada_RITP_Tahun_2018.xlsx",
+    "sizeBytes": 14870,
+    "sizeKB": 14.5,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "04_100_Penyakit_Terbanyak_pada_RJTP_Tahun_2018.xlsx",
+    "sizeBytes": 15128,
+    "sizeKB": 14.8,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "05_100_Penyakit_Terbanyak_pada_RITL_Tahun_2017.xlsx",
+    "sizeBytes": 15267,
+    "sizeKB": 14.9,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "06_100_Penyakit_dengan_Jumlah_Admisi_Tertinggi_berdasarkan_Diagnosis_Primer_di_RITP.xlsx",
+    "sizeBytes": 14936,
+    "sizeKB": 14.6,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "07_100_Penyakit_Terbanyak_pada_RJTP_Tahun_2017.xlsx",
+    "sizeBytes": 15218,
+    "sizeKB": 14.9,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "08_100_Penyakit_Terbanyak_pada_RITL_Tahun_2016.xlsx",
+    "sizeBytes": 15308,
+    "sizeKB": 14.9,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "09_100_Penyakit_Terbanyak_pada_RJTL_Tahun_2016.xlsx",
+    "sizeBytes": 15520,
+    "sizeKB": 15.2,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "10_100_Penyakit_Terbanyak_pada_RITP_Tahun_2016.xlsx",
+    "sizeBytes": 14964,
+    "sizeKB": 14.6,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "11_100_Penyakit_Terbanyak_pada_RJTP_Tahun_2016.xlsx",
+    "sizeBytes": 15206,
+    "sizeKB": 14.8,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "12_100_Penyakit_Terbanyak_pada_RITL_Tahun_2015.xlsx",
+    "sizeBytes": 15278,
+    "sizeKB": 14.9,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "13_100_Penyakit_Terbanyak_pada_RJTL_Tahun_2015.xlsx",
+    "sizeBytes": 15291,
+    "sizeKB": 14.9,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "14_100_Penyakit_Terbanyak_pada_RITP_Tahun_2015.xlsx",
+    "sizeBytes": 15013,
+    "sizeKB": 14.7,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "15_100_Penyakit_Terbanyak_pada_RJTP_Tahun_2015.xlsx",
+    "sizeBytes": 15169,
+    "sizeKB": 14.8,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "16_100_Penyakit_Terbanyak_pada_RITL_Tahun_2014.xlsx",
+    "sizeBytes": 15133,
+    "sizeKB": 14.8,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "17_100_Penyakit_Terbanyak_pada_RJTL_Tahun_2014.xlsx",
+    "sizeBytes": 15274,
+    "sizeKB": 14.9,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "18_100_Penyakit_Terbanyak_pada_RITP_Tahun_2014.xlsx",
+    "sizeBytes": 14982,
+    "sizeKB": 14.6,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "19_100_Penyakit_Terbanyak_pada_RJTP_Tahun_2014.xlsx",
+    "sizeBytes": 15135,
+    "sizeKB": 14.8,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "20_Distribusi_Hasil_Terapi_(Outcome)_Pelayanan_RITL_berdasarkan_Hak_Kelas_PerawatanTahun_2018.xlsx",
+    "sizeBytes": 9888,
+    "sizeKB": 9.7,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "21_Distribusi_Rerata_Biaya_Satuan_Klaim_per_Admisi_Pelayanan_RITL_berdasarkan_Usia_dan_Jenis_Kelamin.xlsx",
+    "sizeBytes": 13540,
+    "sizeKB": 13.2,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "22_Distribusi_Rerata_Biaya_Satuan_Klaim_per_Admisi_Pelayanan_RITL_berdasarkan_Hak_Kelas_Perawatan.xlsx",
+    "sizeBytes": 9579,
+    "sizeKB": 9.4,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "23_Distribusi_Rerata_Biaya_Satuan_Klaim_per_Kunjungan_Pelayanan_RJTL_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12444,
+    "sizeKB": 12.2,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "24_Distribusi_Rerata_Biaya_Satuan_Klaim_per_Kunjungan_Pelayanan_RJTL_berdasarkan_Usia_dan_Jenis_Kelamin.xlsx",
+    "sizeBytes": 13500,
+    "sizeKB": 13.2,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "25_Distribusi_Rerata_Biaya_Satuan_Klaim_per_Kunjungan_Pelayanan_RJTL_berdasarkan_Hak_Kelas_Perawatan.xlsx",
+    "sizeBytes": 9473,
+    "sizeKB": 9.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "26_Angka_Hari_Rawat_Pelayanan_RJTL_RITL_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12509,
+    "sizeKB": 12.2,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "27_Angka_Admisi_Pelayanan_RITL_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12570,
+    "sizeKB": 12.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "28_Angka_Hari_Rawat_Pelayanan_RITL_berdasarkan_Usia_dan_Jenis_Kelamin.xlsx",
+    "sizeBytes": 13627,
+    "sizeKB": 13.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "29_Angka_Admisi_Pelayanan_RITL_berdasarkan_Usia_dan_Jenis_Kelamin.xlsx",
+    "sizeBytes": 13708,
+    "sizeKB": 13.4,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "30_Angka_Hari_Rawat_Pelayanan_RITL_berdasarkan_Hak_Kelas_Perawatan.xlsx",
+    "sizeBytes": 9591,
+    "sizeKB": 9.4,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "31_Angka_Admisi_Pelayanan_RITL_berdasarkan_Hak_Kelas_Perawatan_Tahun.xlsx",
+    "sizeBytes": 9519,
+    "sizeKB": 9.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "32_Angka_Kunjungan_Pelayanan_RJTL_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12605,
+    "sizeKB": 12.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "33_Angka_Kunjungan_Pelayanan_RJTL_berdasarkan_Usia_dan_Jenis_Kelamin.xlsx",
+    "sizeBytes": 13706,
+    "sizeKB": 13.4,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "34_Angka_Kunjungan_Pelayanan_RJTL_berdasarkan_Hak_Kelas_Perawatan_Tahun.xlsx",
+    "sizeBytes": 9519,
+    "sizeKB": 9.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "35_Angka_Hari_Rawat_Pelayanan_RITP_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12533,
+    "sizeKB": 12.2,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "36_Angka_Admisi_Pelayanan_RITP_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12507,
+    "sizeKB": 12.2,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "37_Angka_Admisi_Pelayanan_RITP_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12597,
+    "sizeKB": 12.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "38_Angka_Admisi_Pelayanan_RITP_berdasarkan_Usia_dan_Jenis_Kelamin.xlsx",
+    "sizeBytes": 13707,
+    "sizeKB": 13.4,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "39_Angka_Admisi_Pelayanan_RITP_berdasarkan_Hak_Kelas_Perawatan.xlsx",
+    "sizeBytes": 9558,
+    "sizeKB": 9.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "40_Angka_Kunjungan_Pelayanan_RJTP_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12598,
+    "sizeKB": 12.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "41_Angka_Kunjungan_Pelayanan_RJTP_berdasarkan_Usia_dan_Jenis_Kelamin.xlsx",
+    "sizeBytes": 13676,
+    "sizeKB": 13.4,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "42_Angka_Kunjungan_Pelayanan_RJTP_berdasarkan_Hak_Kelas.xlsx",
+    "sizeBytes": 9531,
+    "sizeKB": 9.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "43_Angka_Akses_Pelayanan_RITL_berdasarkan_Hak_Kelas.xlsx",
+    "sizeBytes": 9702,
+    "sizeKB": 9.5,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "44_Angka_Akses_Pelayanan_RITL_berdasarkan_Usia_dan_Jenis_Kelamin.xlsx",
+    "sizeBytes": 13716,
+    "sizeKB": 13.4,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "45_Angka_Akses_Pelayanan_RJTL_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12523,
+    "sizeKB": 12.2,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "46_Angka_Akses_Pelayanan_RITL_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12539,
+    "sizeKB": 12.2,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "47_Angka_Akses_Pelayanan_RJTL_berdasarkan_Usia_dan_Jenis_Kelamin.xlsx",
+    "sizeBytes": 13613,
+    "sizeKB": 13.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "48_Angka_Akses_Pelayanan_RJTL_berdasarkan_Hak_Kelas_Perawatan.xlsx",
+    "sizeBytes": 9564,
+    "sizeKB": 9.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "49_Angka_Akses_Pelayanan_RITP_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12370,
+    "sizeKB": 12.1,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "50_Angka_Akses_Pelayanan_RITP_berdasarkan_Usia_dan_Jenis_Kelamin.xlsx",
+    "sizeBytes": 13661,
+    "sizeKB": 13.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "51_Angka_Akses_Pelayanan_RITP_berdasarkan_Hak_Kelas_Perawatan_Tahun.xlsx",
+    "sizeBytes": 9535,
+    "sizeKB": 9.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "52_Angka_Akses_Pelayanan_RJTP_berdasarkan_Provinsi_2014-2018.xlsx",
+    "sizeBytes": 12553,
+    "sizeKB": 12.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "53_Angka_Akses_Pelayanan_RJTP_berdasarkan_Usia_dan_Jenis_Kelamin.xlsx",
+    "sizeBytes": 13692,
+    "sizeKB": 13.4,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "54_Angka_Akses_Pelayanan_RJTP_berdasarkan_Hak_Kelas_Perawatan.xlsx",
+    "sizeBytes": 9417,
+    "sizeKB": 9.2,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "55_Pertumbuhan_Peserta_JKN_berdasarkan_Kelas_Rawat.xlsx",
+    "sizeBytes": 9484,
+    "sizeKB": 9.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "56_Klinik_Pratama_yang_Bekerjasama.xlsx",
+    "sizeBytes": 10454,
+    "sizeKB": 10.2,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "57_Pertumbuhan_Peserta_JKN_per_Provinsi.xlsx",
+    "sizeBytes": 12019,
+    "sizeKB": 11.7,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "58_Pertumbuhan_Peserta_JKN_berdasarkan_Segmen_Peserta.xlsx",
+    "sizeBytes": 9552,
+    "sizeKB": 9.3,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "59_Puskesmas_yang_Bekerjasama.xlsx",
+    "sizeBytes": 10300,
+    "sizeKB": 10.1,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "60_Rasio_Puskesmas.xlsx",
+    "sizeBytes": 12371,
+    "sizeKB": 12.1,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "61_FKRTL_yang_Bekerjasama.xlsx",
+    "sizeBytes": 10285,
+    "sizeKB": 10,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "62_Rasio_FKRTL.xlsx",
+    "sizeBytes": 12193,
+    "sizeKB": 11.9,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "63_Rasio_Klinik_Pratama.xlsx",
+    "sizeBytes": 12287,
+    "sizeKB": 12,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "64_Dokter_Praktek_Perorangan_yang_Bekerjasama.xlsx",
+    "sizeBytes": 10383,
+    "sizeKB": 10.1,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "65_Rasio_Dokter_Praktek_Perorangan.xlsx",
+    "sizeBytes": 12270,
+    "sizeKB": 12,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "66_Distribusi_Rerata_Biaya_Satuan_Klaim_per_Admisi_Pelayanan_RITL_berdasarkan_Provinsi.xlsx",
+    "sizeBytes": 12438,
+    "sizeKB": 12.1,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "67_Distribusi_Hasil_Terapi_(Outcome)_Pelayanan_RJTL_berdasarkan_Hak_Kelas_Perawatan_Tahun_2014.xlsx",
+    "sizeBytes": 9914,
+    "sizeKB": 9.7,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "68_Distribusi_Hasil_Terapi_(Outcome)_Pelayanan_RJTL_berdasarkan_Hak_Kelas_Perawatan_Tahun_2015.xlsx",
+    "sizeBytes": 9903,
+    "sizeKB": 9.7,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "69_Distribusi_Hasil_Terapi_(Outcome)_Pelayanan_RJTL_berdasarkan_Hak_Kelas_Perawatan_Tahun_2016.xlsx",
+    "sizeBytes": 9928,
+    "sizeKB": 9.7,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "70_Distribusi_Hasil_Terapi_(Outcome)_Pelayanan_RJTL_berdasarkan_Hak_Kelas_Perawatan_Tahun_2017.xlsx",
+    "sizeBytes": 9889,
+    "sizeKB": 9.7,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "71_Distribusi_Hasil_Terapi_(Outcome)_Pelayanan_RJTL_berdasarkan_Hak_Kelas_Perawatan_Tahun_2018.xlsx",
+    "sizeBytes": 9888,
+    "sizeKB": 9.7,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "72_Distribusi_Hasil_Terapi_(Outcome)_Pelayanan_RITL_berdasarkan_Hak_Kelas_PerawatanTahun_2014.xlsx",
+    "sizeBytes": 9909,
+    "sizeKB": 9.7,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "73_Distribusi_Hasil_Terapi_(Outcome)_Pelayanan_RITL_berdasarkan_Hak_Kelas_PerawatanTahun_2015.xlsx",
+    "sizeBytes": 9800,
+    "sizeKB": 9.6,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "74_Distribusi_Hasil_Terapi_(Outcome)_Pelayanan_RITL_berdasarkan_Hak_Kelas_PerawatanTahun_2016.xlsx",
+    "sizeBytes": 9799,
+    "sizeKB": 9.6,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "75_Distribusi_Hasil_Terapi_(Outcome)_Pelayanan_RITL_berdasarkan_Hak_Kelas_PerawatanTahun_2017.xlsx",
+    "sizeBytes": 9847,
+    "sizeKB": 9.6,
+    "type": "DATASET_JKN_XLSX"
+  },
+  {
+    "filename": "Buku_Data_Sampel_BPJS_Kesehatan_2015-2018.pdf",
+    "sizeBytes": 2732437,
+    "sizeKB": 2668.4,
+    "type": "BUKU_PANDUAN_DATA_SAMPEL_PDF"
+  },
+  {
+    "filename": "Buku_Data_Sampel_BPJS_Kesehatan_2015-2020.pdf",
+    "sizeBytes": 6262842,
+    "sizeKB": 6116.1,
+    "type": "BUKU_PANDUAN_DATA_SAMPEL_PDF"
+  }
+]

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
   const store = getStore();
   const claimId = sp.get("claim_id");
-  const limit = Math.min(Number.parseInt(sp.get("limit") || "100", 10) || 100, 500);
+  const limit = Math.min(Math.max(Number.parseInt(sp.get("limit") || "100", 10) || 100, 1), 500);
 
   const entries = [...store.auditLog].reverse().filter((e) => !claimId || e.claim_id === claimId || e.claim_id === "SYSTEM").slice(0, limit);
   return NextResponse.json({ data: entries, total: store.auditLog.length, verification: verifyChain(store.auditLog) });

@@ -58,6 +58,7 @@ export const openaiProvider: LLMProvider = {
       method: "POST",
       headers: headers(),
       body: JSON.stringify({ model: MODEL, messages: messages(prompt, opts.system), temperature: opts.temperature ?? 0.1, max_tokens: opts.maxOutputTokens ?? 2048, stream: true }),
+      signal: AbortSignal.timeout(opts.timeoutMs ?? 60_000),
     });
     for await (const d of sseData(res)) {
       if (d === "[DONE]") return;

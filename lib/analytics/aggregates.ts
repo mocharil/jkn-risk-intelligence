@@ -1,6 +1,6 @@
 import { CanonicalClaim } from "@/types/claim";
 import { Provider } from "@/types/provider";
-import { ALL_RISK_TYPES, DashboardKPIs, EmergingSignal, ProvinceRiskData, RiskLevel, RiskType } from "@/types/risk";
+import { ALL_RISK_TYPES, DashboardKPIs, EmergingSignal, ProvinceRiskData, RiskLevel, RiskType, TrendPoint } from "@/types/risk";
 import { INDONESIA_PROVINCES } from "../data/indonesia-provinces";
 
 /**
@@ -179,6 +179,7 @@ export function computeProvinceRisk(store: AggStore): ProvinceRiskData[] {
       potential_exposure: claims.filter(FLAGGED).reduce((a, c) => a + (c.tariff_difference || 0), 0),
       dominant_risk_type: dominantType(claims),
       risk_level: claims.length === 0 ? "LOW" : levelOf(score),
+      risk_score: claims.length === 0 ? 0 : score,
       top_providers: Array.from(provExposure.entries()).sort((a, b) => b[1] - a[1]).slice(0, 2).map((e) => e[0]),
     };
   });
@@ -212,22 +213,36 @@ export function computeDashboardKPIs(store: AggStore): DashboardKPIs {
   const providersAtRisk = store.providers.filter((p) => p.risk_level === "CRITICAL" || p.risk_level === "HIGH").length;
   const totalExposure = exposureOf(claims);
 
-  const days: string[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(`${asOf}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() - i);
-    days.push(d.toISOString().slice(0, 10));
+  // Satu kali lintasan: indeks "umur" klaim (hari sebelum asOf) -> daftar klaim.
+  const byAge = new Map<number, CanonicalClaim[]>();
+  for (const c of claims) {
+    const age = daysBetween(asOf, c.service.submission_date);
+    if (age < 0) continue;
+    const arr = byAge.get(age);
+    if (arr) arr.push(c);
+    else byAge.set(age, [c]);
   }
-  const risk_trends = days.map((day) => {
-    const dc = claims.filter((c) => c.service.submission_date === day);
-    return {
-      date: shortDate(day),
-      critical_count: dc.filter((c) => c.risk_level === "CRITICAL").length,
-      high_count: dc.filter((c) => c.risk_level === "HIGH").length,
-      medium_count: dc.filter((c) => c.risk_level === "MEDIUM").length,
-      exposure_amount: exposureOf(dc),
-    };
+  const dateAtAge = (age: number) => {
+    const d = new Date(`${asOf}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - age);
+    return d.toISOString().slice(0, 10);
+  };
+  const point = (label: string, list: CanonicalClaim[]): TrendPoint => ({
+    date: label,
+    critical_count: list.filter((c) => c.risk_level === "CRITICAL").length,
+    high_count: list.filter((c) => c.risk_level === "HIGH").length,
+    medium_count: list.filter((c) => c.risk_level === "MEDIUM").length,
+    exposure_amount: exposureOf(list),
   });
+  const daily = (n: number) => Array.from({ length: n }, (_, i) => n - 1 - i).map((age) => point(shortDate(dateAtAge(age)), byAge.get(age) || []));
+  // 90 hari = 13 blok mingguan; label = tanggal awal blok.
+  const weekly = Array.from({ length: 13 }, (_, i) => 12 - i).map((w) => {
+    const list: CanonicalClaim[] = [];
+    for (let a = w * 7; a < w * 7 + 7; a++) list.push(...(byAge.get(a) || []));
+    return point(shortDate(dateAtAge(w * 7 + 6)), list);
+  });
+  const trend_series = { "7": daily(7), "30": daily(30), "90": weekly };
+  const risk_trends = trend_series["7"];
 
   const topProviders = [...store.providers].sort((a, b) => b.potential_exposure - a.potential_exposure).slice(0, 3);
   const topProv = topProviders[0];
@@ -259,8 +274,8 @@ export function computeDashboardKPIs(store: AggStore): DashboardKPIs {
       period: "7 hari terakhir vs 7 hari sebelumnya",
     },
     ai_briefing: {
-      summary: `Arsa menganalisis ${claims.length.toLocaleString("id-ID")} klaim dan menandai ${highRisk.length} klaim berisiko tinggi dengan potensi eksposur Rp ${Math.round(totalExposure).toLocaleString("id-ID")}. Pola dominan: ${dom.replace("_", " ")}.${topProv ? ` Faskes dengan eksposur terbesar: ${topProv.name} (skor ${topProv.risk_score}).` : ""}`,
-      key_findings: topProviders.map((p) => `${p.name}: ${p.high_risk_claims} klaim berisiko tinggi dari ${p.total_claims}, eksposur Rp ${Math.round(p.potential_exposure).toLocaleString("id-ID")}, dominan ${p.dominant_risk_type.replace("_", " ")}.`),
+      summary: `Arsa menganalisis ${claims.length.toLocaleString("id-ID")} klaim dan menandai ${highRisk.length} klaim berisiko tinggi dengan potensi eksposur Rp ${Math.round(totalExposure).toLocaleString("id-ID")}. ${highRisk.length > 0 ? ` Pola dominan: ${dom.replace(/_/g, " ")}.` : ""}${topProv ? ` Faskes dengan eksposur terbesar: ${topProv.name} (skor ${topProv.risk_score}).` : ""}`,
+      key_findings: topProviders.map((p) => `${p.name}: ${p.high_risk_claims} klaim berisiko tinggi dari ${p.total_claims}, eksposur Rp ${Math.round(p.potential_exposure).toLocaleString("id-ID")}, dominan ${p.dominant_risk_type.replace(/_/g, " ")}.`),
       confidence: Number(conf.toFixed(2)),
       affected_providers: providersAtRisk,
       potential_exposure: totalExposure,
@@ -274,6 +289,8 @@ export function computeDashboardKPIs(store: AggStore): DashboardKPIs {
       low: claims.filter((c) => c.risk_level === "LOW").length,
     },
     risk_trends,
+    as_of: asOf,
+    trend_series,
     risk_by_type,
   };
 }
@@ -295,7 +312,6 @@ const TYPE_TITLE: Record<RiskType, string> = {
 export function computeEmergingSignals(store: AggStore): EmergingSignal[] {
   const asOf = asOfDate(store.claims);
   const signals: EmergingSignal[] = [];
-  const now = Date.now();
 
   for (const type of ALL_RISK_TYPES) {
     const recent: CanonicalClaim[] = [];
@@ -324,9 +340,44 @@ export function computeEmergingSignals(store: AggStore): EmergingSignal[] {
       affected_providers_count: providers.size,
       potential_exposure: exposure,
       confidence: Number(confidence.toFixed(2)),
-      detected_at: new Date(now - signals.length * 17 * 60_000).toISOString(),
+      detected_at: `${asOf}T00:00:00Z`,
+      recent_count: recent.length,
+      previous_count: prevCount,
+      window_days: 14,
       highlighted_claim_ids: top.map((c) => c.claim_id),
     });
   }
   return signals.sort((a, b) => b.change_percentage * Math.log10(b.potential_exposure + 10) - a.change_percentage * Math.log10(a.potential_exposure + 10)).slice(0, 4);
+}
+
+// ---------------------------------------------------------------------------
+// Alur kerja investigasi: berubah setiap kali pengguna menetapkan status/keputusan.
+// ---------------------------------------------------------------------------
+export interface WorkflowSummary {
+  total: number;
+  open: number;
+  by_status: Record<string, number>;
+  confirmed_count: number;
+  confirmed_recovery: number;
+  false_positive_count: number;
+  need_evidence_count: number;
+}
+
+export function computeWorkflow(investigations: Array<{ status: string; decision?: { verdict: string; recommended_recovery_amount?: number } }>): WorkflowSummary {
+  const by_status: Record<string, number> = {};
+  let confirmed_recovery = 0;
+  for (const i of investigations) {
+    by_status[i.status] = (by_status[i.status] || 0) + 1;
+    if (i.status === "CONFIRMED_RISK") confirmed_recovery += i.decision?.recommended_recovery_amount || 0;
+  }
+  const closed = (by_status.CONFIRMED_RISK || 0) + (by_status.FALSE_POSITIVE || 0) + (by_status.CLOSED || 0);
+  return {
+    total: investigations.length,
+    open: investigations.length - closed,
+    by_status,
+    confirmed_count: by_status.CONFIRMED_RISK || 0,
+    confirmed_recovery,
+    false_positive_count: by_status.FALSE_POSITIVE || 0,
+    need_evidence_count: by_status.NEED_EVIDENCE || 0,
+  };
 }

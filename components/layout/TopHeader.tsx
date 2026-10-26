@@ -49,6 +49,7 @@ function getRouteContext(pathname: string): { section: string; title: string } {
   if (pathname.startsWith("/risk-intelligence")) return { section: "Intelijen", title: "Peta Risiko & Graf" };
   if (pathname.startsWith("/copilot")) return { section: "Intelijen", title: "AI Copilot" };
   if (pathname.startsWith("/model-performance")) return { section: "Intelijen", title: "Evaluasi & Kalibrasi" };
+  if (pathname.startsWith("/acuan-nasional")) return { section: "Data", title: "Acuan Nasional BPJS" };
   if (pathname.startsWith("/data-management")) return { section: "Tata Kelola", title: "Manajemen Dataset" };
   if (pathname.startsWith("/settings")) return { section: "Tata Kelola", title: "Pengaturan & Audit" };
   return { section: "ARSA JKN", title: "Ruang Kerja Audit" };
@@ -66,6 +67,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
   const [switchingRole, setSwitchingRole] = useState<Role | null>(null);
+  const [demoUnavailable, setDemoUnavailable] = useState(false);
+  const [resetError, setResetError] = useState(false);
 
   const { user, role, can, logout, switchDemoRole } = useSession();
   const [signals, setSignals] = useState<EmergingSignal[]>([]);
@@ -75,10 +78,16 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let cancelled = false;
     fetch("/api/dashboard")
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => j && setSignals(j.emerging_signals || []))
+      .then((j) => {
+        if (!cancelled && j) setSignals(Array.isArray(j.emerging_signals) ? j.emerging_signals : []);
+      })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -120,7 +129,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   const handleResetDemo = async () => {
     try {
       setIsResetting(true);
+      setResetError(false);
       const res = await fetch("/api/demo/reset", { method: "POST" });
+      if (!res.ok) setResetError(true);
       if (res.ok) {
         setResetSuccess(true);
         window.dispatchEvent(new CustomEvent("arsa:store-updated"));
@@ -131,6 +142,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       }
     } catch (e) {
       console.error(e);
+      setResetError(true);
     } finally {
       setIsResetting(false);
     }
@@ -143,6 +155,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       const ok = await switchDemoRole(targetRole);
       if (ok) {
         setShowMenu(false);
+      } else {
+        // Endpoint demo dinonaktifkan (mode produksi) atau gagal: sembunyikan pengalih peran.
+        setDemoUnavailable(true);
       }
     } finally {
       setSwitchingRole(null);
@@ -206,7 +221,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               className="h-9 flex items-center gap-1.5 px-2.5 sm:px-3 rounded-xl border border-jkn-border/90 bg-white text-xs font-semibold text-jkn-text hover:bg-surface-secondary hover:text-bpjs shadow-2xs transition-all disabled:opacity-50"
             >
               <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? "animate-spin text-bpjs" : ""}`} />
-              <span className="hidden sm:inline">{resetSuccess ? "Reset Berhasil!" : "Reset Demo"}</span>
+              <span className="hidden sm:inline">{resetSuccess ? "Reset Berhasil!" : resetError ? "Reset Gagal" : "Reset Demo"}</span>
             </button>
           )}
 
@@ -301,6 +316,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                 </div>
 
                 {/* 1-Click Demo Role Switcher */}
+                {!demoUnavailable && (
                 <div className="px-1.5 py-1 mb-2 border-b border-jkn-divider">
                   <div className="flex items-center gap-1.5 px-1 mb-1.5 text-[10px] font-bold text-jkn-dim uppercase tracking-wider">
                     <UserCheck className="w-3 h-3 text-bpjs" />
@@ -336,6 +352,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                     })}
                   </div>
                 </div>
+                )}
 
                 <button
                   onClick={logout}

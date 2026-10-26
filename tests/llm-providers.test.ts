@@ -47,7 +47,7 @@ describe("pemilihan provider", () => {
     process.env.LLM_PROVIDER = "foo";
     const { selectProvider, getAIStatus } = await import("@/lib/ai/llm");
     expect(selectProvider()).toBeNull();
-    expect((await getAIStatus({ force: true })).reason).toMatch(/tidak dikenal/);
+    expect((await getAIStatus({ force: true })).reason).toMatch(/tidak (dikenal|terdaftar)/);
   });
   it("otomatis memilih provider yang kredensialnya ada", async () => {
     process.env.ANTHROPIC_API_KEY = "x";

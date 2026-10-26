@@ -6,10 +6,12 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { RiskPill } from "@/components/ui/RiskPill";
 import { useSession } from "@/lib/auth/client";
 import type { EvaluationReport } from "@/lib/eval/evaluate";
+import Link from "next/link";
 import { AlertTriangle, Info, Lock, RefreshCw, Sliders } from "lucide-react";
 
 interface Payload {
   data: EvaluationReport;
+  bpjs_sample?: EvaluationReport | null;
   handling_time: { cases_measured: number; median_hours: number | null };
   embedding_model?: string;
   disclaimer: string;
@@ -46,12 +48,20 @@ const THRESHOLD_LABEL: Record<string, { label: string; desc: string }> = {
     desc: "Ambang minimum indeks kemiripan yang disimpan ke matriks tetangga terdekat.",
   },
   los_ratio: {
-    label: "Rasio lama rawat vs median peer",
-    desc: "Kelipatan hari rawat terhadap median peer pada kelas RS dan CBG yang setara.",
+    label: "Rasio lama rawat vs median diagnosis",
+    desc: "Kelipatan minimum hari rawat terhadap median diagnosis yang sama (RJTL/RITL dipisah).",
+  },
+  los_sigma_gate: {
+    label: "Gerbang sebaran lama rawat (σ log)",
+    desc: "Lama rawat juga harus melewati sekian simpangan baku robust (MAD) dari sebaran peer; mencegah salah tandai pada diagnosis yang lama rawatnya memang menyebar lebar.",
   },
   inflated_total_ratio: {
-    label: "Rasio total tagihan vs median (Inflated)",
-    desc: "Kelipatan nilai klaim terhadap median historis kode INA-CBG yang sama.",
+    label: "Rasio total tagihan vs acuan (Inflated)",
+    desc: "Kelipatan minimum nilai klaim terhadap acuan diagnosis, sudah dinormalkan per kelas rawat BPJS.",
+  },
+  inflated_sigma_gate: {
+    label: "Gerbang sebaran biaya (σ log)",
+    desc: "Biaya juga harus melewati sekian simpangan baku robust dari sebaran peer pada diagnosis dan kelas yang sama.",
   },
   inflated_line_ratio: {
     label: "Rasio komponen vs harga acuan (Inflated)",
@@ -82,18 +92,20 @@ export default function ModelPerformancePage() {
   const [sys, setSys] = useState<SystemThresholdStatus | null>(null);
   const [busy, setBusy] = useState<"" | "ai" | "local">("");
   const [msg, setMsg] = useState("");
+  const [source, setSource] = useState<"seed" | "bpjs">("seed");
+  const [loadError, setLoadError] = useState("");
 
   const loadAll = useCallback(async () => {
     const [evalRes, sysRes] = await Promise.all([
       fetch("/api/evaluation"),
       fetch("/api/system/status"),
     ]);
-    if (evalRes.ok) setP(await evalRes.json());
+    if (evalRes.ok) { setP(await evalRes.json()); setLoadError(""); } else setLoadError(`Metrik evaluasi belum bisa dimuat (HTTP ${evalRes.status}).`);
     if (sysRes.ok) setSys(await sysRes.json());
   }, []);
 
   useEffect(() => {
-    loadAll().catch(() => {});
+    loadAll().catch(() => setLoadError("Metrik evaluasi belum bisa dimuat. Periksa koneksi lalu coba lagi."));
   }, [loadAll]);
 
   const rerunAnalysis = async (local: boolean) => {
@@ -125,7 +137,9 @@ export default function ModelPerformancePage() {
       </DashboardShell>
     );
   }
-  const r = p.data;
+  const bpjsAvailable = Boolean(p.bpjs_sample);
+  const useBpjs = source === "bpjs" && bpjsAvailable;
+  const r = useBpjs ? (p.bpjs_sample as EvaluationReport) : p.data;
 
   return (
     <DashboardShell>
@@ -141,7 +155,7 @@ export default function ModelPerformancePage() {
             </span>
           </div>
           <p className="text-xs text-jkn-muted mt-1">
-            Pengukuran langsung Precision, Recall, F1-Score, kelengkapan sitasi bukti, serta parameter ambang batas 8 detektor aktif.
+            Pengukuran langsung Precision, Recall, F1-Score, kelengkapan sitasi bukti, serta parameter ambang batas {p.data.per_detector.length} detektor aktif.
           </p>
         </div>
 
@@ -168,7 +182,7 @@ export default function ModelPerformancePage() {
           ) : (
             <div className="text-[11px] text-jkn-muted flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-secondary border border-jkn-border">
               <Lock className="w-3.5 h-3.5" />
-              <span>Eksekusi ulang detektor khusus Supervisor / Admin</span>
+              <span>Anda tidak memiliki izin menjalankan ulang detektor</span>
             </div>
           )}
         </div>
@@ -183,11 +197,43 @@ export default function ModelPerformancePage() {
         </div>
       )}
 
+      {/* Pemilih dataset evaluasi */}
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-jkn-muted">Data berlabel yang diukur:</span>
+        <div className="inline-flex rounded-xl bg-surface-secondary p-1 border border-jkn-divider">
+          {([
+            ["seed", "Dataset sintetis bawaan"],
+            ["bpjs", "Sampel BPJS (tanpa resume medis)"],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSource(key)}
+              disabled={key === "bpjs" && !bpjsAvailable}
+              title={key === "bpjs" && !bpjsAvailable ? "Muat Data Sampel BPJS di Manajemen Dataset terlebih dahulu" : undefined}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-40 ${
+                (key === "bpjs") === useBpjs ? "bg-white text-bpjs-dark shadow-2xs border border-jkn-border" : "text-jkn-muted hover:text-jkn-text"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {!bpjsAvailable && (
+          <Link href="/data-management" className="font-semibold text-bpjs-dark hover:underline">
+            Muat Data Sampel BPJS untuk mengukur detektor pada data berbentuk BPJS
+          </Link>
+        )}
+      </div>
+
       {/* Methodological Disclaimer Banner */}
       <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs text-amber-900">
         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
         <span className="leading-relaxed">
-          <strong className="font-semibold">Catatan Metodologi Evaluasi:</strong> {p.disclaimer}
+          <strong className="font-semibold">Catatan Metodologi Evaluasi:</strong>{" "}
+          {useBpjs
+            ? "Metrik dihitung pada Data Sampel BPJS sintetis (bentuk data FKRTL, kalibrasi statistik BPJS 2018) dengan anomali yang disisipkan dan berlabel. Data ini tidak punya resume medis, sehingga detektor kloning dan klaim fiktif memang tidak berlaku. Ini bukan akurasi pada klaim riil."
+            : p.disclaimer}
         </span>
       </div>
 
@@ -197,7 +243,7 @@ export default function ModelPerformancePage() {
           [
             "Skor F1 Makro (Lintas Detektor)",
             pct(r.macro.f1),
-            "Rerata harmonik tanpa bobot",
+            "Rerata F1 detektor yang punya kasus berlabel",
           ],
           [
             "Precision Mikro",
@@ -216,7 +262,7 @@ export default function ModelPerformancePage() {
           ],
         ].map(([k, v, sub]) => (
           <div key={k} className="p-4 sm:p-5 flex flex-col justify-between">
-            <span className="text-[11px] font-bold text-jkn-muted uppercase tracking-wider">
+            <span className="text-xs font-bold text-jkn-muted">
               {k}
             </span>
             <div className="mt-2">
@@ -236,13 +282,13 @@ export default function ModelPerformancePage() {
             Matriks Evaluasi Per Detektor (Confusion Matrix &amp; Skor F1)
           </h2>
           <span className="text-[11px] font-mono text-jkn-muted">
-            Ambang penandaan skor ≥ 50
+            Satu sinyal detektor = satu penandaan
           </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-surface-secondary border-b border-jkn-border text-jkn-muted font-bold uppercase text-[10px] tracking-wider">
+              <tr className="bg-surface-secondary border-b border-jkn-border text-jkn-muted font-bold text-[11px]">
                 <th className="py-2.5 px-4">Detektor</th>
                 <th className="py-2.5 px-3 text-right">Positif Aktual</th>
                 <th className="py-2.5 px-3 text-right">TP</th>
@@ -356,11 +402,11 @@ export default function ModelPerformancePage() {
       <div className="bg-surface rounded-xl border border-jkn-border shadow-subtle grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-jkn-divider tabular-nums">
         {/* Column 1: Detection vs Baseline */}
         <div className="p-5 space-y-3">
-          <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider">
+          <h3 className="text-sm font-bold text-jkn-text">
             1. Komparasi terhadap Ambang Tunggal
           </h3>
           <p className="text-[11px] text-jkn-muted leading-relaxed">
-            Perbandingan F1 tingkat klaim antara kombinasi 8 detektor ARSA dengan penyaringan ambang tunggal ({r.baseline.name}).
+            Perbandingan F1 tingkat klaim antara kombinasi {r.per_detector.length} detektor ARSA dengan penyaringan ambang tunggal ({r.baseline.name}).
           </p>
           <div className="divide-y divide-jkn-divider border-t border-b border-jkn-divider text-xs">
             <div className="py-2 flex justify-between">
@@ -386,7 +432,7 @@ export default function ModelPerformancePage() {
 
         {/* Column 2: Evidence Completeness */}
         <div className="p-5 space-y-3">
-          <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider">
+          <h3 className="text-sm font-bold text-jkn-text">
             2. Kelengkapan Sitasi Bukti
           </h3>
           <p className="text-[11px] text-jkn-muted leading-relaxed">
@@ -418,7 +464,7 @@ export default function ModelPerformancePage() {
 
         {/* Column 3: Investigation Turnaround Instrumentation */}
         <div className="p-5 space-y-3">
-          <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider">
+          <h3 className="text-sm font-bold text-jkn-text">
             3. Instrumentasi Waktu Penyelesaian
           </h3>
           <p className="text-[11px] text-jkn-muted leading-relaxed">

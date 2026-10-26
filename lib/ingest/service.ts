@@ -51,7 +51,9 @@ export async function createDatasetFromUpload(buffer: Buffer, filename: string, 
   const suggestion = await suggestMappings(columns);
 
   const store = getStore();
-  const n = store.datasets.filter((d) => d.dataset_id !== "DS-SEED").length + 1;
+  // ID dihitung SETELAH await (suggestMappings) dan dijamin unik agar unggahan paralel tidak bertabrakan.
+  let n = store.datasets.filter((d) => d.dataset_id !== "DS-SEED").length + 1;
+  while (store.datasets.some((d) => d.dataset_id === `DS-${String(n).padStart(3, "0")}`)) n++;
   const id = `DS-${String(n).padStart(3, "0")}`;
   const now = new Date().toISOString();
 
@@ -89,6 +91,8 @@ export async function confirmMappingAndIngest(datasetId: string, mappings: Field
   const dataset = store.datasets.find((d) => d.dataset_id === datasetId);
   if (!dataset) throw new Error("Dataset tidak ditemukan");
   if (datasetId === "DS-SEED") throw new Error("Dataset sintetis bawaan tidak dapat dinormalisasi ulang");
+  if (dataset.status === "NORMALIZING") throw new Error("Dataset sedang diproses. Tunggu hingga selesai.");
+  if (dataset.status === "READY") throw new Error("Dataset sudah dinormalisasi. Unggah ulang file untuk memproses ulang.");
   const rows = loadRows(datasetId);
   if (!rows) throw new Error("Baris dataset tidak tersedia (server restart?). Unggah ulang file.");
 
@@ -107,7 +111,11 @@ export async function confirmMappingAndIngest(datasetId: string, mappings: Field
 
   if (result.claims.length === 0) {
     dataset.status = "ERROR";
-    dataset.error_message = result.rejected[0]?.reason || "Tidak ada baris valid";
+    const dup = result.quality.duplicate_rows;
+    dataset.error_message =
+      dup > 0 && dup === result.rejected.length
+        ? `Seluruh ${dup} klaim dalam berkas ini sudah ada di ruang kerja (ID klaim duplikat), sehingga tidak ada yang ditambahkan.`
+        : `Tidak ada baris valid dari ${result.rejected.length} baris. Contoh alasan: ${result.rejected[0]?.reason || "tidak diketahui"}.`;
     persist();
     return dataset;
   }
@@ -125,7 +133,21 @@ export async function confirmMappingAndIngest(datasetId: string, mappings: Field
     store.ingestedClaimIds.add(c.claim_id);
   }
 
-  const summary = await analyzeAll(store);
+  let summary: Awaited<ReturnType<typeof analyzeAll>>;
+  try {
+    summary = await analyzeAll(store);
+  } catch (e) {
+    // Rollback: jangan tinggalkan klaim setengah-teranalisis di store bila analisis gagal.
+    const newIds = new Set(result.claims.map((c) => c.claim_id));
+    store.claims = store.claims.filter((c) => !newIds.has(c.claim_id));
+    newIds.forEach((cid) => store.ingestedClaimIds.delete(cid));
+    const newProv = new Set(result.newProviders.map((p) => p.provider_id));
+    store.providers = store.providers.filter((p) => !newProv.has(p.provider_id));
+    dataset.status = "ERROR";
+    dataset.error_message = `Analisis risiko gagal: ${e instanceof Error ? e.message : "kesalahan tak dikenal"}`;
+    persist();
+    throw new Error(dataset.error_message);
+  }
   store.meta.last_analysis = summary;
   refreshAggregates(store);
 

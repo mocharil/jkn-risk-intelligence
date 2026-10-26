@@ -54,6 +54,13 @@ const NARRATIVE_TYPES: EvidenceItem["document_type"][] = ["RINGKASAN_MEDIS", "RE
 // ---------------------------------------------------------------------------
 // 1. UPCODING – tingkat keparahan yang diklaim tidak didukung bukti klinis / peer
 // ---------------------------------------------------------------------------
+/** Ambang z (dalam simpangan robust skala-log peer) agar suatu rasio dianggap menyimpang, bukan variasi wajar. */
+export const LOS_RATIO_MIN = 1.75;
+export const LOS_Z_MIN = 2.0;
+export const AMOUNT_RATIO_MIN = 1.6;
+export const LINE_RATIO_MIN = 1.8;
+export const AMOUNT_Z_MIN = 2.2;
+
 export const upcodingDetector: RiskDetector = {
   id: "UPCODING",
   label: "Upcoding",
@@ -61,7 +68,7 @@ export const upcodingDetector: RiskDetector = {
   run(claim, ctx) {
     const diag = primaryDiag(claim);
     if (!diag) return null;
-    const bm = ctx.benchmarks.get(diag.code);
+    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class);
 
     let score = 0;
     const reasons: string[] = [];
@@ -236,10 +243,13 @@ export const abnormalLosDetector: RiskDetector = {
   run(claim, ctx) {
     const diag = primaryDiag(claim);
     if (!diag) return null;
-    const bm = ctx.benchmarks.get(diag.code);
+    // Bandingkan dengan peer sebucket (rawat jalan vs rawat inap) agar LOS rawat jalan tidak dibanding rawat inap.
+    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class);
     const los = claim.service.length_of_stay;
     const ratio = los / (bm.expected_los || 1);
-    if (ratio < 1.75) return null;
+    if (ratio < LOS_RATIO_MIN) return null;
+    // Selain rasio, harus keluar dari sebaran peer: pada data riil lama rawat menyebar lebar sehingga 1,75x median bisa wajar.
+    if (bm.los_log_sigma !== undefined && Math.log(ratio) < LOS_Z_MIN * bm.los_log_sigma) return null;
 
     const variance = los - bm.expected_los;
     let score = Math.round(50 + Math.min(variance * 12, 45));
@@ -284,7 +294,7 @@ export const unbundlingDetector: RiskDetector = {
   run(claim, ctx) {
     const diag = primaryDiag(claim);
     if (!diag) return null;
-    const bm = ctx.benchmarks.get(diag.code);
+    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class);
     const ref = referenceFor(diag.code);
 
     const packaged = new Set<string>(ref.package_procedures);
@@ -332,18 +342,18 @@ export const inflatedBillsDetector: RiskDetector = {
   run(claim, ctx) {
     const diag = primaryDiag(claim);
     if (!diag) return null;
-    const bm = ctx.benchmarks.get(diag.code);
+    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class);
 
     const lineHits = claim.procedures
       .map((p) => ({ p, ref: procedureRef(p.code) }))
-      .filter((x) => x.ref && (x.p.cost ?? 0) > 0 && (x.p.cost as number) / x.ref.reference_price >= 1.8);
+      .filter((x) => x.ref && (x.p.cost ?? 0) > 0 && (x.p.cost as number) / x.ref.reference_price >= LINE_RATIO_MIN);
 
     // Bandingkan nilai dasar (di luar komponen yang ditagih terinci; itu ditangani Unbundling/Phantom).
     const itemized = claim.procedures.reduce((a, p) => a + (p.cost ?? 0), 0);
     const totalRatio = (claim.claim_amount - itemized) / (bm.expected_tariff || 1);
     const severityOk = diag.severity <= bm.expected_severity;
     const losRatio = claim.service.length_of_stay / (bm.expected_los || 1);
-    const totalInflated = totalRatio >= 1.6 && severityOk && losRatio < 1.75;
+    const totalInflated = totalRatio >= AMOUNT_RATIO_MIN && severityOk && losRatio < LOS_RATIO_MIN && (bm.amount_log_sigma === undefined || Math.log(totalRatio) >= AMOUNT_Z_MIN * bm.amount_log_sigma);
 
     if (lineHits.length === 0 && !totalInflated) return null;
 

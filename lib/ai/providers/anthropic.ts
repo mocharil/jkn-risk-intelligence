@@ -41,7 +41,7 @@ export const anthropicProvider: LLMProvider = {
   },
 
   async *streamText(prompt, opts: GenerateOptions = {}) {
-    const res = await fetch(`${BASE()}/v1/messages`, { method: "POST", headers: headers(), body: body(prompt, { ...opts, temperature: opts.temperature ?? 0.1 }, { stream: true }) });
+    const res = await fetch(`${BASE()}/v1/messages`, { method: "POST", headers: headers(), body: body(prompt, { ...opts, temperature: opts.temperature ?? 0.1 }, { stream: true }), signal: AbortSignal.timeout(opts.timeoutMs ?? 60_000) });
     for await (const d of sseData(res)) {
       try {
         const ev = JSON.parse(d);

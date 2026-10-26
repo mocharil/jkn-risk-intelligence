@@ -11,6 +11,28 @@ export interface Doctor {
   provider_id: string;
 }
 
+/** Posisi faskes terhadap statistik resmi BPJS; hanya pada respons API. */
+export interface ProviderNational {
+  year: string;
+  claims: number;
+  /** Kurang dari 20 klaim: skor dan rasio belum dapat disimpulkan. */
+  small_sample: boolean;
+  /** Tagihan faskes / rerata nasional untuk campuran kelas rawat yang sama (1,0 = sebanding). */
+  cost_ratio: number | null;
+  los_ratio: number | null;
+  class_mix: Record<string, number>;
+  province: {
+    name: string;
+    participants: number;
+    fkrtl_count: number;
+    fkrtl_per_100k: number;
+    fkrtl_per_100k_national_mean: number;
+    admission_rate_per_10k: number;
+    cost_per_admission: number;
+    cost_index: number;
+  } | null;
+}
+
 export interface Provider {
   provider_id: string;
   name: string;
@@ -43,6 +65,8 @@ export interface Provider {
     readmission_rate_pct: { provider: number; peer_median: number };
   };
   doctors: Doctor[];
+  /** Hanya pada respons API. */
+  national?: ProviderNational;
   monthly_risk_trend: Array<{
     month: string;
     risk_score: number;

@@ -25,7 +25,8 @@ function norm(s: string) {
 function countMarkers(text: string, markers: string[]): number {
   const t = norm(text);
   let n = 0;
-  for (const m of markers) if (t.includes(m)) n++;
+  // Batas kata di depan penanda agar "icu" tidak cocok dengan "difficult" atau "ringan" dengan "keringanan".
+  for (const m of markers) if (new RegExp(`(?<![a-z0-9])${m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(t)) n++;
   return n;
 }
 

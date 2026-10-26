@@ -6,18 +6,8 @@ import {
   useInView,
   useSpring,
   useMotionValue,
-  useTransform,
   AnimatePresence,
 } from "framer-motion";
-import {
-  FileText,
-  ShieldAlert,
-  Cpu,
-  CheckCircle2,
-  GitCompare,
-  Sparkles,
-  Lock,
-} from "lucide-react";
 
 /* ============================================================================
    1. MAGIC UI — NUMBER TICKER (Spring-animated numeric counter)
@@ -232,125 +222,6 @@ export function BorderBeam({
       />
       <div className="absolute inset-[1.5px] rounded-[inherit] bg-transparent" />
     </div>
-  );
-}
-
-/* ============================================================================
-   5. MAGIC UI — HERO INTERACTIVE ILLUSTRATION + ANIMATED BEAMS (PURE VISUAL)
-============================================================================ */
-export function HeroForensicIllustration() {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  const rotateX = useTransform(mouseY, [-200, 200], [6, -6]);
-  const rotateY = useTransform(mouseX, [-200, 200], [-7, 7]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    mouseX.set(e.clientX - cx);
-    mouseY.set(e.clientY - cy);
-  };
-
-  const handleMouseLeave = () => {
-    mouseX.set(0);
-    mouseY.set(0);
-  };
-
-  return (
-    <motion.div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-      initial={{ opacity: 0, y: 20, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
-      className="relative w-full max-w-[500px] ml-auto rounded-3xl border border-white/15 bg-[#061810]/70 backdrop-blur-md p-3 shadow-[0_28px_70px_rgba(0,0,0,0.55)] overflow-hidden group"
-    >
-      {/* Subtle Ambient Glow */}
-      <div
-        className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 rounded-full opacity-40 blur-3xl"
-        style={{ background: "radial-gradient(circle, #10B981 0%, transparent 70%)" }}
-      />
-
-      {/* Pure Visual Canvas: 3D Isometric Glass Illustration + Animated SVG Light Beams */}
-      <div className="relative rounded-2xl overflow-hidden bg-[#04110B] h-[290px] sm:h-[320px]">
-        <img
-          src="/landing/hero-illustration.png"
-          alt="Ilustrasi Mesin Forensik Klaim JKN"
-          className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
-        />
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(circle at 50% 50%, rgba(4,17,11,0.0) 35%, rgba(4,17,11,0.65) 100%)",
-          }}
-        />
-
-        {/* Magic UI Animated SVG Beam Overlay (pure light pulses, zero text tags) */}
-        <svg
-          viewBox="0 0 480 300"
-          fill="none"
-          className="absolute inset-0 w-full h-full pointer-events-none"
-        >
-          <defs>
-            <linearGradient id="beamGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#10B981" stopOpacity="0" />
-              <stop offset="50%" stopColor="#34D399" stopOpacity="1" />
-              <stop offset="100%" stopColor="#A7F3D0" stopOpacity="0" />
-            </linearGradient>
-            <linearGradient id="beamGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#F59E0B" stopOpacity="0" />
-              <stop offset="50%" stopColor="#FBBF24" stopOpacity="0.95" />
-              <stop offset="100%" stopColor="#EF4444" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-
-          {/* Animated Beams flowing into the isometric optical prism */}
-          <motion.path
-            d="M 60 85 C 145 85, 175 150, 245 150"
-            stroke="url(#beamGrad1)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            initial={{ pathLength: 0.35, pathOffset: 0 }}
-            animate={{ pathOffset: [0, 1] }}
-            transition={{ duration: 2.8, repeat: Infinity, ease: "linear" }}
-          />
-          <motion.path
-            d="M 60 225 C 145 225, 175 150, 245 150"
-            stroke="url(#beamGrad1)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            initial={{ pathLength: 0.35, pathOffset: 0 }}
-            animate={{ pathOffset: [0, 1] }}
-            transition={{ duration: 3.3, delay: 0.7, repeat: Infinity, ease: "linear" }}
-          />
-          <motion.path
-            d="M 245 150 C 315 150, 345 100, 420 100"
-            stroke="url(#beamGrad2)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            initial={{ pathLength: 0.4, pathOffset: 0 }}
-            animate={{ pathOffset: [0, 1] }}
-            transition={{ duration: 2.5, delay: 0.3, repeat: Infinity, ease: "linear" }}
-          />
-          <motion.path
-            d="M 245 150 C 315 150, 345 205, 420 205"
-            stroke="url(#beamGrad1)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            initial={{ pathLength: 0.4, pathOffset: 0 }}
-            animate={{ pathOffset: [0, 1] }}
-            transition={{ duration: 3.0, delay: 1.0, repeat: Infinity, ease: "linear" }}
-          />
-        </svg>
-      </div>
-    </motion.div>
   );
 }
 

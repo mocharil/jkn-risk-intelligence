@@ -1,3 +1,4 @@
+import type { GovernancePolicy } from "../governance/policy";
 import fs from "fs";
 import path from "path";
 import { dataDir } from "./paths";
@@ -13,12 +14,15 @@ import { Investigation } from "@/types/investigation";
  */
 export interface PersistedState {
   version: 1;
+  /** Versi dataset bawaan saat snapshot dibuat; bila berbeda, override status kasus tidak diterapkan. */
+  seed_version?: string;
   datasets: Dataset[];
   ingested_claims: CanonicalClaim[];
   investigation_overrides: Record<string, Pick<Investigation, "status" | "notes" | "decision" | "assigned_to" | "updated_at">>;
   claim_status: Record<string, ClaimStatus>;
   audit_log: AuditEntry[];
   users: UserRecord[];
+  governance_policy?: GovernancePolicy;
 }
 
 const file = () => path.join(dataDir(), "arsa-state.json");

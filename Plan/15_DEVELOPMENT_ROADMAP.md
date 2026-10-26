@@ -4,8 +4,8 @@
 > Terakhir diperbarui: 2026-10-02 (sesi pengembangan lanjutan).
 
 ## Ringkasan
-- **Semua fitur proposal sudah ada di kode.** Gemini live terbukti (SA baru valid). Yang belum terbukti hanya **Supabase** (belum dikonfigurasi). Dengan embedding Vertex asli: macro F1 0,968, cloning P 0,925 / R 0,971.
-- **Bukti verifikasi:** 79 test unit/integrasi (termasuk 8 terhadap Postgres+pgvector sungguhan via Docker), 40 asersi E2E HTTP terhadap server LLM tiruan (protokol OpenAI), type-check & build produksi bersih, axe-core 0 pelanggaran pada halaman utama, p95 API terburuk 48 ms.
+- **Semua fitur proposal sudah ada di kode.** Gemini live terbukti (SA baru valid). Yang belum terbukti hanya **Supabase** (belum dikonfigurasi). Pada dataset terkalibrasi BPJS 2018 v2 (`1.202` klaim, `341` investigasi): macro F1 0,973 (presisi 0,993, recall 0,955).
+- **Bukti verifikasi:** 126 test unit/integrasi (118 unit/integrasi + 8 terhadap Postgres+pgvector sungguhan via Docker), 40 asersi E2E HTTP terhadap server LLM tiruan (protokol OpenAI), type-check & build produksi bersih, axe-core 0 pelanggaran pada halaman utama, p95 API terburuk 48 ms.
 - **Lapisan LLM kini agnostik provider:** Gemini, OpenAI-compatible (OpenAI/Azure/vLLM/Ollama/OpenRouter), Anthropic. Pilih dengan `LLM_PROVIDER`.
 
 ## Sprint 1 — Inti AI
@@ -32,7 +32,7 @@
 
 ## Sprint 3
 ### E. Testing & metrik
-- [x] 79 test; E2E otomatis (`npm run build && npm run test:e2e`); `npm run test:db` untuk pgvector
+- [x] 126 test (118 unit/integrasi + 8 pgvector); E2E otomatis (`npm run build && npm run test:e2e`); `npm run test:db` untuk pgvector
 - [x] Precision/recall/F1 8 detector, baseline pembanding, kelengkapan bukti, halaman Model Performance
 - [~] Waktu investigasi: instrumentasi dari audit log; klaim 50–70% **belum terverifikasi** (butuh baseline manual)
 - [ ] Penyelarasan klaim slide proposal dengan angka terukur — keputusan Anda (landing sudah dijujurkan)

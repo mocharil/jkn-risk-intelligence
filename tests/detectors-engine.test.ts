@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CanonicalClaim, EvidenceItem } from "@/types/claim";
-import { computeBenchmarks } from "@/lib/risk/benchmarks";
+import { classFactorOf, computeBenchmarks } from "@/lib/risk/benchmarks";
 import { abnormalLosDetector, cloningDetector, DetectorContext, inflatedBillsDetector, phantomDetector, unbundlingDetector, upcodingDetector, DETECTOR_REGISTRY, registerDetector } from "@/lib/risk/detectors";
 import { documentIndicatesMild, documentIndicatesSevere, procedureVerdict } from "@/lib/risk/text";
 import { generateSyntheticDataset } from "@/lib/data/synthetic-seed";
@@ -109,8 +109,22 @@ describe("detector", () => {
   });
 
   it("Inflated Bills: total 2x median tanpa kenaikan severity; komponen itemisasi tidak dihitung ganda", () => {
-    expect(inflatedBillsDetector.run(claim({ claim_amount: 8_000_000 }), ctx())).not.toBeNull();
+    const kelas2 = { ...claim().service, treatment_class: "KELAS_2" as const };
+    expect(inflatedBillsDetector.run(claim({ claim_amount: 8_000_000, service: kelas2 }), ctx())).not.toBeNull();
     expect(inflatedBillsDetector.run(claim({ claim_amount: 3_800_000 + 12_500_000, procedures: [{ code: "44.95", description: "x", date: "x", cost: 12_500_000 }] }), ctx())).toBeNull();
+  });
+
+  it("benchmark tarif sadar kelas rawat: Rp8 jt wajar-tinggi untuk kelas 1 tetapi inflasi untuk kelas 3 (faktor biaya BPJS)", () => {
+    const bm = computeBenchmarks([]);
+    const k1 = bm.get("A09", "KELAS_1").expected_tariff;
+    const k3 = bm.get("A09", "KELAS_3").expected_tariff;
+    expect(k1).toBeGreaterThan(k3 * 1.4); // kelas 1 ~ Rp6,31 jt vs kelas 3 ~ Rp4,16 jt per admisi (rasio 1,52)
+    expect(classFactorOf("KELAS_3")).toBeLessThan(1);
+    expect(classFactorOf("KELAS_1")).toBeGreaterThan(1);
+    expect(classFactorOf("RAWAT_JALAN")).toBe(1); // kelas tak dikenal tidak diubah
+    const c8 = (cls: "KELAS_1" | "KELAS_3") => claim({ claim_amount: 8_000_000, service: { ...claim().service, treatment_class: cls } });
+    expect(inflatedBillsDetector.run(c8("KELAS_3"), ctx())).not.toBeNull();
+    expect(inflatedBillsDetector.run(c8("KELAS_1"), ctx())).toBeNull();
   });
 
   it("Cloning: butuh kemiripan semantik DAN tumpang tindih frasa (template kebetulan tidak ditandai)", () => {

@@ -7,6 +7,7 @@ import { CredentialSource, GenerateOptions, LLMProvider, withTimeout } from "./t
  * Gemini. Urutan kredensial (hanya yang diberikan UNTUK PROYEK INI):
  *  1. VERTEX_SA_JSON  2. VERTEX_SA_PATH / ./gemini_sa.json  3. GEMINI_API_KEY
  *  4. GOOGLE_APPLICATION_CREDENTIALS (ambient) — HANYA bila ARSA_ALLOW_AMBIENT_CREDENTIALS=1
+ *  5. Cloud Run (K_SERVICE) + GOOGLE_CLOUD_PROJECT: identitas akun layanan lewat metadata server, tanpa kunci
  */
 interface ServiceAccount {
   project_id: string;
@@ -15,6 +16,8 @@ interface ServiceAccount {
 }
 
 const LOCATION = process.env.VERTEX_LOCATION || "us-central1";
+// Model embedding tidak tersedia di lokasi "global"; pakai wilayah regional terpisah.
+const EMBED_LOCATION = process.env.VERTEX_EMBED_LOCATION || (LOCATION === "global" ? "us-central1" : LOCATION);
 
 function readProjectSA(): { sa: ServiceAccount; source: CredentialSource } | null {
   try {
@@ -43,7 +46,7 @@ function readAmbientSA(): ServiceAccount | null {
   return null;
 }
 
-type Built = { ai: GoogleGenAI; source: CredentialSource; project?: string };
+type Built = { ai: GoogleGenAI; source: CredentialSource; project?: string; embedAi?: GoogleGenAI };
 let built: Built | null | undefined;
 
 function build(): Built | null {
@@ -60,6 +63,12 @@ function build(): Built | null {
   const amb = readAmbientSA();
   if (amb?.project_id && amb.private_key) {
     built = { source: "ambient-adc", project: amb.project_id, ai: vertexClient(amb) };
+    return built;
+  }
+  // Cloud Run / GCE: akun layanan bawaan lewat metadata server (tanpa file kunci). Hanya aktif bila GOOGLE_CLOUD_PROJECT diisi.
+  if (process.env.K_SERVICE && process.env.GOOGLE_CLOUD_PROJECT) {
+    const mk = (location: string) => new GoogleGenAI({ vertexai: true, project: process.env.GOOGLE_CLOUD_PROJECT, location, googleAuthOptions: { scopes: ["https://www.googleapis.com/auth/cloud-platform"] } });
+    built = { source: "workload-identity", project: process.env.GOOGLE_CLOUD_PROJECT, ai: mk(LOCATION), embedAi: EMBED_LOCATION === LOCATION ? undefined : mk(EMBED_LOCATION) };
     return built;
   }
   built = null;
@@ -188,7 +197,7 @@ export const geminiProvider: LLMProvider = {
     const c = build()!;
     const out: number[][] = [];
     for (let i = 0; i < texts.length; i += 16) {
-      const res = await withTimeout(c.ai.models.embedContent({ model: EMBED, contents: texts.slice(i, i + 16), config: { outputDimensionality: 768, taskType: "SEMANTIC_SIMILARITY" } }), 30_000, "embed");
+      const res = await withTimeout((c.embedAi ?? c.ai).models.embedContent({ model: EMBED, contents: texts.slice(i, i + 16), config: { outputDimensionality: 768, taskType: "SEMANTIC_SIMILARITY" } }), 30_000, "embed");
       for (const e of res.embeddings ?? []) out.push((e.values ?? []) as number[]);
     }
     return out;

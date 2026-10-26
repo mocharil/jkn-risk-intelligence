@@ -3,6 +3,7 @@ import { DashboardKPIs } from "@/types/risk";
 import { computeEmergingSignals } from "../analytics/aggregates";
 import { DataStore } from "../data/store";
 import { generateJson, getAIStatus } from "./llm";
+import { llmForbiddenByPolicy } from "../governance/policy";
 
 const LlmSchema = z.object({
   summary: z.string().min(20),
@@ -22,6 +23,7 @@ const TTL = 10 * 60_000;
  * versi LLM disusun di latar belakang (single-flight) dan disimpan di cache.
  */
 export async function withAiBriefing(store: DataStore, kpis: DashboardKPIs, opts: { wait?: boolean } = {}): Promise<DashboardKPIs> {
+  if (llmForbiddenByPolicy()) return kpis; // kebijakan tata kelola: ringkasan hanya dihitung otomatis
   const key = `${store.meta.analyzed_at}|${store.claims.length}`;
   if (g.__arsaBriefing && g.__arsaBriefing.key === key && Date.now() - g.__arsaBriefing.at < TTL) {
     return { ...kpis, ai_briefing: g.__arsaBriefing.value };

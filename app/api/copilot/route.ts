@@ -4,6 +4,8 @@ import { askCopilot, askCopilotStream } from "@/lib/ai/copilot";
 import { guard } from "@/lib/auth/guard";
 import { getStore, recordAudit } from "@/lib/data/store";
 
+export const dynamic = "force-dynamic";
+
 const Body = z.object({
   question: z.string().min(2).max(1000),
   claim_id: z.string().max(40).optional(),
@@ -31,26 +33,43 @@ export async function POST(request: NextRequest) {
   // Streaming (Server-Sent Events): start -> delta* -> final (jawaban tervalidasi)
   if (request.nextUrl.searchParams.get("stream") === "1") {
     const enc = new TextEncoder();
+    const iter = askCopilotStream(getStore(), parsed.data)[Symbol.asyncIterator]();
     const body = new ReadableStream({
-      async start(controller) {
+      async pull(controller) {
         try {
-          for await (const ev of askCopilotStream(getStore(), parsed.data)) {
-            controller.enqueue(enc.encode(`data: ${JSON.stringify(ev)}\n\n`));
-            if (ev.type === "final") audit(ev.response.mode, ev.response.grounding.valid_citations);
+          const { value: ev, done } = await iter.next();
+          if (done) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(enc.encode(`data: ${JSON.stringify(ev)}\n\n`));
+          if (ev.type === "final") {
+            audit(ev.response.mode, ev.response.grounding.valid_citations);
+            controller.close();
           }
         } catch (e) {
-          controller.enqueue(enc.encode(`data: ${JSON.stringify({ type: "error", error: e instanceof Error ? e.message.slice(0, 160) : "error" })}\n\n`));
-        } finally {
+          controller.enqueue(
+            enc.encode(`data: ${JSON.stringify({ type: "error", error: e instanceof Error ? e.message.slice(0, 160) : "error" })}\n\n`)
+          );
           controller.close();
         }
       },
+      async cancel() {
+        await iter.return?.(undefined);
+      },
     });
-    return new Response(body, { headers: { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-store, no-transform", Connection: "keep-alive" } });
+    return new Response(body, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-store, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
   }
 
   try {
     const res = await askCopilot(getStore(), parsed.data);
-    // Jejak audit ringan: siapa bertanya apa & dijawab oleh mode apa (bukan isi jawaban).
     recordAudit({
       claim_id: parsed.data.claim_id || "COPILOT",
       actor: g.user.name,
@@ -62,6 +81,9 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(res);
   } catch (e) {
-    return NextResponse.json({ error: "Gagal memproses analisis Copilot.", detail: e instanceof Error ? e.message.slice(0, 160) : undefined }, { status: 500 });
+    return NextResponse.json(
+      { error: "Gagal memproses analisis Copilot.", detail: e instanceof Error ? e.message.slice(0, 160) : undefined },
+      { status: 500 }
+    );
   }
 }
