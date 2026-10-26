@@ -1,6 +1,6 @@
 export type ProviderId = "gemini" | "openai" | "anthropic";
 
-export type CredentialSource = "env-json" | "project-file" | "api-key" | "ambient-adc" | "base-url" | "none";
+export type CredentialSource = "env-json" | "project-file" | "api-key" | "ambient-adc" | "workload-identity" | "base-url" | "none";
 
 export interface GenerateOptions {
   system?: string;

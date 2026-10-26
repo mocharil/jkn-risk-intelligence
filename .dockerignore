@@ -1,0 +1,12 @@
+node_modules
+.next
+.next-prod
+.data
+.git
+Sample
+Plan
+tests
+Mockup_Design
+*.pdf
+.env*
+gemini_sa.json
