@@ -1,819 +1,1427 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight } from "lucide-react";
-import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
-import { RiskPill } from "@/components/ui/RiskPill";
-import { IndonesiaRiskMap } from "@/components/map/IndonesiaRiskMap";
-import { ProvinceRiskData, RiskType } from "@/types/risk";
+import { PROVENANCE_SUMMARY } from "@/lib/data/provenance";
 import {
-  NumberTicker,
-  BlurFade,
-  StaggeredHeadline,
-  SpotlightCard,
-  HeroForensicIllustration,
-  InfiniteTelemetryMarquee,
-} from "@/components/ui/magic-landing-effects";
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useSpring,
+  useInView,
+  type MotionValue,
+} from "framer-motion";
+import {
+  Sparkles,
+  ChevronRight,
+  ChevronDown,
+  Search,
+  Plus,
+  Download,
+  Bell,
+  LayoutGrid,
+  FolderKanban,
+  FileCheck2,
+  Building2,
+  Network,
+  Settings,
+  Zap,
+  Users,
+  Layers,
+  TrendingUp,
+  Pause,
+  Play,
+  Square,
+  ShieldCheck,
+  Database,
+  FileSpreadsheet,
+  Cpu,
+  FileText,
+  Globe,
+  Phone,
+  Link2,
+  CheckCircle2,
+  Activity,
+  ArrowUpRight,
+} from "lucide-react";
+import { formatNumber } from "@/lib/formatting/currency";
+import { HeroDashboardMock } from "@/components/landing/HeroDashboardMock";
+import { PublicStats, RISK_LABEL } from "@/components/landing/stats";
+import { AuditChainCard, CopilotCard, OverviewCard, PriorityQueueCard } from "@/components/landing/BentoCards";
+import { REQUIRED_FIELDS } from "@/lib/ingest/canonical";
 
-interface PublicStats {
-  claims: number;
-  flagged_claims: number;
-  detectors: number;
-  narratives_embedded: number;
-  macro_f1: number;
-  hero: {
-    amount: number;
-    peer_median: number;
-    exposure: number;
-    score: number;
-    clone_partner?: string;
-    clone_similarity?: number;
-  } | null;
+
+const AVATARS = [
+  "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=200&q=80",
+  "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=200&q=80",
+  "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=200&q=80",
+  "https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&w=200&q=80",
+  "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=200&q=80",
+  "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?auto=format&fit=crop&w=200&q=80",
+];
+
+// Hospital photos for card backdrops
+const HOSPITAL_BACKDROPS = [
+  "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=900&q=80",
+];
+
+// Orbit positions (angle in degrees, radius in px, size in px)
+const ORBIT_AVATARS = [
+  { src: AVATARS[0], angle: 25, radius: 102, size: 40 },
+  { src: AVATARS[1], angle: 85, radius: 74, size: 36 },
+  { src: AVATARS[2], angle: 145, radius: 104, size: 40 },
+  { src: AVATARS[3], angle: 205, radius: 76, size: 42 },
+  { src: AVATARS[4], angle: 265, radius: 102, size: 36 },
+  { src: AVATARS[5], angle: 325, radius: 78, size: 40 },
+];
+
+const ADVANTAGES = [
+  {
+    num: "01.",
+    badge: "RBAC & Komite Medis",
+    title: "Selaras untuk Tim Audit & Komite Medis",
+    description:
+      "Menyatukan verifikator klaim, auditor forensik, dan supervisor RS/BPJS dalam satu papan bukti bersama dengan otorisasi berjenjang.",
+    metricLabel: "Otorisasi Berjenjang",
+    metricValue: "3 Peran Terpadu",
+    icon: Users,
+    backdrop: HOSPITAL_BACKDROPS[0],
+  },
+  {
+    num: "02.",
+    badge: "Antrean Terprioritas",
+    title: "Pangkas Kerja Manual",
+    description:
+      "ARSA memadukan penyaringan 8 detektor klinis, visibilitas bukti verbatim, dan penyelarasan tim agar Anda fokus pada klaim krusial.",
+    metricLabel: "Urutan Telaah",
+    metricValue: "Skor Risiko 0-100",
+    icon: Zap,
+    backdrop: HOSPITAL_BACKDROPS[1],
+  },
+  {
+    num: "03.",
+    badge: `${REQUIRED_FIELDS.length}/${REQUIRED_FIELDS.length} Kolom Wajib`,
+    title: "Terhubung Lintas Sistem RS",
+    description:
+      "Menerima ekspor klaim multi-format (CSV, XLSX, JSON) dari berbagai skema SIMRS rumah sakit otomatis dengan pemetaan kolom berbasis AI.",
+    metricLabel: "Kompatibilitas Skema",
+    metricValue: "Multi-SIMRS & e-Klaim",
+    icon: Layers,
+    backdrop: HOSPITAL_BACKDROPS[2],
+  },
+  {
+    num: "04.",
+    badge: "pgvector HNSW",
+    title: "Skalabel Seiring Pertumbuhan",
+    description:
+      "Dirancang untuk menyaring ribuan klaim INA-CBG secara sensus lintas provinsi dengan pencarian kemiripan vektor.",
+    metricLabel: "Cakupan Pengawasan",
+    metricValue: "Lintas Provinsi",
+    icon: TrendingUp,
+    backdrop: HOSPITAL_BACKDROPS[3],
+  },
+];
+
+const FAQS = [
+  {
+    q: "Bagaimana cara ARSA menggunakan AI dalam audit klaim rumah sakit?",
+    a: "ARSA menggunakan 8 detektor deterministik dan pencarian kemiripan vektor pgvector untuk mengidentifikasi anomali klaim INA-CBG secara objektif, mengoptimalkan antrean prioritas harian, dan menyusun ringkasan bukti rekam medis dengan sitasi verbatim tanpa halusinasi.",
+  },
+  {
+    q: "Apakah ARSA cocok untuk kolaborasi tim verifikator dan komite medis RS?",
+    a: "Ya. ARSA menyediakan kontrol akses berbasis peran (Investigator, Supervisor, dan Admin) sehingga verifikator dapat menelaah bukti klaim dan meminta dokumen tambahan ke faskes, sementara keputusan akhir dikonfirmasi oleh supervisor dengan alasan tertulis wajib.",
+  },
+  {
+    q: "Bagaimana perlindungan privasi data pasien (UU PDP No. 27/2022) di ARSA?",
+    a: "Seluruh identitas langsung seperti NIK 16 digit, nomor kartu BPJS, nama lengkap, dan alamat dianonimisasi menggunakan token kriptografis HMAC-SHA256 di memori sebelum disimpan ke basis data.",
+  },
+  {
+    q: "Apakah ARSA menggantikan peran verifikator manusia?",
+    a: "Tidak. ARSA berfungsi sebagai intelijen pendukung keputusan (Decision-Support Copilot) yang memprioritaskan berkas yang perlu ditelaah lebih dulu, sementara keputusan hukum dan klinis tetap 100% di tangan manusia.",
+  },
+];
+
+const STATEMENT_WORDS =
+  "ARSA membantu verifikator menyaring klaim INA-CBG, memprioritaskan risiko, dan membedah rekam medis, sehingga ribuan klaim yang tersebar berubah menjadi keputusan yang bisa dipertanggungjawabkan.".split(
+    " "
+  );
+
+function ScrollWord({
+  word,
+  progress,
+  range,
+  isHighlight,
+}: {
+  word: string;
+  progress: MotionValue<number>;
+  range: [number, number];
+  isHighlight: boolean;
+}) {
+  const opacity = useTransform(progress, range, [0.22, 1]);
+  const y = useTransform(progress, range, [4, 0]);
+  return (
+    <motion.span
+      style={{ opacity, y }}
+      className={`inline-block mr-[0.28em] transition-colors ${
+        isHighlight ? "text-[#174622] font-semibold" : "text-[#141A16]"
+      }`}
+    >
+      {word}
+    </motion.span>
+  );
 }
 
-const AUDIENCE_JOURNEYS = [
-  {
-    code: "01",
-    role: "Verifikator Klaim",
-    subtitle: "Prioritisasi berkas harian berbasis skor komposit dan sitasi rekam medis verbatim.",
-    metric: "524 Berkas Antrean",
-    href: "/investigation-queue",
-    cta: "Buka Antrean",
-    image: "/landing/role-verifikator.png",
-    previewCode: "INV-2026-010293 · Skor 99",
-  },
-  {
-    code: "02",
-    role: "Auditor Forensik",
-    subtitle: "Telusuri kemiripan narasi lintas pasien, anomali tarif, dan cetak dosier audit resmi.",
-    metric: "8 Detektor Aktif",
-    href: "/claims",
-    cta: "Telusuri Klaim",
-    image: "/landing/role-auditor.png",
-    previewCode: "Cosine Similarity 96,4%",
-  },
-  {
-    code: "03",
-    role: "Eksekutif & Kebijakan",
-    subtitle: "Pantau sebaran eksposur finansial nasional dan indikator risiko pada 38 provinsi.",
-    metric: "38 Provinsi Dipantau",
-    href: "/",
-    cta: "Command Center",
-    image: "/landing/role-eksekutif.png",
-    previewCode: "Peta Risiko Nasional",
-  },
-  {
-    code: "04",
-    role: "Tim Data & SIMRS",
-    subtitle: "Unggah sampel ekspor SIMRS atau uji akurasi detektor terhadap ground-truth.",
-    metric: "F1 Makro 91,4%",
-    href: "/data-management",
-    cta: "Uji Dataset",
-    image: "/landing/role-simrs.png",
-    previewCode: "Pipeline Anonimisasi UU PDP",
-  },
-];
+function AnimatedCounter({
+  target,
+  suffix = "",
+}: {
+  target: number;
+  suffix?: string;
+}) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const [val, setVal] = useState(0);
 
-const CORE_PILLARS = [
-  {
-    num: "01",
-    code: "INA-CBG & KLINIS",
-    title: "Verifikasi Aturan Klinis & Kewajaran Tarif",
-    summary:
-      "Mendeteksi Upcoding tingkat keparahan (Severity Level II/III), pemecahan episode tagihan (Unbundling), lama rawat abnormal (LOS), dan mark-up komponen biaya terhadap median peer sejenis.",
-    signals: ["UPCODING", "ABNORMAL_LOS", "UNBUNDLING", "INFLATED_BILLS"] as RiskType[],
-    href: "/claims",
-    image: "/landing/pillar-01.png",
-  },
-  {
-    num: "02",
-    code: "VEKTOR & DOKUMEN",
-    title: "Forensik Teks Medis & Lintas Dokumen",
-    summary:
-      "Mengukur kemiripan vektor semantik dan tumpang tindih frasa 3-gram untuk menangkap duplikasi narasi (Cloning) serta klaim tindakan bedah fiktif tanpa laporan operasi (Phantom Billing).",
-    signals: ["CLONING", "PHANTOM_BILLING", "REPEAT_BILLING", "READMISSION"] as RiskType[],
-    href: "/investigation-queue",
-    image: "/landing/pillar-02.png",
-  },
-  {
-    num: "03",
-    code: "SITASI VERBATIM",
-    title: "AI Pendukung Keputusan Tanpa Halusinasi",
-    summary:
-      "Setiap ringkasan temuan wajib menautkan bukti kutipan rekam medis secara langsung. Keputusan akhir tetap sepenuhnya berada di tangan verifikator dan supervisor manusia.",
-    signals: [] as RiskType[],
-    href: "/ai-copilot",
-    image: "/landing/pillar-03.png",
-  },
-  {
-    num: "04",
-    code: "TATA KELOLA & PRIVASI",
-    title: "Anonimisasi UU PDP & Rantai Hash SHA-256",
-    summary:
-      "Identitas peserta disamarkan di memori sebelum penyimpanan, sementara setiap keputusan audit diikat dalam rantai hash kriptografis append-only yang tercetak pada dosier PDF.",
-    signals: [] as RiskType[],
-    href: "/settings",
-    image: "/landing/pillar-04.png",
-  },
-];
+  useEffect(() => {
+    if (!inView) return;
+    let frame: number;
+    const duration = 1200;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const elapsed = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - elapsed, 3);
+      setVal(Math.round(eased * target));
+      if (elapsed < 1) {
+        frame = requestAnimationFrame(tick);
+      }
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [inView, target]);
+
+  return (
+    <span ref={ref}>
+      {val}
+      {suffix}
+    </span>
+  );
+}
+
+/**
+ * Custom Visual Header tailored specifically to each of the 4 Advantage cards (01 - 04)
+ */
+function AdvantageCardVisual({
+  index,
+  isFeatured,
+  backdrop,
+  num,
+  badge,
+  stats,
+}: {
+  index: number;
+  isFeatured: boolean;
+  backdrop: string;
+  num: string;
+  badge: string;
+  stats: PublicStats | null;
+}) {
+  return (
+    <div className="relative h-48 w-full rounded-[22px] overflow-hidden select-none">
+      {/* Hospital / Healthcare Architectural Backdrop */}
+      <motion.img
+        src={backdrop}
+        alt=""
+        animate={{
+          scale: isFeatured ? [1.04, 1.12, 1.04] : 1.02,
+        }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+
+      {/* Rich Emerald JKN Healthcare Tint Overlay */}
+      <div
+        className={`absolute inset-0 transition-opacity duration-500 ${
+          isFeatured
+            ? "bg-gradient-to-br from-[#0D2E16]/85 via-[#1B5228]/78 to-[#2E7D32]/85"
+            : "bg-gradient-to-br from-[#12351B]/88 via-[#1B4624]/82 to-[#0F2915]/90"
+        }`}
+      />
+
+      {/* Fine Medical Grid Overlay */}
+      <div
+        className="absolute inset-0 opacity-25"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(255,255,255,0.45) 1px, transparent 1px)",
+          backgroundSize: "14px 14px",
+        }}
+      />
+
+      {/* Top Bar Inside Visual Chamber: Number Pill + Specialized Badge */}
+      <div className="relative z-10 flex items-center justify-between px-3.5 pt-3">
+        <span
+          className={`px-2.5 py-0.5 rounded-full text-xs font-bold tracking-tight backdrop-blur-md border transition-colors ${
+            isFeatured
+              ? "bg-white text-[#14361B] border-white shadow-sm"
+              : "bg-white/15 text-white/90 border-white/25"
+          }`}
+        >
+          {num}
+        </span>
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-400/20 text-emerald-100 border border-emerald-300/30 backdrop-blur-md">
+          {badge}
+        </span>
+      </div>
+
+      {/* ===============================================================
+          UNIQUE BESPOKE GRAPHIC PER CARD (01, 02, 03, 04)
+      ================================================================ */}
+      <div className="relative z-10 h-[132px] px-3.5 flex items-center justify-center">
+        {index === 0 && (
+          /* 01: Selaras untuk Tim Audit & Komite Medis — Multi-Role Medical Sign-Off */
+          <div className="w-full space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              {[
+                { role: "Verifikator", img: AVATARS[0] },
+                { role: "DPJP Medis", img: AVATARS[1] },
+                { role: "Supervisor", img: AVATARS[2] },
+              ].map((member, i) => (
+                <motion.div
+                  key={member.role}
+                  animate={{ y: isFeatured ? [0, -4, 0] : 0 }}
+                  transition={{
+                    duration: 2.8,
+                    delay: i * 0.25,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="flex flex-col items-center bg-white/12 backdrop-blur-md border border-white/25 rounded-xl px-2.5 py-1.5"
+                >
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={member.img}
+                      alt={member.role}
+                      className="w-8 h-8 rounded-full object-cover ring-2 ring-emerald-300/80"
+                    />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 text-[#0B2612] flex items-center justify-center">
+                      <CheckCircle2 className="w-2.5 h-2.5 stroke-[2.5]" />
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-semibold text-white/95 mt-1">
+                    {member.role}
+                  </span>
+                </motion.div>
+              ))}
+            </div>
+            <div className="mx-auto max-w-[210px] px-2.5 py-1 rounded-lg bg-black/30 border border-white/15 backdrop-blur-md flex items-center justify-between text-[9px] text-emerald-100">
+              <span>Konsensus Bukti #CLM-10293</span>
+              <span className="font-mono font-bold text-emerald-300">3/3 Sah</span>
+            </div>
+          </div>
+        )}
+
+        {index === 1 && (
+          /* 02: Pangkas Kerja Manual — seluruh klaim vs antrean terprioritas */
+          <div className="w-full bg-white/12 backdrop-blur-md border border-white/25 rounded-2xl p-3 space-y-2.5">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[9px] text-white/75">
+                <span>Telaah seluruh klaim</span>
+                <span className="font-mono line-through text-rose-200">
+                  {stats ? `${formatNumber(stats.claims)} klaim` : "semua klaim"}
+                </span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-white/15 overflow-hidden">
+                <div className="w-[88%] h-full rounded-full bg-white/35" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[9px] text-white font-semibold">
+                <span className="flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-emerald-300 fill-emerald-300" />
+                  ARSA 8-Detektor + AI
+                </span>
+                <span className="font-mono text-emerald-300 font-bold">
+                  {stats && stats.claims > 0 ? `${formatNumber(stats.queue_cases)} kasus (-${Math.round((1 - stats.queue_cases / stats.claims) * 100)}%)` : "antrean terprioritas"}
+                </span>
+              </div>
+              <div className="w-full h-2.5 rounded-full bg-black/30 overflow-hidden p-0.5">
+                <motion.div
+                  animate={{ width: ["18%", "32%", "22%"] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-emerald-400 shadow-[0_0_10px_rgba(110,231,183,0.8)]"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {index === 2 && (
+          /* 03: Terhubung Lintas Sistem RS — Multi-SIMRS & e-Klaim Auto-Mapper Flow */
+          <div className="w-full flex items-center justify-between gap-1.5 px-1">
+            <div className="flex flex-col gap-1.5">
+              {["SIMRS RS", "e-Klaim", "CSV / XLSX"].map((src, i) => (
+                <motion.span
+                  key={src}
+                  animate={{ x: isFeatured ? [0, 3, 0] : 0 }}
+                  transition={{
+                    duration: 2.2,
+                    delay: i * 0.2,
+                    repeat: Infinity,
+                  }}
+                  className="px-2 py-1 rounded-md bg-white/15 border border-white/25 text-[9px] font-mono font-semibold text-white backdrop-blur-md"
+                >
+                  {src}
+                </motion.span>
+              ))}
+            </div>
+
+            {/* Animated Connector */}
+            <div className="flex-1 flex flex-col items-center justify-center px-1">
+              <div className="w-full h-0.5 bg-emerald-300/35 relative overflow-hidden rounded-full">
+                <motion.div
+                  animate={{ x: ["-100%", "200%"] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
+                  className="w-1/2 h-full bg-emerald-300"
+                />
+              </div>
+              <span className="text-[8px] font-mono text-emerald-200 mt-1">
+                AI Mapper
+              </span>
+            </div>
+
+            {/* Target Unified JKN Schema Node */}
+            <div className="px-2.5 py-2.5 rounded-xl bg-white text-[#12381B] shadow-md border border-emerald-200 text-center">
+              <Building2 className="w-4 h-4 mx-auto text-[#2E6B38]" />
+              <div className="text-[9px] font-extrabold mt-0.5">{REQUIRED_FIELDS.length}/{REQUIRED_FIELDS.length} Kolom Wajib</div>
+              <div className="text-[8px] text-emerald-700 font-medium">
+                UU PDP Ready
+              </div>
+            </div>
+          </div>
+        )}
+
+        {index === 3 && (
+          /* 04: Skalabel Seiring Pertumbuhan — 38-Province Hospital Telemetry Bars */
+          <div className="w-full bg-white/12 backdrop-blur-md border border-white/25 rounded-2xl p-3 flex flex-col justify-between h-[104px]">
+            <div className="flex items-center justify-between text-[9px] text-white/90">
+              <span className="font-semibold flex items-center gap-1">
+                <Activity className="w-3 h-3 text-emerald-300" />
+                {stats ? `Sensus Klaim ${stats.provinces} Provinsi` : "Sensus Klaim Lintas Provinsi"}
+              </span>
+              <span className="font-mono text-emerald-300 font-bold">
+                Vektor aktif
+              </span>
+            </div>
+
+            <div className="flex items-end justify-between gap-1.5 h-12 pt-2 px-1">
+              {[38, 52, 46, 68, 82, 74, 96].map((h, i) => (
+                <motion.div
+                  key={i}
+                  animate={{
+                    height: isFeatured
+                      ? [`${h * 0.75}%`, `${h}%`, `${h * 0.75}%`]
+                      : `${h * 0.85}%`,
+                  }}
+                  transition={{
+                    duration: 2.4,
+                    delay: i * 0.12,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className={`flex-1 rounded-t-md ${
+                    i >= 5
+                      ? "bg-gradient-to-t from-emerald-400 to-emerald-200 shadow-[0_0_10px_rgba(110,231,183,0.6)]"
+                      : "bg-white/35"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const [stats, setStats] = useState<PublicStats | null>(null);
-  const [provinces, setProvinces] = useState<ProvinceRiskData[]>([]);
-  const [heroSlide, setHeroSlide] = useState<0 | 1 | 2>(0);
-  const [selectedCaseId, setSelectedCaseId] = useState<"CLM-10293" | "CLM-09283" | "CLM-08741">("CLM-10293");
-  const [activePillar, setActivePillar] = useState<number>(0);
+  const [activeAdvantage, setActiveAdvantage] = useState<number>(1);
+  const [advantagePaused, setAdvantagePaused] = useState<boolean>(false);
+  const [openFaq, setOpenFaq] = useState<number>(0);
+
+  // Interactive Time Tracker inside Bento Card
+  const [timerRunning, setTimerRunning] = useState(true);
+  const [navCompact, setNavCompact] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setNavCompact(window.scrollY > 40);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  const [seconds, setSeconds] = useState(0);
+
+  // Scroll references for video-accurate motion effects
+  const heroRef = useRef<HTMLElement | null>(null);
+  const aboutRef = useRef<HTMLElement | null>(null);
+  const footerRef = useRef<HTMLElement | null>(null);
+
+  const { scrollYProgress: heroScroll } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+
+  const heroBgY = useTransform(heroScroll, [0, 1], ["0%", "16%"]);
+  const heroBgScale = useTransform(heroScroll, [0, 1], [1, 1.07]);
+  const mockupRotateX = useSpring(
+    useTransform(heroScroll, [0, 0.55], [9, 0]),
+    { stiffness: 120, damping: 24 }
+  );
+  const mockupScale = useSpring(
+    useTransform(heroScroll, [0, 0.55], [0.95, 1]),
+    { stiffness: 120, damping: 24 }
+  );
+  const mockupY = useSpring(useTransform(heroScroll, [0, 0.55], [22, 0]), {
+    stiffness: 120,
+    damping: 24,
+  });
+
+  // Scroll-driven word-by-word illumination in Section 2 (00:02 - 00:04)
+  const { scrollYProgress: aboutScroll } = useScroll({
+    target: aboutRef,
+    offset: ["start 0.82", "end 0.45"],
+  });
+
+  // Footer parallax & rising giant ARSA watermark (00:18 - 00:26)
+  const { scrollYProgress: footerScroll } = useScroll({
+    target: footerRef,
+    offset: ["start end", "end end"],
+  });
+  const footerBgScale = useTransform(footerScroll, [0, 1], [1.1, 1]);
+  const watermarkY = useTransform(footerScroll, [0, 1], [80, 0]);
+  const watermarkOpacity = useTransform(
+    footerScroll,
+    [0, 0.6, 1],
+    [0.12, 0.38, 0.55]
+  );
 
   useEffect(() => {
     fetch("/api/public/stats")
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => j?.data && setStats(j.data))
       .catch(() => {});
-
-    fetch("/api/dashboard")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => j?.province_risk && setProvinces(j.province_risk))
-      .catch(() => {});
   }, []);
 
-  const clonePct =
-    stats?.hero?.clone_similarity !== undefined
-      ? `${(stats.hero.clone_similarity * 100).toFixed(1)}%`
-      : "99,6%";
+  useEffect(() => {
+    if (!timerRunning) return;
+    const id = setInterval(() => {
+      setSeconds((s) => (s + 1) % 3600);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [timerRunning]);
 
-  const heroSlides = [
-    {
-      kicker: "01 / INTEGRITAS KLAIM KESEHATAN NASIONAL",
-      headline: ["MENJAGA", "AKUNTABILITAS", "DANA JKN"],
-      description:
-        "Platform intelijen audit klaim INA-CBG yang memadukan 8 detektor deterministik, kemiripan vektor rekam medis, dan sitasi bukti verbatim.",
-      ctaLabel: "Buka Command Center",
-      ctaHref: "/",
-      image: "/landing/hero-bg.png",
-    },
-    {
-      kicker: "02 / TRIASE FORENSIK BERBASIS BUKTI",
-      headline: ["DETEKSI", "KONTRADIKSI", "REKAM MEDIS"],
-      description:
-        "Membandingkan ribuan klaim secara sensus untuk mengidentifikasi indikasi Upcoding, Phantom Billing, dan duplikasi narasi lintas pasien.",
-      ctaLabel: "Lihat Antrean Investigasi",
-      ctaHref: "/investigation-queue",
-      image: "/landing/pillar-02.png",
-    },
-    {
-      kicker: "03 / TRANSPARANSI & EVALUASI TERUKUR",
-      headline: ["AUDIT AI", "DENGAN JEJAK", "KRIPTOGRAFIS"],
-      description:
-        "Setiap keputusan verifikator manusia dicatat pada rantai hash SHA-256 dengan kepatuhan penuh terhadap perlindungan data pribadi UU PDP.",
-      ctaLabel: "Evaluasi Performa Model",
-      ctaHref: "/model-performance",
-      image: "/landing/who-we-are.png",
-    },
-  ];
+  // Subtle auto-cycling on Section 5 cards unless user hovers
+  useEffect(() => {
+    if (advantagePaused) return;
+    const id = setInterval(() => {
+      setActiveAdvantage((prev) => (prev + 1) % ADVANTAGES.length);
+    }, 4500);
+    return () => clearInterval(id);
+  }, [advantagePaused]);
 
-  const casesData = {
-    "CLM-10293": {
-      id: "CLM-10293",
-      tabLabel: "01 · Upcoding & Bedah Fiktif",
-      invId: "INV-2026-010293",
-      image: "/landing/pillar-01.png",
-      provider: "RS Sehat Sentosa · Kelas B · Jakarta Selatan",
-      patient: "Peserta 48 thn · Rawat Inap Reguler (2 Hari)",
-      diagnosis: "Gastroenteritis & Kolitis Infeksius Akut",
-      inaCbg: "Tagihan Diajukan: Keparahan Tinggi (Level III)",
-      claimed: stats?.hero?.amount ?? 18450000,
-      standard: stats?.hero?.peer_median ?? 3992229,
-      exposure: stats?.hero?.exposure ?? 14457771,
-      docExcerpt:
-        '"Pasien masuk dengan keluhan diare cair 4x sehari dan mual ringan. Diberikan rehidrasi intravena RL 20 tpm selama 2 hari perawatan di ruang rawat biasa; tanda vital stabil tanpa intervensi bedah."',
-      findings: [
-        {
-          title: "Kenaikan Tingkat Keparahan Tanpa Bukti Komplikasi",
-          detail:
-            "Klaim ditagihkan pada tarif tertinggi (Severity Level III), padahal rekam medis hanya mencatat diare ringan tanpa komorbiditas maupun perawatan intensif.",
-        },
-        {
-          title: "Tagihan Prosedur Bedah Tanpa Laporan Kamar Operasi",
-          detail:
-            "Rincian billing mencantumkan tindakan bedah saluran cerna, namun berkas pasien hanya berisi terapi infus cairan rumatan di bangsal biasa.",
-        },
-        {
-          title: `Duplikasi Narasi Rekam Medis Lintas Pasien (${clonePct})`,
-          detail:
-            "Paragraf anamnesis dan ringkasan pulang memiliki kemiripan tekstual 99% dengan berkas pasien lain pada periode klaim yang sama.",
-        },
-      ],
-    },
-    "CLM-09283": {
-      id: "CLM-09283",
-      tabLabel: "02 · Duplikasi Narasi Medis",
-      invId: "INV-2026-009283",
-      image: "/landing/pillar-02.png",
-      provider: "RS Sehat Sentosa · Kelas B · Jakarta Selatan",
-      patient: "Peserta 47 thn · Rawat Inap Reguler (2 Hari)",
-      diagnosis: "Gastroenteritis & Kolitis Infeksius Akut",
-      inaCbg: "Tagihan Diajukan: Keparahan Tinggi (Level III)",
-      claimed: 17900000,
-      standard: 3992229,
-      exposure: 13907771,
-      docExcerpt:
-        '"Pasien dirawat di bangsal reguler dengan terapi cairan rumatan dan antiemetik oral. Tidak ada persiapan maupun pelaksanaan tindakan kamar operasi."',
-      findings: [
-        {
-          title: `Salin-Tempel Catatan Klinis Antar Pasien (${clonePct})`,
-          detail:
-            "Kalimat pemeriksaan fisik dan instruksi pulang identik kata-demi-kata dengan berkas pasien berbeda yang diajukan pada minggu yang sama.",
-        },
-        {
-          title: "Pemecahan Episode Perawatan (Unbundling Tagihan)",
-          detail:
-            "Kunjungan kontrol pasca-rawat ditagihkan sebagai episode rawat inap baru untuk menggandakan klaim paket INA-CBG.",
-        },
-      ],
-    },
-    "CLM-08741": {
-      id: "CLM-08741",
-      tabLabel: "03 · Anomali Lama Rawat",
-      invId: "INV-2026-008741",
-      image: "/landing/pillar-04.png",
-      provider: "RS Sehat Sentosa · Kelas B · Jakarta Selatan",
-      patient: "Peserta 46 thn · Rawat Inap Reguler (6 Hari)",
-      diagnosis: "Gastroenteritis & Kolitis Infeksius Akut",
-      inaCbg: "Tagihan Diajukan: Keparahan Tinggi (Level III)",
-      claimed: 18200000,
-      standard: 3992229,
-      exposure: 14207771,
-      docExcerpt:
-        '"Hari rawat ke-3 s.d. ke-6: Pasien bebas demam (36,6°C), tanda vital normal, makan dan minum baik tanpa indikasi medis rawat inap lanjutan."',
-      findings: [
-        {
-          title: "Perpanjangan Hari Rawat Tanpa Indikasi Klinis",
-          detail:
-            "Pasien ditahan selama 6 hari di ruang rawat inap meskipun catatan keperawatan menyatakan kondisi sudah pulih penuh sejak hari ke-3.",
-        },
-        {
-          title: "Disparitas Tarif 4,5x di Atas Standar Rumah Sakit Setara",
-          detail:
-            "Total tagihan mencapai Rp 18,2 juta untuk kasus gastroenteritis tanpa komplikasi yang rata-rata memerlukan Rp 3,99 juta pada faskes Kelas B.",
-        },
-      ],
-    },
+  const formatTimer = (totalSec: number) => {
+    const hrs = Math.floor(totalSec / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+    return [hrs, mins, secs].map((v) => String(v).padStart(2, "0")).join(":");
   };
 
-  const currentHero = heroSlides[heroSlide];
-  const activeCase = casesData[selectedCaseId];
+  const f1Target = stats?.macro_f1 ? Math.round(stats.macro_f1 * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#F7F6F2] text-jkn-text font-sans selection:bg-bpjs selection:text-white">
+    <div
+      id="top"
+      className="min-h-screen bg-white text-[#141A16] selection:bg-[#2F6A38]/20 selection:text-[#1D4624] font-sans antialiased overflow-x-hidden"
+    >
       {/* =====================================================================
-          1. FULL-BLEED EDITORIAL HERO (AMMAN + MAGIC UI ILLUSTRATION & BEAMS)
-      ===================================================================== */}
-      <section className="relative min-h-[90vh] bg-[#071A12] text-white flex flex-col justify-between overflow-hidden">
-        {/* Full-Bleed Architectural Photograph with Crossfade */}
-        <AnimatePresence mode="wait">
-          <motion.img
-            key={currentHero.image}
-            src={currentHero.image}
-            alt={currentHero.kicker}
-            initial={{ opacity: 0, scale: 1.05 }}
-            animate={{ opacity: 1, scale: 1.01 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.9, ease: "easeOut" }}
-            className="absolute inset-0 w-full h-full object-cover object-center"
+          SECTION 1: GREEN JKN HOSPITAL HERO + 3D GLASS WORKSPACE (00:00 - 00:01)
+      ====================================================================== */}
+      <section ref={heroRef} className="relative w-full overflow-hidden">
+        {/* Parallax Modern Indonesian Green JKN Hospital Campus Background */}
+        <motion.div
+          style={{ y: heroBgY, scale: heroBgScale }}
+          className="absolute inset-0 pointer-events-none will-change-transform"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/landing/arsa-hero-hospital.png"
+            alt="Rumah Sakit Mitra JKN"
+            className="w-full h-full object-cover object-center"
           />
-        </AnimatePresence>
+          {/* Subtle emerald-tinted atmospheric wash for 100% headline contrast */}
+          <motion.div
+            animate={{
+              opacity: [0.3, 0.55, 0.3],
+              x: ["-2%", "2%", "-2%"],
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_18%,rgba(232,245,235,0.75),transparent_70%)]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#EDF6EF]/55 via-transparent to-white" />
+          <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-white via-white/85 to-transparent" />
+        </motion.div>
 
-        {/* Directional Dark Emerald Scrim */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(5,20,14,0.94) 0%, rgba(5,20,14,0.80) 48%, rgba(5,20,14,0.68) 100%), linear-gradient(180deg, rgba(5,20,14,0.82) 0%, rgba(5,20,14,0.35) 48%, rgba(5,20,14,0.94) 100%)",
-          }}
-        />
+        {/* Ambient Floating Emerald Healthcare Bokeh Particles */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {[
+            { left: "14%", top: "28%", size: 6, dur: 6.5, delay: 0 },
+            { left: "26%", top: "48%", size: 8, dur: 8, delay: 1.2 },
+            { left: "78%", top: "32%", size: 7, dur: 7.2, delay: 0.6 },
+            { left: "86%", top: "54%", size: 5, dur: 6.8, delay: 1.8 },
+            { left: "52%", top: "42%", size: 6, dur: 7.5, delay: 0.9 },
+          ].map((p, i) => (
+            <motion.span
+              key={i}
+              animate={{
+                y: [0, -24, 0],
+                x: [0, 10, 0],
+                opacity: [0.25, 0.8, 0.25],
+                scale: [0.9, 1.25, 0.9],
+              }}
+              transition={{
+                duration: p.dur,
+                delay: p.delay,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              style={{
+                left: p.left,
+                top: p.top,
+                width: p.size,
+                height: p.size,
+              }}
+              className="absolute rounded-full bg-emerald-100 shadow-[0_0_16px_rgba(46,125,50,0.65)]"
+            />
+          ))}
+        </div>
 
-        {/* Top Editorial Navigation Bar (Split Left / Center Logo / Right like AMMAN) */}
-        <header className="relative z-20 border-b border-white/15 backdrop-blur-xs">
-          <div className="max-w-[1400px] mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
-            {/* Left Nav */}
-            <nav className="hidden lg:flex items-center gap-8 text-xs uppercase tracking-[0.14em] text-white/85 font-medium">
-              <a href="#peran" className="hover:text-emerald-300 transition-colors">
-                Peran Pengguna
-              </a>
-              <a href="#siapa-kami" className="hover:text-emerald-300 transition-colors">
-                Siapa Kami
-              </a>
-              <a href="#pilar" className="hover:text-emerald-300 transition-colors">
-                Pilar Sistem
-              </a>
-            </nav>
-
-            {/* Center Brand Logo */}
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-9 h-9 rounded-lg bg-white/95 p-1.5 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-                <img src="/arsa_logo.png" alt="ARSA JKN" className="w-full h-full object-contain" />
-              </div>
-              <div className="text-left">
-                <span className="text-base font-bold tracking-[0.18em] uppercase text-white block leading-none">
-                  ARSA JKN
-                </span>
-                <span className="text-[10px] tracking-[0.12em] uppercase text-emerald-400 block mt-1">
-                  Risk Intelligence
-                </span>
-              </div>
+        {/* Navigasi: tetap menempel di atas dan mengecil menjadi kapsul di tengah saat halaman digulir */}
+        <div aria-hidden className="h-[76px]" />
+        <motion.header
+          initial={{ opacity: 0, y: -14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55 }}
+          className={`fixed inset-x-0 top-0 z-50 flex justify-center px-3 sm:px-6 pointer-events-none transition-[padding] duration-500 ease-out ${navCompact ? "pt-3" : "pt-6"}`}
+        >
+          <div
+            className={`pointer-events-auto flex items-center justify-between w-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              navCompact
+                ? "max-w-3xl rounded-full px-3 sm:px-4 py-1.5 bg-white/80 backdrop-blur-xl border border-emerald-900/10 shadow-[0_10px_34px_-10px_rgba(16,46,24,0.3)]"
+                : "max-w-6xl rounded-none px-3 sm:px-6 py-1.5 bg-transparent border border-transparent"
+            }`}
+          >
+            <Link href="/landing" className="flex items-center gap-2 group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/arsa_logo.png"
+                alt="ARSA"
+                className={`object-contain group-hover:scale-105 transition-all duration-500 ${navCompact ? "w-6 h-6" : "w-8 h-8"}`}
+              />
+              <span className={`font-extrabold tracking-tight text-[#14261B] transition-all duration-500 ${navCompact ? "text-sm" : "text-base"}`}>
+                ARSA
+              </span>
             </Link>
 
-            {/* Right Nav */}
-            <div className="flex items-center gap-6">
-              <nav className="hidden lg:flex items-center gap-8 text-xs uppercase tracking-[0.14em] text-white/85 font-medium">
-                <a href="#simulasi" className="hover:text-emerald-300 transition-colors">
-                  Simulasi Bukti
-                </a>
-                <a href="#geospasial" className="hover:text-emerald-300 transition-colors">
-                  Peta Nasional
-                </a>
-              </nav>
+            <nav className={`hidden md:flex items-center font-medium text-[#223327] transition-all duration-500 ${navCompact ? "gap-5 text-[12px]" : "gap-7 text-[13px]"}`}>
+              <a href="#top" className="hover:text-[#1B5E20] transition-colors">Beranda</a>
+              <a href="#about" className="hover:text-[#1B5E20] transition-colors">Tentang</a>
+              <a href="#platform" className="hover:text-[#1B5E20] transition-colors">Platform</a>
+              <a href="#ecosystem" className="hover:text-[#1B5E20] transition-colors">Ekosistem</a>
+              <a href="#advantages" className="hover:text-[#1B5E20] transition-colors">Keunggulan</a>
+              <a href="#faq" className="hover:text-[#1B5E20] transition-colors">FAQ</a>
+            </nav>
+
+            <div className="flex items-center gap-2">
               <Link
                 href="/"
-                className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bpjs text-white text-xs font-semibold tracking-wide hover:bg-emerald-400 hover:text-[#05140E] transition-all shadow-sm"
+                className={`hidden sm:inline-flex rounded-full font-semibold text-[#14261B] hover:text-[#2E6B38] transition-all duration-500 ${navCompact ? "px-3 py-1 text-[12px]" : "px-4 py-1.5 text-[13px] bg-white/70 hover:bg-white backdrop-blur-md border border-emerald-900/10 shadow-2xs"}`}
               >
-                <span>Masuk Aplikasi</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                Command Center
+              </Link>
+              <Link
+                href="/login"
+                className={`rounded-full bg-[#1E4D24] hover:bg-[#2C5E33] text-white font-semibold shadow-sm transition-all duration-500 ${navCompact ? "px-3.5 py-1 text-[12px]" : "px-4 py-1.5 text-[13px]"}`}
+              >
+                Masuk
               </Link>
             </div>
           </div>
-        </header>
+        </motion.header>
 
-        {/* Center Editorial Grid: Left Staggered Headline + Right 3D Isometric Forensic Illustration */}
-        <div className="relative z-10 max-w-[1400px] w-full mx-auto px-6 lg:px-10 py-10 lg:py-14 flex-1 flex flex-col justify-between gap-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center my-auto">
-            {/* Left Column: Staggered BlurFade Headline (Clean, zero tag clutter) */}
-            <div className="lg:col-span-7">
-              <StaggeredHeadline
-                slideKey={heroSlide}
-                lines={currentHero.headline}
-                className="text-4xl sm:text-6xl lg:text-[72px] font-light uppercase tracking-tight text-white leading-[1.02] drop-shadow-sm"
+        {/* Hero Copy & CTAs */}
+        <div className="relative z-10 max-w-4xl mx-auto px-6 pt-10 pb-12 text-center">
+          {/* Eyebrow Pill with animated shimmer sweep */}
+          <motion.div
+            initial={{ opacity: 0, y: 14, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.55 }}
+            className="relative inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E3F0E6]/90 backdrop-blur-md border border-emerald-800/15 shadow-sm mb-6 overflow-hidden"
+          >
+            <motion.span
+              animate={{ x: ["-150%", "250%"] }}
+              transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+              className="pointer-events-none absolute inset-y-0 w-16 bg-gradient-to-r from-transparent via-white/80 to-transparent skew-x-12"
+            />
+            <span className="relative px-2 py-0.5 rounded-md bg-[#2E6B38] text-white text-[10px] font-bold uppercase tracking-wider shadow-2xs">
+              JKN AI
+            </span>
+            <span className="relative text-xs font-medium text-[#1C3823]">
+              Intelijen audit klaim untuk rumah sakit mitra JKN
+            </span>
+          </motion.div>
+
+          {/* Giant Editorial Headline */}
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.08 }}
+            className="text-4xl sm:text-6xl md:text-[64px] font-semibold tracking-[-0.03em] leading-[1.08] text-[#111713]"
+          >
+            Audit klaim JKN
+            <br className="hidden sm:block" />
+            <motion.span
+              animate={{
+                backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+              }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              style={{ backgroundSize: "200% 200%" }}
+              className="bg-gradient-to-r from-[#184D23] via-[#2E7D32] to-[#4CAF50] bg-clip-text text-transparent"
+            >
+              berbasis bukti
+            </motion.span>
+            , lebih cepat
+          </motion.h1>
+
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.16 }}
+            className="mt-5 text-sm sm:text-[15px] text-[#2F4034] max-w-xl mx-auto leading-relaxed font-normal"
+          >
+            Ubah ribuan berkas klaim INA-CBG menjadi keputusan audit yang terukur.
+            ARSA menandai klaim yang janggal dan menunjukkan bukti rekam medisnya,
+            sehingga verifikator bisa langsung fokus pada kasus yang paling krusial.
+          </motion.p>
+
+          {/* Dual Pill CTA Buttons with Spring Hover */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.24 }}
+            className="mt-8 flex items-center justify-center gap-3.5 flex-wrap"
+          >
+            <motion.div whileHover={{ scale: 1.04, y: -1 }} whileTap={{ scale: 0.98 }}>
+              <Link
+                href="/"
+                className="relative overflow-hidden h-11 px-6 rounded-xl bg-gradient-to-b from-[#3B7A42] to-[#1E4D24] hover:from-[#44894C] hover:to-[#24592B] text-white text-xs sm:text-[13px] font-medium inline-flex items-center justify-center shadow-[0_10px_24px_-4px_rgba(30,77,36,0.5),inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#193F1E] transition-all"
+              >
+                <span>Mulai sekarang</span>
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.04, y: -1 }} whileTap={{ scale: 0.98 }}>
+              <a
+                href="#platform"
+                className="h-11 px-5 rounded-xl bg-white/65 hover:bg-white/85 backdrop-blur-md border border-white/90 text-[#182B1D] text-xs sm:text-[13px] font-medium inline-flex items-center gap-1.5 shadow-sm transition-all"
+              >
+                <span>Cara kerja</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </a>
+            </motion.div>
+          </motion.div>
+        </div>
+
+        {/* 3D Scroll-Tilted Floating Glassmorphic App Mockup Window (00:00 - 00:01) */}
+        <div
+          style={{ perspective: "1400px" }}
+          className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 40, rotateX: 12, scale: 0.94 }}
+            animate={{ opacity: 1, y: 0, rotateX: 0, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              rotateX: mockupRotateX,
+              scale: mockupScale,
+              y: mockupY,
+              transformStyle: "preserve-3d",
+            }}
+          >
+            {/* Frosted outer glass frame with animated specular border sheen */}
+            <div className="relative rounded-t-[28px] p-2.5 sm:p-3.5 bg-white/55 backdrop-blur-xl border border-white/85 shadow-[0_28px_80px_-15px_rgba(16,46,24,0.28)] overflow-hidden">
+              <motion.div
+                animate={{ x: ["-120%", "220%"] }}
+                transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
+                className="pointer-events-none absolute inset-y-0 w-36 bg-gradient-to-r from-transparent via-white/55 to-transparent skew-x-12"
               />
+              <div className="relative bg-white rounded-t-[22px] border border-emerald-900/10 overflow-hidden shadow-sm">
+                <HeroDashboardMock stats={stats} />
+              </div>
             </div>
+          </motion.div>
+        </div>
+      </section>
 
-            {/* Right Column: Hero Interactive 3D Isometric Illustration + Animated Beams */}
-            <div className="lg:col-span-5">
-              <HeroForensicIllustration />
-            </div>
-          </div>
+      {/* =====================================================================
+          SECTION 2: SCROLL-DRIVEN WORD REVEAL + HOSPITAL GREEN STAT CARD (00:02 - 00:04)
+      ====================================================================== */}
+      <section
+        id="about"
+        ref={aboutRef}
+        className="max-w-6xl mx-auto px-6 py-24 sm:py-32"
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="inline-flex items-center gap-2 mb-6"
+        >
+          <span className="w-5 h-5 rounded-md bg-[#2E6B38] text-white flex items-center justify-center shadow-xs">
+            <Sparkles className="w-3 h-3" />
+          </span>
+          <span className="text-xs font-medium text-stone-500">Tentang ARSA JKN</span>
+        </motion.div>
 
-          {/* Bottom Split Row (Left Slide Switcher Dots / Right Description & Pill CTA) */}
-          <div className="pt-8 border-t border-white/20 flex flex-col md:flex-row md:items-end justify-between gap-8">
-            {/* Left: Minimal Slide Switcher Dots (AMMAN style) */}
-            <div className="flex items-center gap-2.5">
-              {heroSlides.map((_, idx) => (
-                <button
+        {/* Scroll-Driven Word-by-Word Illumination matching 00:02 -> 00:04 */}
+        <h2 className="text-2xl sm:text-4xl md:text-[42px] leading-[1.24] tracking-[-0.02em] font-normal max-w-5xl flex flex-wrap">
+          {STATEMENT_WORDS.map((word, i) => {
+            const start = i / STATEMENT_WORDS.length;
+            const end = Math.min(start + 1.8 / STATEMENT_WORDS.length, 1);
+            const isHighlight = i >= STATEMENT_WORDS.length - 8;
+            return (
+              <ScrollWord
+                key={i}
+                word={word}
+                progress={aboutScroll}
+                range={[start, end]}
+                isHighlight={isHighlight}
+              />
+            );
+          })}
+        </h2>
+
+        <div className="mt-14 sm:mt-20 flex flex-col md:flex-row md:items-end justify-between gap-10">
+          {/* Bottom-Left: Overlapping Doctor/Auditor Avatars + Caption */}
+          <motion.div
+            initial={{ opacity: 0, x: -24 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="space-y-4 max-w-sm"
+          >
+            <div className="flex -space-x-2.5">
+              {AVATARS.slice(0, 3).map((src, idx) => (
+                <motion.img
                   key={idx}
-                  type="button"
-                  onClick={() => setHeroSlide(idx as 0 | 1 | 2)}
-                  aria-label={`Slide ${idx + 1}`}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    heroSlide === idx ? "w-10 bg-emerald-400" : "w-3 bg-white/35 hover:bg-white/60"
-                  }`}
+                  src={src}
+                  alt="Tim Auditor & Dokter"
+                  initial={{ opacity: 0, scale: 0.6, x: -12 }}
+                  whileInView={{ opacity: 1, scale: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.45, delay: idx * 0.12 }}
+                  whileHover={{ y: -4, scale: 1.08, zIndex: 10 }}
+                  className="w-12 h-12 rounded-full object-cover ring-2 ring-white shadow-md cursor-pointer"
                 />
               ))}
             </div>
-
-            {/* Right: Concise Copy + Single Rounded Pill CTA (AMMAN signature bottom-right block) */}
-            <div className="max-w-md space-y-4">
-              <p className="text-sm text-white/90 leading-relaxed font-normal drop-shadow-sm">
-                {currentHero.description}
-              </p>
-              <div>
-                <Link
-                  href={currentHero.ctaHref}
-                  className="group inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-white text-[#071A12] text-xs font-bold uppercase tracking-wider hover:bg-emerald-400 hover:text-[#071A12] transition-all shadow-lg"
-                >
-                  <span>{currentHero.ctaLabel}</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =====================================================================
-          2. "SELECT WHO YOU ARE" (4 SPOTLIGHT CARDS + BLURFADE REVEAL)
-      ===================================================================== */}
-      <section id="peran" className="py-20 lg:py-24 max-w-[1400px] mx-auto px-6 lg:px-10">
-        <BlurFade>
-          <div className="mb-12">
-            <h2 className="text-2xl sm:text-3xl font-light uppercase tracking-wide text-jkn-text">
-              Pilih Peran Anda
-            </h2>
-            <p className="text-sm text-jkn-muted mt-2">
-              Akses langsung ruang kerja yang disesuaikan dengan tanggung jawab pemeriksaan dan pengawasan Anda
+            <p className="text-xs sm:text-[13px] text-stone-500 leading-relaxed">
+              Dirancang untuk verifikator klaim, komite medis rumah sakit, dan
+              pimpinan JKN yang mengutamakan kejelasan bukti rekam medis dan kecepatan
+              triase.
             </p>
-          </div>
-        </BlurFade>
+          </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {AUDIENCE_JOURNEYS.map((item, idx) => (
-            <BlurFade key={item.code} delay={idx * 0.08}>
-              <SpotlightCard className="h-full rounded-xl border border-jkn-border bg-surface hover:border-bpjs transition-all shadow-subtle hover:shadow-card group">
-                <Link href={item.href} className="flex flex-col justify-between h-full">
-                  <div>
-                    {/* Pure Editorial Photograph Header (Zero badge clutter) */}
-                    <div className="h-56 relative overflow-hidden bg-[#0D2B1D]">
-                      <img
-                        src={item.image}
-                        alt={item.role}
-                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#071A12]/45 via-transparent to-transparent" />
-                    </div>
-
-                    <div className="p-5 pb-0">
-                      <h3 className="text-lg font-normal uppercase tracking-wide text-jkn-text group-hover:text-bpjs-dark transition-colors">
-                        {item.role}
-                      </h3>
-                      <p className="text-xs text-jkn-muted leading-relaxed mt-2">
-                        {item.subtitle}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-5 pt-4 mt-5 border-t border-jkn-divider flex items-center justify-between">
-                    <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-bpjs-dark group-hover:text-bpjs">
-                      <span>{item.cta}</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
-                    </span>
-                  </div>
-                </Link>
-              </SpotlightCard>
-            </BlurFade>
-          ))}
-        </div>
-      </section>
-
-      {/* =====================================================================
-          3. FULL-BLEED DARK EDITORIAL BANNER ("WHO WE ARE" + NUMBER TICKERS)
-      ===================================================================== */}
-      <section id="siapa-kami" className="bg-[#0B2117] text-white py-24 lg:py-32 relative overflow-hidden">
-        <img
-          src="/landing/who-we-are.png"
-          alt="Kampus Medis & Pusat Audit ARSA JKN"
-          className="absolute inset-0 w-full h-full object-cover object-center"
-        />
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(8,26,18,0.88) 0%, rgba(8,26,18,0.68) 50%, rgba(8,26,18,0.92) 100%)",
-          }}
-        />
-        <div className="relative z-10 max-w-[1400px] mx-auto px-6 lg:px-10 flex flex-col justify-between min-h-[400px] gap-12">
-          {/* Top-left large light-weight title + Animated NumberTickers */}
-          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8">
-            <BlurFade>
-              <h2 className="text-3xl sm:text-5xl font-light uppercase tracking-tight leading-none drop-shadow-sm">
-                Siapa Kami
-              </h2>
-            </BlurFade>
-
-            {/* Key Quantitative Figures Strip with Magic UI NumberTicker */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 lg:gap-10 pt-2 border-t lg:border-t-0 border-white/20 tabular-nums">
-              <div>
-                <div className="text-2xl sm:text-3xl font-light text-white font-mono">
-                  <NumberTicker value={stats?.claims ?? 1394} />
+          {/* Bottom-Right: Green JKN Hospital Stat Card (Matches 00:04) */}
+          <motion.div
+            initial={{ opacity: 0, x: 28, scale: 0.94 }}
+            whileInView={{ opacity: 1, x: 0, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ y: -5, scale: 1.02 }}
+            className="relative w-full sm:w-80 h-60 rounded-[26px] overflow-hidden shadow-xl p-3 group"
+          >
+            <motion.img
+              src="/landing/arsa-hero-hospital.png"
+              alt=""
+              animate={{
+                scale: [1.08, 1.18, 1.08],
+                x: ["-2%", "2%", "-2%"],
+              }}
+              transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute inset-0 w-full h-full object-cover object-bottom"
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#123D1B]/85 via-[#1E5B29]/75 to-[#0D2B13]/90" />
+            <div className="relative h-full w-full rounded-[18px] border border-white/40 p-5 flex flex-col justify-between text-white backdrop-blur-[2px]">
+              <div className="flex items-center justify-between">
+                <div className="text-5xl sm:text-6xl font-semibold tracking-tight text-white drop-shadow-xs">
+                  <AnimatedCounter target={f1Target} suffix="%" />
                 </div>
-                <div className="text-[11px] uppercase tracking-wider text-white/75 mt-1">
-                  Klaim Sensus Dianalisis
-                </div>
+                <span className="px-2.5 py-1 rounded-full bg-emerald-400/20 border border-emerald-300/35 text-[10px] font-semibold text-emerald-100">
+                  INA-CBG Verified
+                </span>
               </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-light text-emerald-400 font-mono">
-                  <NumberTicker value={stats?.flagged_claims ?? 616} />
-                </div>
-                <div className="text-[11px] uppercase tracking-wider text-white/75 mt-1">
-                  Kasus Berisiko Tinggi
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-light text-white font-mono">
-                  <NumberTicker value={stats?.detectors ?? 8} />
-                </div>
-                <div className="text-[11px] uppercase tracking-wider text-white/75 mt-1">
-                  Detektor Anomali Aktif
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-light text-emerald-400 font-mono">
-                  <NumberTicker
-                    value={stats ? stats.macro_f1 * 100 : 96.9}
-                    decimals={1}
-                    suffix="%"
-                  />
-                </div>
-                <div className="text-[11px] uppercase tracking-wider text-white/75 mt-1">
-                  Skor F1 Makro Terukur
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom-right editorial paragraph + pill button (AMMAN #who_we_are layout) */}
-          <BlurFade delay={0.15} className="flex justify-end">
-            <div className="max-w-xl space-y-6">
-              <p className="text-sm sm:text-base text-white/90 leading-relaxed font-normal drop-shadow-xs">
-                ARSA JKN adalah sistem intelijen risiko dan pendukung keputusan audit klaim kesehatan yang memverifikasi kesesuaian antara kode tagihan INA-CBG, rincian billing rumah sakit, dan bukti klinis pada rekam medis. Seluruh temuan divalidasi dengan sitasi dokumen nyata tanpa menggantikan kewenangan verifikator manusia.
+              <p className="text-xs sm:text-sm font-medium text-white/95 leading-snug">
+                Skor F1 deteksi klaim berisiko pada data sintetis berlabel (bukan
+                klaim riil)
               </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <Link
-                  href="/model-performance"
-                  className="group inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-white/50 bg-black/25 backdrop-blur-xs text-white text-xs font-semibold uppercase tracking-wider hover:bg-white hover:text-[#0B2117] transition-all"
-                >
-                  <span>Lihat Evaluasi & Metodologi</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </div>
             </div>
-          </BlurFade>
+          </motion.div>
         </div>
       </section>
 
       {/* =====================================================================
-          4. INTERACTIVE CASE SHOWCASE (SPOTLIGHT + ANIMATEPRESENCE)
-      ===================================================================== */}
-      <section id="simulasi" className="py-20 lg:py-24 max-w-[1400px] mx-auto px-6 lg:px-10">
-        <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-10">
-          <div className="max-w-xl">
-            <h2 className="text-2xl sm:text-3xl font-light uppercase tracking-wide text-jkn-text">
-              Simulasi Bedah Klaim
-            </h2>
-            <p className="text-sm text-jkn-muted mt-2">
-              Lihat bagaimana sistem membandingkan ketimpangan tarif tagihan dengan bukti klinis rekam medis secara nyata
-            </p>
+          SECTION 3: ONE INTELLIGENT WORKSPACE — 5-CARD BENTO WITH MOTION (00:05 - 00:09)
+      ====================================================================== */}
+      <section id="platform" className="max-w-6xl mx-auto px-6 py-20">
+        {/* Centered Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center max-w-2xl mx-auto mb-14"
+        >
+          <div className="inline-flex items-center gap-2 mb-3">
+            <span className="w-5 h-5 rounded-md bg-[#2E6B38] text-white flex items-center justify-center shadow-xs">
+              <Layers className="w-3 h-3" />
+            </span>
+            <span className="text-xs font-medium text-stone-500">Platform</span>
           </div>
+          <h2 className="text-3xl sm:text-5xl font-semibold tracking-[-0.025em] text-[#141A16] leading-[1.12]">
+            Satu ruang kerja untuk
+            <br /> memeriksa klaim rumah sakit
+          </h2>
+          <p className="mt-4 text-xs sm:text-sm text-stone-500 leading-relaxed">
+            Delapan detektor, pencarian kemiripan vektor, dan AI yang selalu menyertakan
+            sitasi bukti, dalam satu alur kerja dari unggah data sampai keputusan.
+          </p>
+        </motion.div>
 
-          {/* Readable Case Scenario Switcher Tabs (Single horizontal row) */}
-          <div className="inline-flex flex-wrap sm:flex-nowrap items-center gap-1.5 p-1.5 rounded-full bg-surface border border-jkn-border shadow-2xs shrink-0 self-start xl:self-auto">
-            {(["CLM-10293", "CLM-09283", "CLM-08741"] as const).map((cid) => (
-              <button
-                key={cid}
-                type="button"
-                onClick={() => setSelectedCaseId(cid)}
-                className={`px-4 py-2 rounded-full text-xs font-medium tracking-wide whitespace-nowrap transition-all ${
-                  selectedCaseId === cid
-                    ? "bg-[#071A12] text-white shadow-subtle"
-                    : "text-jkn-muted hover:text-jkn-text"
-                }`}
+        {/* 5-Card Bento Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* Card 1 (Top-Left, 6 cols): Continuous Orbiting Avatars & Radar Pulse */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.55 }}
+            whileHover={{ y: -4 }}
+            className="lg:col-span-6 rounded-[26px] border border-stone-200/90 bg-white p-6 sm:p-7 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col justify-between overflow-hidden relative"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, rgba(46,107,56,0.08) 1px, transparent 1px)",
+              backgroundSize: "18px 18px",
+            }}
+          >
+            <div>
+              <h3 className="text-lg sm:text-xl font-semibold text-[#141A16]">
+                Kerja bersama verifikator &amp; DPJP
+              </h3>
+              <p className="text-xs text-stone-500 mt-1.5 max-w-sm leading-relaxed">
+                Verifikator klaim, dokter DPJP, dan auditor medis melihat bukti
+                rekam medis yang sama, dengan hak akses sesuai peran.
+              </p>
+            </div>
+
+            {/* Concentric Radar Rings + Center Logo + Continuously Orbiting Avatars */}
+            <div className="relative h-60 my-4 flex items-center justify-center">
+              <motion.div
+                animate={{ scale: [0.65, 1.35], opacity: [0.45, 0] }}
+                transition={{ duration: 3.4, repeat: Infinity, ease: "easeOut" }}
+                className="absolute w-48 h-48 rounded-full border border-emerald-500/35 pointer-events-none"
+              />
+
+              <div className="w-52 h-52 rounded-full border border-emerald-500/15 bg-emerald-500/[0.03] flex items-center justify-center">
+                <div className="w-36 h-36 rounded-full border border-emerald-500/20 bg-emerald-500/[0.06] flex items-center justify-center">
+                  <motion.div
+                    animate={{ scale: [1, 1.06, 1] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    className="w-16 h-16 rounded-full bg-white shadow-md border border-emerald-100 flex items-center justify-center z-10"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/arsa_logo.png"
+                      alt="ARSA"
+                      className="w-8 h-8 object-contain"
+                    />
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Rotating Orbital Container keeping Avatars Upright via Counter-Rotation */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 34, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
               >
-                {casesData[cid].tabLabel}
-              </button>
-            ))}
-          </div>
-        </div>
+                {ORBIT_AVATARS.map((item, idx) => {
+                  const rad = (item.angle * Math.PI) / 180;
+                  const x = Math.cos(rad) * item.radius;
+                  const y = Math.sin(rad) * item.radius;
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        transform: `translate(${x}px, ${y}px)`,
+                      }}
+                      className="absolute"
+                    >
+                      <motion.img
+                        src={item.src}
+                        alt=""
+                        animate={{ rotate: -360 }}
+                        transition={{
+                          duration: 34,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
+                        style={{ width: item.size, height: item.size }}
+                        className="rounded-full object-cover ring-2 ring-white shadow-md"
+                      />
+                    </div>
+                  );
+                })}
+              </motion.div>
+            </div>
+          </motion.div>
 
-        <SpotlightCard className="bg-surface rounded-2xl border border-jkn-border shadow-card overflow-hidden">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={selectedCaseId}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.28 }}
-              className="grid grid-cols-1 lg:grid-cols-12"
-            >
-              {/* Left Column: Dark Forest Editorial Dossier & Visual Tariff Discrepancy Bars */}
-              <div className="lg:col-span-5 relative bg-[#081E15] text-white p-7 sm:p-9 flex flex-col justify-between overflow-hidden">
-                <img
-                  src={activeCase.image}
-                  alt={activeCase.diagnosis}
-                  className="absolute inset-0 w-full h-full object-cover object-center opacity-25 mix-blend-luminosity"
+          <PriorityQueueCard stats={stats} />
+          <AuditChainCard stats={stats} />
+          <OverviewCard stats={stats} />
+          <CopilotCard />
+        </div>
+      </section>
+
+      {/* =====================================================================
+          SECTION 4: RADIAL ECOSYSTEM HUB WITH ANIMATED PULSES (00:10 - 00:12)
+      ====================================================================== */}
+      <section
+        id="ecosystem"
+        className="max-w-6xl mx-auto px-6 py-24 relative overflow-hidden"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(46,107,56,0.07) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center max-w-xl mx-auto mb-16"
+        >
+          <div className="inline-flex items-center gap-2 mb-3">
+            <span className="w-5 h-5 rounded-md bg-[#2E6B38] text-white flex items-center justify-center shadow-xs">
+              <Globe className="w-3 h-3" />
+            </span>
+            <span className="text-xs font-medium text-stone-500">
+              Ekosistem rumah sakit &amp; JKN
+            </span>
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-semibold tracking-[-0.025em] text-[#141A16] leading-[1.12]">
+            Terhubung dengan sistem
+            <br /> yang sudah dipakai rumah sakit
+          </h2>
+        </motion.div>
+
+        {/* Central Hub + 6 Floating Nodes + Animated SVG Data Beams */}
+        <div className="relative max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 items-center gap-8 py-6">
+          <svg
+            viewBox="0 0 900 320"
+            fill="none"
+            className="hidden md:block absolute inset-0 w-full h-full pointer-events-none"
+          >
+            {[
+              "M 450 160 C 350 160, 310 65, 220 65",
+              "M 450 160 C 340 160, 290 160, 190 160",
+              "M 450 160 C 350 160, 310 255, 220 255",
+              "M 450 160 C 550 160, 590 65, 680 65",
+              "M 450 160 C 560 160, 610 160, 710 160",
+              "M 450 160 C 550 160, 590 255, 680 255",
+            ].map((d, i) => (
+              <g key={i}>
+                <path
+                  d={d}
+                  stroke="rgba(46,107,56,0.14)"
+                  strokeWidth="1.5"
+                  strokeDasharray="4 4"
                 />
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, rgba(7,26,18,0.88) 0%, rgba(7,26,18,0.96) 100%)",
+                <motion.path
+                  d={d}
+                  stroke="rgba(46,107,56,0.65)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeDasharray="18 180"
+                  animate={{ strokeDashoffset: [198, 0] }}
+                  transition={{
+                    duration: 2.8,
+                    delay: i * 0.35,
+                    repeat: Infinity,
+                    ease: "linear",
                   }}
                 />
+              </g>
+            ))}
+          </svg>
 
-                <div className="relative z-10 space-y-6">
-                  <div>
-                    <span className="text-[11px] uppercase tracking-[0.18em] text-emerald-400 font-semibold block">
-                      Studi Kasus Pemeriksaan Klaim
-                    </span>
-                    <h3 className="text-xl sm:text-2xl font-light tracking-tight text-white mt-2 leading-snug">
-                      {activeCase.diagnosis}
-                    </h3>
-                    <p className="text-xs text-white/75 mt-1.5">
-                      {activeCase.provider} · {activeCase.patient}
-                    </p>
-                  </div>
+          {/* Left 3 Floating Pills */}
+          <div className="relative z-10 flex flex-col items-center md:items-end gap-6">
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
+              whileHover={{ scale: 1.05 }}
+              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white border border-stone-200/90 shadow-[0_10px_30px_rgba(46,107,56,0.1)]"
+            >
+              <span className="w-6 h-6 rounded-md bg-[#2E6B38] text-white flex items-center justify-center">
+                <Globe className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-xs sm:text-sm font-medium text-stone-800">
+                Web Command Center
+              </span>
+            </motion.div>
 
-                  {/* Visual Tariff Comparison Bars */}
-                  <div className="space-y-4 pt-5 border-t border-white/15 tabular-nums">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-white/80">Tagihan Diajukan Rumah Sakit</span>
-                        <span className="font-mono font-bold text-white">
-                          {formatRupiah(activeCase.claimed)}
-                        </span>
-                      </div>
-                      <div className="h-2.5 w-full rounded-full bg-white/10 overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: "100%" }}
-                          transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="h-full rounded-full bg-gradient-to-r from-amber-400 to-rose-500"
-                        />
-                      </div>
-                      <span className="text-[11px] text-white/60 block">
-                        {activeCase.inaCbg}
-                      </span>
-                    </div>
+            <motion.div
+              animate={{ y: [0, -7, 0] }}
+              transition={{
+                duration: 4.6,
+                delay: 0.6,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              whileHover={{ scale: 1.05 }}
+              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white border border-stone-200/90 shadow-[0_10px_30px_rgba(46,107,56,0.1)] md:mr-8"
+            >
+              <span className="w-6 h-6 rounded-md bg-[#2E6B38] text-white flex items-center justify-center">
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-xs sm:text-sm font-medium text-stone-800">
+                SIMRS &amp; e-Klaim Ingest
+              </span>
+            </motion.div>
 
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-white/80">Standar Tarif Normal (Rumah Sakit Setara)</span>
-                        <span className="font-mono font-semibold text-emerald-300">
-                          {formatRupiah(activeCase.standard)}
-                        </span>
-                      </div>
-                      <div className="h-2.5 w-full rounded-full bg-white/10 overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{
-                            width: `${Math.max(
-                              12,
-                              Math.round((activeCase.standard / activeCase.claimed) * 100)
-                            )}%`,
-                          }}
-                          transition={{ duration: 0.6, ease: "easeOut" }}
-                          className="h-full rounded-full bg-emerald-400"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{
+                duration: 4.4,
+                delay: 1.1,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              whileHover={{ scale: 1.05 }}
+              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white border border-stone-200/90 shadow-[0_10px_30px_rgba(46,107,56,0.1)]"
+            >
+              <span className="w-6 h-6 rounded-md bg-[#2E6B38] text-white flex items-center justify-center">
+                <ShieldCheck className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-xs sm:text-sm font-medium text-stone-800">
+                Perisai Privasi UU PDP
+              </span>
+            </motion.div>
+          </div>
 
-                {/* Highlighted Financial Exposure Callout */}
-                <div className="relative z-10 mt-8 pt-5 border-t border-white/15 flex items-baseline justify-between gap-4 tabular-nums">
-                  <div>
-                    <span className="text-[10px] uppercase tracking-[0.16em] text-emerald-300 font-semibold block">
-                      Potensi Penghematan Dana JKN
-                    </span>
-                    <span className="text-xs text-white/70 mt-0.5 block">
-                      Selisih kelebihan tagihan yang teridentifikasi
-                    </span>
-                  </div>
-                  <span className="text-xl sm:text-2xl font-mono font-bold text-emerald-400 shrink-0">
-                    {formatRupiah(activeCase.exposure)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Right Column: Verbatim Clinical Record & Full-Sentence Contradiction Analysis */}
-              <div className="lg:col-span-7 p-7 sm:p-9 flex flex-col justify-between space-y-6 bg-surface">
-                <div className="space-y-6">
-                  {/* Clean Verbatim Medical Record Quote */}
-                  <div className="p-5 rounded-xl bg-[#F4F7F5] border-l-4 border-bpjs space-y-2">
-                    <span className="text-[11px] uppercase tracking-[0.14em] text-bpjs-dark font-semibold block">
-                      Kutipan Rekam Medis Pasien
-                    </span>
-                    <p className="text-sm text-jkn-text italic leading-relaxed">
-                      {activeCase.docExcerpt}
-                    </p>
-                  </div>
-
-                  {/* Contradiction Explanations (Full readable cards, zero cryptic tags) */}
-                  <div className="space-y-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-jkn-muted">
-                      Mengapa Klaim Ini Ditandai untuk Pemeriksaan:
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3">
-                      {activeCase.findings.map((f, i) => (
-                        <div
-                          key={i}
-                          className="p-4 rounded-xl border border-jkn-border bg-surface-secondary/45 flex items-start gap-3.5"
-                        >
-                          <span className="w-6 h-6 rounded-full bg-[#071A12] text-emerald-300 text-xs font-mono font-semibold flex items-center justify-center shrink-0 mt-0.5">
-                            0{i + 1}
-                          </span>
-                          <div className="space-y-1">
-                            <h4 className="text-sm font-semibold text-jkn-text">
-                              {f.title}
-                            </h4>
-                            <p className="text-xs text-jkn-muted leading-relaxed">
-                              {f.detail}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-jkn-divider">
-                  <span className="text-xs text-jkn-muted">
-                    Tinjau perbandingan dokumen lengkap dan ambil keputusan verifikasi.
-                  </span>
-                  <Link
-                    href={`/investigations/${activeCase.invId}`}
-                    className="group inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-[#071A12] text-white text-xs font-semibold uppercase tracking-wider hover:bg-bpjs transition-colors shrink-0"
-                  >
-                    <span>Buka Berkas Investigasi</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </Link>
+          {/* Center Concentric Neumorphic Hub with Breathing Ripple */}
+          <div className="relative z-10 flex items-center justify-center">
+            <motion.div
+              animate={{ scale: [0.95, 1.18], opacity: [0.35, 0] }}
+              transition={{ duration: 3.2, repeat: Infinity, ease: "easeOut" }}
+              className="absolute w-64 h-64 rounded-full border border-emerald-600/30 pointer-events-none"
+            />
+            <motion.div
+              animate={{ scale: [1, 1.03, 1] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="w-60 h-60 rounded-full bg-gradient-to-b from-stone-50 to-white border border-stone-200/70 shadow-[0_20px_50px_rgba(0,0,0,0.06)] flex items-center justify-center"
+            >
+              <div className="w-44 h-44 rounded-full bg-white border border-stone-200/80 shadow-[0_12px_30px_rgba(0,0,0,0.06)] flex items-center justify-center">
+                <div className="w-28 h-28 rounded-full bg-white border border-stone-100 shadow-inner flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/arsa_logo.png"
+                    alt="ARSA Hub"
+                    className="w-14 h-14 object-contain"
+                  />
                 </div>
               </div>
             </motion.div>
-          </AnimatePresence>
-        </SpotlightCard>
+          </div>
+
+          {/* Right 3 Floating Pills */}
+          <div className="relative z-10 flex flex-col items-center md:items-start gap-6">
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{
+                duration: 4.5,
+                delay: 0.3,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              whileHover={{ scale: 1.05 }}
+              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white border border-stone-200/90 shadow-[0_10px_30px_rgba(46,107,56,0.1)]"
+            >
+              <span className="w-6 h-6 rounded-md bg-[#2E6B38] text-white flex items-center justify-center">
+                <Database className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-xs sm:text-sm font-medium text-stone-800">
+                Vektor pgvector HNSW
+              </span>
+            </motion.div>
+
+            <motion.div
+              animate={{ y: [0, -7, 0] }}
+              transition={{
+                duration: 4.8,
+                delay: 0.9,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              whileHover={{ scale: 1.05 }}
+              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white border border-stone-200/90 shadow-[0_10px_30px_rgba(46,107,56,0.1)] md:ml-8"
+            >
+              <span className="w-6 h-6 rounded-md bg-[#2E6B38] text-white flex items-center justify-center">
+                <Cpu className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-xs sm:text-sm font-medium text-stone-800">
+                8 Detektor Deterministik
+              </span>
+            </motion.div>
+
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{
+                duration: 4.3,
+                delay: 1.4,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              whileHover={{ scale: 1.05 }}
+              className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white border border-stone-200/90 shadow-[0_10px_30px_rgba(46,107,56,0.1)]"
+            >
+              <span className="w-6 h-6 rounded-md bg-[#2E6B38] text-white flex items-center justify-center">
+                <FileText className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-xs sm:text-sm font-medium text-stone-800">
+                Dosier Audit PDF SHA-256
+              </span>
+            </motion.div>
+          </div>
+        </div>
       </section>
 
       {/* =====================================================================
-          5. "WHAT WE DO" (AMMAN-STYLE EXPANDABLE ACCORDION PILLAR PANELS)
-      ===================================================================== */}
-      <section id="pilar" className="py-16 lg:py-20 max-w-[1400px] mx-auto px-6 lg:px-10">
-        <BlurFade>
-          <div className="max-w-2xl mb-12">
-            <h2 className="text-2xl sm:text-3xl font-light uppercase tracking-wide text-jkn-text">
-              Apa yang Kami Lakukan
+          SECTION 5: WHY ARSA MAKES AUDIT FEEL SIMPLER — 4 DISTINCT SCULPTED CARDS
+      ====================================================================== */}
+      <section
+        id="advantages"
+        className="max-w-6xl mx-auto px-6 py-24"
+        onMouseEnter={() => setAdvantagePaused(true)}
+        onMouseLeave={() => setAdvantagePaused(false)}
+      >
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+          <div>
+            <div className="inline-flex items-center gap-2 mb-3">
+              <span className="w-5 h-5 rounded-md bg-[#2E6B38] text-white flex items-center justify-center shadow-xs">
+                <Zap className="w-3 h-3" />
+              </span>
+              <span className="text-xs font-medium text-stone-500">Keunggulan</span>
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-semibold tracking-[-0.025em] text-[#141A16] leading-[1.12]">
+              Audit klaim jadi lebih
+              <br /> ringkas dan jelas
             </h2>
-            <p className="text-sm text-jkn-muted mt-2 leading-relaxed">
-              Arsitektur pemeriksaan berlapis mulai dari verifikasi aturan paket INA-CBG, analisis kemiripan narasi klinis, hingga penguncian bukti audit berstandar enterprise.
-            </p>
           </div>
-        </BlurFade>
 
-        {/* Horizontal Expandable Accordion on Desktop (like amman.co.id #what_we_do) */}
-        <div className="flex flex-col lg:flex-row border border-jkn-border rounded-2xl overflow-hidden bg-[#0A1F16] text-white min-h-[450px]">
-          {CORE_PILLARS.map((pillar, idx) => {
-            const isActive = activePillar === idx;
-            return (
-              <div
-                key={pillar.num}
-                onMouseEnter={() => setActivePillar(idx)}
-                style={{
-                  flex: isActive ? 1.65 : 0.85,
-                  transition: "flex 550ms cubic-bezier(0.22, 1, 0.36, 1)",
-                }}
-                className="relative p-7 lg:p-8 min-h-[380px] lg:min-h-[450px] flex flex-col justify-between border-b lg:border-b-0 lg:border-r last:border-r-0 border-white/15 overflow-hidden group cursor-pointer"
+          <div className="max-w-md space-y-4">
+            <p className="text-xs sm:text-sm text-stone-500 leading-relaxed">
+              ARSA menggabungkan perencanaan audit berbasis AI, visibilitas bukti
+              rekam medis yang jernih, dan penyelarasan tim rumah sakit ke dalam
+              satu ruang kerja terpadu.
+            </p>
+            <motion.div
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              className="inline-block"
+            >
+              <Link
+                href="/"
+                className="h-10 px-5 rounded-xl bg-gradient-to-b from-[#437A49] to-[#234D29] text-white text-xs font-medium inline-flex items-center gap-1.5 justify-center shadow-sm hover:opacity-95 transition-opacity"
               >
-                {/* Active Top Emerald Accent Line */}
-                <div
-                  className={`absolute top-0 left-0 right-0 h-1 z-20 transition-all duration-500 ${
-                    isActive ? "bg-emerald-400 opacity-100" : "bg-transparent opacity-0"
-                  }`}
+                <span>Coba ARSA</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* 4-Column Sculpted Double-Bezel Bento Cards — Each with its own distinct JKN Hospital Visual */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-stretch">
+          {ADVANTAGES.map((item, idx) => {
+            const Icon = item.icon;
+            const isFeatured = activeAdvantage === idx;
+
+            return (
+              <motion.div
+                key={item.num}
+                onClick={() => setActiveAdvantage(idx)}
+                onMouseEnter={() => setActiveAdvantage(idx)}
+                animate={{
+                  y: isFeatured ? -16 : 0,
+                  scale: isFeatured ? 1.02 : 1,
+                }}
+                transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                className={`group relative rounded-[30px] p-2 flex flex-col justify-between cursor-pointer transition-all duration-300 ${
+                  isFeatured
+                    ? "bg-gradient-to-b from-[#E5F2E7] via-[#F3F8F4] to-white border-2 border-[#2E6B38]/40 shadow-[0_24px_50px_-12px_rgba(24,68,34,0.22)]"
+                    : "bg-[#F6F9F7] hover:bg-[#EFF5F0] border border-stone-200/90 shadow-[0_6px_20px_rgba(0,0,0,0.04)]"
+                }`}
+              >
+                {/* Top Custom Visual Chamber Specific to Each Card's Naming */}
+                <AdvantageCardVisual
+                  index={idx}
+                  isFeatured={isFeatured}
+                  backdrop={item.backdrop}
+                  num={item.num}
+                  badge={item.badge}
+                  stats={stats}
                 />
 
-                <img
-                  src={pillar.image}
-                  alt={pillar.title}
-                  className={`absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 ${
-                    isActive ? "scale-105" : "scale-100"
-                  }`}
-                />
-                <div
-                  className="absolute inset-0 pointer-events-none transition-opacity duration-500"
-                  style={{
-                    background: isActive
-                      ? "linear-gradient(180deg, rgba(6,22,15,0.92) 0%, rgba(6,22,15,0.80) 48%, rgba(6,22,15,0.40) 74%, rgba(6,22,15,0.92) 100%)"
-                      : "linear-gradient(180deg, rgba(6,22,15,0.95) 0%, rgba(6,22,15,0.88) 52%, rgba(6,22,15,0.62) 76%, rgba(6,22,15,0.95) 100%)",
-                  }}
-                />
-
-                <div className="relative z-10">
-                  <div className="text-sm font-mono font-semibold text-emerald-400">
-                    {pillar.num}
+                {/* Sculpted Floating Bridge Icon Badge */}
+                <div className="relative z-20 -mt-5 ml-4 flex items-center justify-between pr-4">
+                  <div
+                    className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-md border transition-all duration-300 ${
+                      isFeatured
+                        ? "bg-gradient-to-br from-[#387B40] to-[#1D4723] text-white border-emerald-200 scale-105"
+                        : "bg-white text-[#1E4423] border-stone-200/90 group-hover:border-emerald-300"
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
                   </div>
-                  <h3 className="text-xl font-light uppercase tracking-wide text-white mt-5 leading-snug drop-shadow-xs">
-                    {pillar.title}
-                  </h3>
-                  <p
-                    className={`text-xs text-white/85 leading-relaxed mt-4 transition-opacity duration-300 ${
-                      isActive ? "opacity-100" : "opacity-80"
-                    }`}
-                  >
-                    {pillar.summary}
-                  </p>
+
+                  {isFeatured && (
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="px-2.5 py-0.5 rounded-full bg-[#2E6B38]/10 text-[#1D4D25] text-[10px] font-bold"
+                    >
+                      Aktif
+                    </motion.span>
+                  )}
                 </div>
 
-                <div className="relative z-10 pt-6">
-                  <Link
-                    href={pillar.href}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-semibold uppercase tracking-wider transition-all ${
-                      isActive
-                        ? "bg-white text-[#071A12] border-white hover:bg-emerald-400 hover:border-emerald-400"
-                        : "border-white/35 bg-black/25 backdrop-blur-xs text-white hover:bg-white hover:text-[#0A1F16]"
+                {/* Card Body Copy & Bottom Metric Pill */}
+                <div className="p-4 pt-3.5 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="space-y-2">
+                    <h3 className="text-[17px] font-bold text-[#122016] leading-snug tracking-tight">
+                      {item.title}
+                    </h3>
+                    <p
+                      className={`text-xs leading-relaxed transition-colors ${
+                        isFeatured ? "text-stone-600" : "text-stone-500"
+                      }`}
+                    >
+                      {item.description}
+                    </p>
+                  </div>
+
+                  {/* Bottom Telemetry Footer Box inside Card */}
+                  <div
+                    className={`pt-3 border-t flex items-center justify-between text-[11px] transition-colors ${
+                      isFeatured
+                        ? "border-emerald-800/15 text-[#183D1F]"
+                        : "border-stone-200/80 text-stone-500"
                     }`}
                   >
-                    <span>Selengkapnya</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                    <span className="text-[10px] text-stone-400 font-medium">
+                      {item.metricLabel}
+                    </span>
+                    <span
+                      className={`font-bold font-mono text-[11px] ${
+                        isFeatured ? "text-[#245E2D]" : "text-stone-700"
+                      }`}
+                    >
+                      {item.metricValue}
+                    </span>
+                  </div>
                 </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* =====================================================================
+          SECTION 6: FREQUENTLY ASKED QUESTIONS ACCORDION (00:15 - 00:17)
+      ====================================================================== */}
+      <section id="faq" className="max-w-3xl mx-auto px-6 py-24">
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-14"
+        >
+          <div className="inline-flex items-center gap-2 mb-3">
+            <span className="w-5 h-5 rounded-md bg-[#2E6B38] text-white flex items-center justify-center shadow-xs">
+              <Sparkles className="w-3 h-3" />
+            </span>
+            <span className="text-xs font-medium text-stone-500">
+              Pertanyaan umum
+            </span>
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-semibold tracking-[-0.025em] text-[#141A16] leading-[1.12]">
+            Jawaban singkat
+            <br /> sebelum Anda mulai
+          </h2>
+        </motion.div>
+
+        <div className="divide-y divide-stone-200/90 border-b border-stone-200/90">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div key={idx} className="py-5">
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(isOpen ? -1 : idx)}
+                  className="w-full flex items-center justify-between gap-4 text-left group"
+                >
+                  <span className="text-sm sm:text-base font-medium text-[#141A16] group-hover:text-[#2E6B38] transition-colors">
+                    {faq.q}
+                  </span>
+                  <motion.div
+                    animate={{ rotate: isOpen ? 180 : 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                  >
+                    <ChevronDown className="w-4 h-4 text-stone-500 shrink-0" />
+                  </motion.div>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.26, ease: "easeOut" }}
+                      className="overflow-hidden"
+                    >
+                      <p className="pt-3 text-xs sm:text-sm text-stone-500 leading-relaxed max-w-2xl">
+                        {faq.a}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}
@@ -821,81 +1429,127 @@ export default function LandingPage() {
       </section>
 
       {/* =====================================================================
-          6. NATIONAL GEOSPATIAL RISK MAP
-      ===================================================================== */}
-      <section id="geospasial" className="py-16 lg:py-20 max-w-[1400px] mx-auto px-6 lg:px-10">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-light uppercase tracking-wide text-jkn-text">
-              Sebaran Risiko Nasional
+          SECTION 7: GREEN JKN HOSPITAL ATRIUM FOOTER + RISING WATERMARK (00:18 - 00:26)
+      ====================================================================== */}
+      <footer ref={footerRef} className="relative w-full pt-16 overflow-hidden">
+        {/* Top White Footer Content */}
+        <div className="relative z-10 max-w-6xl mx-auto px-6 pb-16 flex flex-col md:flex-row justify-between gap-12">
+          <div className="space-y-6">
+            <h2 className="text-3xl sm:text-4xl font-semibold tracking-[-0.02em] text-[#141A16] leading-tight">
+              Audit klaim yang jelas,
+              <br /> dengan bukti yang bisa ditelusuri.
             </h2>
-            <p className="text-sm text-jkn-muted mt-2">
-              Pemetaan konsentrasi klaim berisiko tinggi dan estimasi eksposur pada 38 provinsi Indonesia
-            </p>
-          </div>
-          <Link
-            href="/providers"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-surface border border-jkn-border text-xs font-semibold uppercase tracking-wider text-jkn-text hover:border-bpjs hover:text-bpjs transition-all self-start sm:self-auto"
-          >
-            <span>Lihat Direktori Faskes</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {provinces.length > 0 && <IndonesiaRiskMap provinceData={provinces} />}
-      </section>
-
-      {/* =====================================================================
-          7. EDITORIAL FOOTER (AMMAN-INSPIRED MINIMALIST DARK FOOTER)
-      ===================================================================== */}
-      <footer className="bg-[#071A12] text-white border-t border-white/10 mt-12">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-10 py-16">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-10 pb-12 border-b border-white/10">
-            <div className="space-y-3 max-w-md">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white p-1 flex items-center justify-center">
-                  <img src="/arsa_logo.png" alt="ARSA JKN" className="w-full h-full object-contain" />
-                </div>
-                <span className="text-base font-bold tracking-[0.18em] uppercase">
-                  ARSA JKN
-                </span>
-              </div>
-              <p className="text-xs text-white/65 leading-relaxed">
-                Sistem Intelijen Risiko &amp; Verifikasi Klaim INA-CBG. Memadukan detektor aturan klinis, analisis vektor semantik, dan perlindungan privasi UU PDP No. 27 Tahun 2022.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-bpjs text-white text-xs font-bold uppercase tracking-wider hover:bg-bpjs-deep transition-all"
+                className="w-9 h-9 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200/80 flex items-center justify-center text-[#2E6B38] transition-colors"
+                title="Command Center"
               >
-                <span>Buka Command Center</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ShieldCheck className="w-4 h-4" />
               </Link>
               <Link
-                href="/investigation-queue"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-white/25 text-white text-xs font-semibold uppercase tracking-wider hover:bg-white hover:text-[#071A12] transition-all"
+                href="/providers"
+                className="w-9 h-9 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200/80 flex items-center justify-center text-stone-700 transition-colors"
+                title="Direktori Faskes"
               >
-                <span>Antrean Investigasi</span>
+                <Building2 className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/copilot"
+                className="w-9 h-9 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200/80 flex items-center justify-center text-stone-700 transition-colors"
+                title="AI Copilot"
+              >
+                <Sparkles className="w-4 h-4" />
               </Link>
             </div>
+            <p className="text-xs text-stone-500 max-w-md">{PROVENANCE_SUMMARY}. Rincian di halaman Acuan Nasional.</p>
           </div>
 
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/60 uppercase tracking-wider">
-            <div className="flex flex-wrap items-center gap-6">
-              <Link href="/settings" className="hover:text-white transition-colors">
-                Kepatuhan UU PDP &amp; Privasi
-              </Link>
-              <Link href="/model-performance" className="hover:text-white transition-colors">
-                Evaluasi Akurasi Model
-              </Link>
-              <Link href="/reports" className="hover:text-white transition-colors">
-                Dosier Audit PDF
-              </Link>
+          <div className="flex flex-wrap gap-10 sm:gap-14">
+            {/* Quick Links Column */}
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-600">
+                <Link2 className="w-3.5 h-3.5 text-[#2E6B38]" />
+                <span>Tautan</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <a
+                  href="#about"
+                  className="px-3.5 py-2 rounded-lg bg-stone-100/90 hover:bg-stone-200/70 text-stone-700 text-center transition-colors"
+                >
+                  Tentang
+                </a>
+                <a
+                  href="#platform"
+                  className="px-3.5 py-2 rounded-lg bg-stone-100/90 hover:bg-stone-200/70 text-stone-700 text-center transition-colors"
+                >
+                  Platform
+                </a>
+                <a
+                  href="#ecosystem"
+                  className="px-3.5 py-2 rounded-lg bg-stone-100/90 hover:bg-stone-200/70 text-stone-700 text-center transition-colors"
+                >
+                  Ekosistem
+                </a>
+                <a
+                  href="#advantages"
+                  className="px-3.5 py-2 rounded-lg bg-stone-100/90 hover:bg-stone-200/70 text-stone-700 text-center transition-colors"
+                >
+                  Keunggulan
+                </a>
+                <a
+                  href="#faq"
+                  className="px-3.5 py-2 rounded-lg bg-stone-100/90 hover:bg-stone-200/70 text-stone-700 text-center transition-colors"
+                >
+                  FAQ
+                </a>
+                <Link
+                  href="/"
+                  className="px-3.5 py-2 rounded-lg bg-stone-100/90 hover:bg-stone-200/70 text-stone-700 text-center transition-colors"
+                >
+                  Command Center
+                </Link>
+              </div>
             </div>
-            <div>ARSA · JKN Risk Intelligence</div>
+
+            {/* Contact Column */}
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-600">
+                <Phone className="w-3.5 h-3.5 text-[#2E6B38]" />
+                <span>Kontak</span>
+              </div>
+              <div className="flex flex-col gap-2 text-xs">
+                <span className="px-4 py-2 rounded-lg bg-stone-100/90 text-stone-700 font-mono">
+                  BPJS Kesehatan Care Center 165
+                </span>
+                <span className="px-4 py-2 rounded-lg bg-stone-100/90 text-stone-700">
+                  contact@arsa-jkn.id
+                </span>
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* Bottom Modern Green JKN Hospital Campus + Rising Giant ARSA Watermark */}
+        <div className="relative h-[360px] sm:h-[440px] w-full overflow-hidden">
+          <motion.img
+            src="/landing/arsa-footer-hospital.png"
+            alt="Rumah Sakit Mitra JKN"
+            style={{ scale: footerBgScale }}
+            className="w-full h-full object-cover object-center will-change-transform"
+          />
+          {/* Smooth top white fade into the green hospital architecture */}
+          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white via-white/75 to-transparent" />
+
+          {/* Giant Translucent Watermark Wordmark Rising with Scroll */}
+          <motion.div
+            style={{ y: watermarkY, opacity: watermarkOpacity }}
+            className="absolute inset-x-0 bottom-[-6%] flex items-end justify-center pointer-events-none select-none overflow-hidden"
+          >
+            <span className="text-[130px] sm:text-[220px] md:text-[290px] font-bold tracking-tight leading-none text-white mix-blend-overlay drop-shadow-sm">
+              ARSA
+            </span>
+          </motion.div>
         </div>
       </footer>
     </div>

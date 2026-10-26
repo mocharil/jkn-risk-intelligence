@@ -19,9 +19,9 @@ const check = (name, cond, detail = "") => {
 
 const procs = [];
 function start(cmd, args, env) {
-  const p = spawn(cmd, args, { shell: true, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
+  const p = spawn(cmd, args, { shell: false, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
   p.stdout.on("data", () => {});
-  p.stderr.on("data", () => {});
+  p.stderr.on("data", (d) => { if (process.env.DEBUG_E2E) process.stderr.write(d); });
   procs.push(p);
   return p;
 }
@@ -47,8 +47,10 @@ class Client {
 
 async function main() {
   console.log("Menjalankan server LLM tiruan & aplikasi...");
-  start("node", ["scripts/mock-llm.mjs", String(LLM)], {});
-  start("npx", ["next", "start", "-p", String(APP)], {
+  const distDir = process.env.NEXT_DIST_DIR || (fs.existsSync(".next/routes-manifest.json") ? ".next" : fs.existsSync(".next-prod/routes-manifest.json") ? ".next-prod" : ".next");
+  start(process.execPath, ["scripts/mock-llm.mjs", String(LLM)], {});
+  start(process.execPath, ["node_modules/next/dist/bin/next", "start", "-p", String(APP)], {
+    NEXT_DIST_DIR: distDir,
     ARSA_DATA_DIR: dataDir,
     AUTH_SECRET: "e2e-secret",
     PII_HMAC_SECRET: "e2e-pii",
@@ -85,7 +87,7 @@ async function main() {
   check("investigator ditolak keputusan final (403)", (await inv.patch("/api/investigations/INV-2026-010293", fin)).status === 403);
   const ok = await sup.patch("/api/investigations/INV-2026-010293", fin);
   check("supervisor boleh keputusan final", ok.status === 200 && ok.body.data.status === "CONFIRMED_RISK");
-  check("investigator ditolak upload dataset (403)", (await inv.req("/api/datasets", { method: "POST" })).status === 403);
+  check("investigator boleh upload dataset (izin dataset.upload); permintaan kosong ditolak 400, bukan 403", (await inv.req("/api/datasets", { method: "POST" })).status === 400);
   check("non-admin ditolak reset demo (403)", (await sup.post("/api/demo/reset", {})).status === 403);
 
   console.log("\n[4] Copilot via LLM: sitasi tervalidasi");
@@ -115,7 +117,7 @@ async function main() {
   check("briefing dashboard oleh LLM", br.ai_briefing.source === "llm");
 
   console.log("\n[7] Ingest nyata + anonimisasi");
-  const csv = fs.readFileSync("public/samples/simrs_rs_a.csv");
+  const csv = fs.readFileSync("scripts/fixtures/pii-uji/simrs_rs_a.csv");
   const form = new FormData();
   form.append("file", new Blob([csv], { type: "text/csv" }), "simrs_rs_a.csv");
   const up = await sup.json("/api/datasets", { method: "POST", body: form });
@@ -144,7 +146,7 @@ async function main() {
   check("metrik evaluasi tersedia (F1 makro >= 0.9)", ev.data.macro.f1 >= 0.9, String(ev.data.macro.f1));
 
   console.log("\n[9] Halaman utama merender (tanpa error server)");
-  for (const pth of ["/", "/claims", "/investigation-queue", "/copilot", "/data-management", "/settings", "/model-performance", "/risk-intelligence", "/reports", "/providers"]) {
+  for (const pth of ["/", "/claims", "/investigation-queue", "/copilot", "/data-management", "/settings", "/model-performance", "/acuan-nasional", "/risk-intelligence", "/reports", "/providers"]) {
     const r = await sup.req(pth);
     check(`GET ${pth} -> 200`, r.status === 200, String(r.status));
   }

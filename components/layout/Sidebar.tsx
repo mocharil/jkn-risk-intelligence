@@ -16,6 +16,7 @@ import {
   Sparkles,
   Gauge,
   X,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const pathname = usePathname();
+  const [detectorCount, setDetectorCount] = useState<number | null>(null);
   const [queueCount, setQueueCount] = useState<number | null>(queueOverride ?? null);
   const [ai, setAi] = useState<{ available: boolean; mode: string; source: string; label?: string; reason?: string } | null>(null);
 
@@ -45,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       .catch(() => {});
     fetch("/api/system/status")
       .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (j && typeof j.detector_count === "number") setDetectorCount(j.detector_count); return j; })
       .then((j) => j && setAi({ available: j.ai.available, mode: j.ai.mode, source: j.ai.credential_source, label: j.ai.provider_label, reason: j.ai.reason }))
       .catch(() => {});
   }, []);
@@ -109,6 +112,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       group: "DATA & TATA KELOLA",
       items: [
+        {
+          name: "Acuan Nasional BPJS",
+          href: "/acuan-nasional",
+          icon: BarChart3,
+        },
         {
           name: "Manajemen Dataset",
           href: "/data-management",
@@ -271,7 +279,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     : "Mesin Deterministik"}
                 </div>
                 <div className="text-[10px] text-emerald-100/45 truncate">
-                  8 Detektor Forensik JKN
+                  {detectorCount === null ? "Detektor Forensik JKN" : `${detectorCount} Detektor Forensik JKN`}
                 </div>
               </div>
             )}

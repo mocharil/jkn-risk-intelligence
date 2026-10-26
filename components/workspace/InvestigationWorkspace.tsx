@@ -8,7 +8,8 @@ import { RiskPill } from "@/components/ui/RiskPill";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Investigation } from "@/types/investigation";
-import { CanonicalClaim } from "@/types/claim";
+import { CanonicalClaim, NationalContext } from "@/types/claim";
+import { INDONESIA_PROVINCES } from "@/lib/data/indonesia-provinces";
 import { formatRupiah } from "@/lib/formatting/currency";
 import { formatRelativeTime } from "@/lib/formatting/date";
 import {
@@ -22,6 +23,7 @@ import {
   FileText,
   Building2,
   Printer,
+  Download,
   X,
 } from "lucide-react";
 
@@ -46,6 +48,14 @@ const STATUS_STYLE: Record<string, { label: string; className: string }> = {
     label: "Positif Palsu",
     className: "bg-risk-low-bg text-risk-low border-risk-low-border",
   },
+  ESCALATED: {
+    label: "Dieskalasi",
+    className: "bg-purple-50 text-purple-800 border-purple-200",
+  },
+  CLOSED: {
+    label: "Ditutup",
+    className: "bg-surface-secondary text-jkn-muted border-jkn-border",
+  },
 };
 
 const CLAIM_STATUS_LABEL: Record<string, string> = {
@@ -58,6 +68,9 @@ const CLAIM_STATUS_LABEL: Record<string, string> = {
   FALSE_POSITIVE: "Positif Palsu",
   CLEARED: "Normal / Lolos",
   CLEAN: "Normal / Lolos",
+  PENDING_REVIEW: "Menunggu tinjauan",
+  IN_INVESTIGATION: "Diinvestigasi",
+  RESOLVED_VALID: "Wajar / lolos",
 };
 
 const CLAIM_STATUS_STYLE: Record<string, string> = {
@@ -69,7 +82,40 @@ const CLAIM_STATUS_STYLE: Record<string, string> = {
   CLEAN: "bg-bpjs-soft text-bpjs-dark border-bpjs-border",
   CLEARED: "bg-bpjs-soft text-bpjs-dark border-bpjs-border",
   FALSE_POSITIVE: "bg-surface-secondary text-jkn-muted border-jkn-border",
+  PENDING_REVIEW: "bg-risk-medium-bg text-risk-medium border-risk-medium-border",
+  IN_INVESTIGATION: "bg-intel-light text-intel-deep border-intel-border",
+  RESOLVED_VALID: "bg-bpjs-soft text-bpjs-dark border-bpjs-border",
 };
+
+const SORT_OPTIONS = [
+  { key: "risk", label: "Skor risiko tertinggi" },
+  { key: "exposure", label: "Eksposur terbesar" },
+  { key: "amount", label: "Tagihan terbesar" },
+  { key: "date", label: "Pengajuan terbaru" },
+];
+
+const CLASS_OPTIONS = [
+  { key: "KELAS_1", label: "Kelas 1" },
+  { key: "KELAS_2", label: "Kelas 2" },
+  { key: "KELAS_3", label: "Kelas 3" },
+  { key: "RAWAT_JALAN", label: "Rawat jalan" },
+  { key: "TIDAK_DIKETAHUI", label: "Kelas tidak tercatat" },
+];
+
+/** Biaya klaim dibanding rerata nasional BPJS 2018 untuk kelas yang sama (rawat inap per admisi, rawat jalan per kunjungan). */
+function NationalChip({ n, className = "" }: { n?: NationalContext; className?: string }) {
+  if (!n || !n.cost_ref || n.cost_ratio == null) return null;
+  const r = n.cost_ratio;
+  const tone = r >= 2 ? "text-risk-critical" : r >= 1.35 ? "text-risk-high" : "text-jkn-muted";
+  return (
+    <span
+      className={`font-mono tabular-nums ${tone} ${className}`}
+      title={`Rerata nasional BPJS ${n.year}, ${n.class_label.toLowerCase()}: ${formatRupiah(n.cost_ref)} per ${n.level === "INAP" ? "admisi" : "kunjungan"}`}
+    >
+      {r.toLocaleString("id-ID", { maximumFractionDigits: 1 })}x rerata nasional
+    </span>
+  );
+}
 
 const PROVIDER_TYPE_LABEL: Record<string, string> = {
   RS_KELAS_A: "RS Kelas A",
@@ -87,6 +133,7 @@ const TREATMENT_CLASS_LABEL: Record<string, string> = {
   VIP: "R. Inap VIP",
   ICU: "Intensif (ICU)",
   RAWAT_JALAN: "Rawat Jalan",
+  TIDAK_DIKETAHUI: "Kelas tidak tercatat",
 };
 
 export function InvestigationQueueInner({
@@ -111,9 +158,15 @@ export function InvestigationQueueInner({
     medium: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [claimsError, setClaimsError] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string>(() => searchParams.get("priority") || "ALL");
   const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get("status") || "ALL");
   const [riskTypeFilter, setRiskTypeFilter] = useState<string>(() => searchParams.get("risk_type") || "ALL");
+  const [provinceFilter, setProvinceFilter] = useState<string>(() => searchParams.get("province") || "ALL");
+  const [classFilter, setClassFilter] = useState<string>(() => searchParams.get("treatment_class") || "ALL");
+  const [sortKey, setSortKey] = useState<string>(() => searchParams.get("sort") || "risk");
+  const [reloadKey, setReloadKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") || "");
   const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("search") || "");
   const [viewMode, setViewMode] = useState<"TABLE" | "CARD">("TABLE");
@@ -137,6 +190,12 @@ export function InvestigationQueueInner({
     const paramStatus = searchParams.get("status");
     const paramSearch = searchParams.get("search");
     const paramRiskLvl = searchParams.get("risk_level");
+    const paramProvince = searchParams.get("province");
+    const paramClass = searchParams.get("treatment_class");
+    const paramSort = searchParams.get("sort");
+    if (paramProvince) setProvinceFilter(paramProvince);
+    if (paramClass) setClassFilter(paramClass);
+    if (paramSort) setSortKey(paramSort);
     if (paramMode === "CLAIMS" || paramMode === "QUEUE") setWorkspaceMode(paramMode);
     if (paramRisk) setRiskTypeFilter(paramRisk);
     if (paramPriority) setPriorityFilter(paramPriority);
@@ -156,12 +215,33 @@ export function InvestigationQueueInner({
   useEffect(() => {
     setPage(1);
     setClaimsPage(1);
-  }, [priorityFilter, statusFilter, riskTypeFilter, claimRiskLevel, debouncedSearch]);
+  }, [priorityFilter, statusFilter, riskTypeFilter, claimRiskLevel, debouncedSearch, provinceFilter, classFilter, sortKey]);
+
+  // Jaga halaman tetap valid bila jumlah hasil menyusut (mis. setelah keputusan kasus / reload).
+  useEffect(() => {
+    if (!loading && total > 0 && (page - 1) * pageSize >= total) setPage(Math.max(1, Math.ceil(total / pageSize)));
+  }, [loading, total, page]);
+  useEffect(() => {
+    if (!claimsLoading && claimsTotal > 0 && (claimsPage - 1) * claimsPageSize >= claimsTotal) setClaimsPage(Math.max(1, Math.ceil(claimsTotal / claimsPageSize)));
+  }, [claimsLoading, claimsTotal, claimsPage]);
+
+  // Segarkan saat ada perubahan di tempat lain (keputusan kasus, unggahan dataset) atau tab kembali aktif.
+  useEffect(() => {
+    const bump = () => setReloadKey((k) => k + 1);
+    const onVisible = () => document.visibilityState === "visible" && bump();
+    window.addEventListener("arsa:store-updated", bump);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("arsa:store-updated", bump);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
 
   // Fetch initial counts for both tabs independently so none blocks the others
   useEffect(() => {
+    const pv = provinceFilter !== "ALL" ? `&province=${provinceFilter}` : "";
     const countInv = (q: string) =>
-      fetch(`/api/investigations?limit=1${q}`)
+      fetch(`/api/investigations?limit=1${q}${pv}`)
         .then((r) => r.json())
         .then((j) => j.total_count || 0)
         .catch(() => 0);
@@ -179,7 +259,7 @@ export function InvestigationQueueInner({
       .then((r) => r.json())
       .then((j) => setClaimsTotalUnfiltered(j.total_count || 0))
       .catch(() => {});
-  }, []);
+  }, [provinceFilter, reloadKey]);
 
   // Fetch Investigations when in QUEUE mode
   useEffect(() => {
@@ -190,23 +270,33 @@ export function InvestigationQueueInner({
     if (priorityFilter !== "ALL") qs.set("priority", priorityFilter);
     if (statusFilter !== "ALL") qs.set("status", statusFilter);
     if (riskTypeFilter !== "ALL") qs.set("risk_type", riskTypeFilter);
+    if (provinceFilter !== "ALL") qs.set("province", provinceFilter);
+    if (sortKey !== "risk") qs.set("sort", sortKey);
     setLoading(true);
+    setLoadError(null);
     fetch(`/api/investigations?${qs}`, { signal: ctrl.signal })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         setInvestigations(data.data || []);
         const tc = data.total_count || 0;
         setTotal(tc);
         if (priorityFilter === "ALL" && statusFilter === "ALL" && riskTypeFilter === "ALL" && !debouncedSearch) {
-          setCounts((prev) => ({ ...prev, all: tc || prev.all }));
+          setCounts((prev) => ({ ...prev, all: tc }));
         }
         setLoading(false);
       })
       .catch((err) => {
-        if (err.name !== "AbortError") setLoading(false);
+        if (err.name === "AbortError") return;
+        setLoadError(`Gagal memuat antrean investigasi (${err.message}).`);
+        setInvestigations([]);
+        setTotal(0);
+        setLoading(false);
       });
     return () => ctrl.abort();
-  }, [workspaceMode, page, debouncedSearch, priorityFilter, statusFilter, riskTypeFilter]);
+  }, [workspaceMode, page, debouncedSearch, priorityFilter, statusFilter, riskTypeFilter, provinceFilter, sortKey, reloadKey]);
 
   // Fetch All Claims when in CLAIMS mode
   useEffect(() => {
@@ -219,25 +309,39 @@ export function InvestigationQueueInner({
     if (debouncedSearch) qs.set("search", debouncedSearch);
     if (claimRiskLevel !== "ALL") qs.set("risk_level", claimRiskLevel);
     if (riskTypeFilter !== "ALL") qs.set("risk_type", riskTypeFilter);
+    if (provinceFilter !== "ALL") qs.set("province", provinceFilter);
+    if (classFilter !== "ALL") qs.set("treatment_class", classFilter);
+    if (sortKey !== "risk") qs.set("sort", sortKey);
     setClaimsLoading(true);
+    setClaimsError(null);
     fetch(`/api/claims?${qs}`, { signal: ctrl.signal })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         setClaims(data.data || []);
         setClaimsTotal(data.total_count || 0);
         setClaimsLoading(false);
       })
       .catch((err) => {
-        if (err.name !== "AbortError") setClaimsLoading(false);
+        if (err.name === "AbortError") return;
+        setClaimsError(`Gagal memuat daftar klaim (${err.message}).`);
+        setClaims([]);
+        setClaimsTotal(0);
+        setClaimsLoading(false);
       });
     return () => ctrl.abort();
-  }, [workspaceMode, claimsPage, debouncedSearch, claimRiskLevel, riskTypeFilter]);
+  }, [workspaceMode, claimsPage, debouncedSearch, claimRiskLevel, riskTypeFilter, provinceFilter, classFilter, sortKey, reloadKey]);
 
   const openClaim = async (c: CanonicalClaim) => {
     setSelectedClaim(c);
     try {
       const res = await fetch(`/api/claims/${c.claim_id}`);
-      if (res.ok) setSelectedClaim((await res.json()).data);
+      if (res.ok) {
+        const full = (await res.json()).data;
+        if (full) setSelectedClaim((cur) => (cur && cur.claim_id === c.claim_id ? full : cur));
+      }
     } catch {
       /* tetap tampilkan versi ringkas */
     }
@@ -248,9 +352,26 @@ export function InvestigationQueueInner({
     statusFilter !== "ALL" ||
     riskTypeFilter !== "ALL" ||
     claimRiskLevel !== "ALL" ||
+    provinceFilter !== "ALL" ||
+    classFilter !== "ALL" ||
+    sortKey !== "risk" ||
     searchQuery.trim() !== "";
 
+  const csvHref = (() => {
+    const qs = new URLSearchParams({ format: "csv" });
+    if (debouncedSearch) qs.set("search", debouncedSearch);
+    if (claimRiskLevel !== "ALL") qs.set("risk_level", claimRiskLevel);
+    if (riskTypeFilter !== "ALL") qs.set("risk_type", riskTypeFilter);
+    if (provinceFilter !== "ALL") qs.set("province", provinceFilter);
+    if (classFilter !== "ALL") qs.set("treatment_class", classFilter);
+    if (sortKey !== "risk") qs.set("sort", sortKey);
+    return `/api/claims?${qs}`;
+  })();
+
   const handleResetFilters = () => {
+    setProvinceFilter("ALL");
+    setClassFilter("ALL");
+    setSortKey("risk");
     setPriorityFilter("ALL");
     setStatusFilter("ALL");
     setRiskTypeFilter("ALL");
@@ -268,16 +389,16 @@ export function InvestigationQueueInner({
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-bold text-jkn-text tracking-tight">
-              Pemeriksaan Klaim &amp; Register Dosier
+              Pemeriksaan klaim
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-bpjs-soft text-bpjs-dark text-xs font-mono font-bold tabular-nums border border-bpjs-border">
               {workspaceMode === "QUEUE"
-                ? `${total.toLocaleString("id-ID")} berkas investigasi`
-                : `${claimsTotal.toLocaleString("id-ID")} klaim terdaftar`}
+                ? `${total.toLocaleString("id-ID")} kasus${hasActiveFilters ? " sesuai filter" : ""}`
+                : `${claimsTotal.toLocaleString("id-ID")} klaim${hasActiveFilters ? " sesuai filter" : ""}`}
             </span>
           </div>
           <p className="text-xs text-jkn-muted mt-1">
-            Pusat triase forensik klaim berisiko tinggi, ekspor berita acara audit (PDF), dan penelusuran sensus seluruh populasi klaim JKN.
+            Antrean kasus untuk diperiksa, dosier PDF untuk audit, dan sensus seluruh klaim. Biaya setiap klaim dibandingkan dengan rerata nasional BPJS untuk kelas rawat yang sama.
           </p>
         </div>
 
@@ -294,7 +415,7 @@ export function InvestigationQueueInner({
               }`}
             >
               <ShieldAlert className={`w-3.5 h-3.5 ${workspaceMode === "QUEUE" ? "text-[#34D399]" : ""}`} />
-              <span>Antrean Investigasi &amp; Dosier</span>
+              <span>Antrean kasus</span>
               <span
                 className={`px-1.5 py-0.5 rounded text-[10px] font-mono tabular-nums ${
                   workspaceMode === "QUEUE"
@@ -314,7 +435,7 @@ export function InvestigationQueueInner({
               }`}
             >
               <FileText className={`w-3.5 h-3.5 ${workspaceMode === "CLAIMS" ? "text-[#34D399]" : ""}`} />
-              <span>Sensus Semua Klaim</span>
+              <span>Semua klaim</span>
               <span
                 className={`px-1.5 py-0.5 rounded text-[10px] font-mono tabular-nums ${
                   workspaceMode === "CLAIMS"
@@ -364,10 +485,9 @@ export function InvestigationQueueInner({
           <div className="px-4 border-b border-jkn-divider bg-surface-subtle flex items-center justify-between gap-4 overflow-x-auto">
             <div className="flex items-center gap-1">
               {[
-                { key: "ALL", label: "Semua Kasus", count: counts.all },
-                { key: "CRITICAL", label: "Prioritas Kritis", count: counts.critical, dot: "bg-risk-critical" },
-                { key: "HIGH", label: "Prioritas Tinggi", count: counts.high, dot: "bg-risk-high" },
-                { key: "MEDIUM", label: "Prioritas Sedang", count: counts.medium, dot: "bg-risk-medium" },
+                { key: "ALL", label: "Semua kasus", count: counts.all },
+                { key: "CRITICAL", label: "Kritis", count: counts.critical, dot: "bg-risk-critical" },
+                { key: "HIGH", label: "Tinggi", count: counts.high, dot: "bg-risk-high" },
               ].map((tab) => {
                 const active = priorityFilter === tab.key;
                 return (
@@ -402,7 +522,7 @@ export function InvestigationQueueInner({
                 className="h-7 flex items-center gap-1.5 px-2.5 rounded-lg border border-jkn-border bg-surface text-[11px] font-semibold text-jkn-muted hover:text-bpjs hover:border-bpjs transition-colors shrink-0"
               >
                 <RotateCcw className="w-3 h-3" />
-                <span>Atur Ulang Filter</span>
+                <span>Atur ulang filter</span>
               </button>
             )}
           </div>
@@ -442,6 +562,33 @@ export function InvestigationQueueInner({
             <option value="READMISSION">Readmisi Dini (&lt;30 Hari)</option>
           </select>
 
+          <select
+            aria-label="Filter provinsi faskes"
+            value={provinceFilter}
+            onChange={(e) => setProvinceFilter(e.target.value)}
+            className="h-9 text-xs px-3 rounded-xl bg-surface-subtle border border-jkn-border text-jkn-text outline-hidden focus:border-bpjs w-full md:w-48"
+          >
+            <option value="ALL">Semua provinsi</option>
+            {INDONESIA_PROVINCES.map((p) => (
+              <option key={p.code} value={p.code}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            aria-label="Urutkan"
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value)}
+            className="h-9 text-xs px-3 rounded-xl bg-surface-subtle border border-jkn-border text-jkn-text outline-hidden focus:border-bpjs w-full md:w-48"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+
           {workspaceMode === "QUEUE" ? (
             <select
               aria-label="Filter status investigasi"
@@ -453,8 +600,10 @@ export function InvestigationQueueInner({
               <option value="NEW">Belum Ditinjau</option>
               <option value="UNDER_INVESTIGATION">Sedang Diinvestigasi</option>
               <option value="NEED_EVIDENCE">Butuh Bukti Tambahan</option>
+              <option value="ESCALATED">Dieskalasi</option>
               <option value="CONFIRMED_RISK">Risiko Terkonfirmasi</option>
               <option value="FALSE_POSITIVE">Positif Palsu</option>
+              <option value="CLOSED">Ditutup</option>
             </select>
           ) : (
             <>
@@ -470,6 +619,30 @@ export function InvestigationQueueInner({
                 <option value="MEDIUM">Sedang (Medium)</option>
                 <option value="LOW">Rendah / Normal</option>
               </select>
+
+              <select
+                aria-label="Filter kelas rawat"
+                value={classFilter}
+                onChange={(e) => setClassFilter(e.target.value)}
+                className="h-9 text-xs px-3 rounded-lg bg-surface-secondary border border-jkn-border text-jkn-text outline-hidden focus:border-bpjs w-full md:w-44"
+              >
+                <option value="ALL">Semua kelas rawat</option>
+                {CLASS_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+
+              <a
+                href={csvHref}
+                download
+                className="h-9 flex items-center gap-1.5 px-3 rounded-lg border border-jkn-border bg-white text-xs font-semibold text-jkn-text hover:bg-surface-secondary transition-colors shrink-0"
+                title="Unduh klaim sesuai filter (CSV, peserta berupa pseudonim). Pengunduhan dicatat di jejak audit."
+              >
+                <Download className="w-3.5 h-3.5" aria-hidden />
+                <span>Unduh CSV</span>
+              </a>
 
               {hasActiveFilters && (
                 <button
@@ -489,6 +662,14 @@ export function InvestigationQueueInner({
       {workspaceMode === "QUEUE" ? (
         loading ? (
           <PageLoader label="Memuat antrean investigasi..." />
+        ) : loadError ? (
+          <div role="alert" className="text-center py-16 bg-surface rounded-xl border border-risk-critical-border p-6 space-y-3">
+            <h4 className="text-sm font-bold text-risk-critical">{loadError}</h4>
+            <button onClick={() => setReloadKey((k) => k + 1)} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-bpjs text-white text-xs font-semibold hover:bg-bpjs-deep transition-all">
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Coba lagi</span>
+            </button>
+          </div>
         ) : total === 0 ? (
           <div className="text-center py-16 bg-surface rounded-xl border border-jkn-border p-6 space-y-3">
             <ShieldAlert className="w-8 h-8 text-jkn-dim mx-auto" />
@@ -510,14 +691,14 @@ export function InvestigationQueueInner({
               /* High-Density Forensic Triage Table with Direct PDF Dossier Export */
               <div className="bg-surface rounded-2xl border border-jkn-border/90 overflow-hidden shadow-card overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-surface-subtle border-b border-jkn-border text-jkn-muted font-bold uppercase tracking-[0.1em] text-[10px]">
+                  <thead className="bg-surface-subtle border-b border-jkn-border text-jkn-muted font-semibold text-xs">
                     <tr>
-                      <th className="py-3.5 px-3.5 w-32">Skor &amp; Berkas</th>
-                      <th className="py-3.5 px-3 w-48">Klaim, Peserta &amp; Diagnosis</th>
-                      <th className="py-3.5 px-3 w-44">Fasilitas Kesehatan</th>
-                      <th className="py-3.5 px-3">Kontradiksi Klinis &amp; Sinyal Detektor</th>
-                      <th className="py-3.5 px-3 text-right w-36">Tagihan vs Eksposur</th>
-                      <th className="py-3.5 px-3.5 text-right w-44">Status, Dosier &amp; Aksi</th>
+                      <th className="py-3 px-3.5 w-32">Skor dan kasus</th>
+                      <th className="py-3 px-3 w-48">Klaim dan diagnosis</th>
+                      <th className="py-3 px-3 w-44">Faskes</th>
+                      <th className="py-3 px-3">Temuan utama</th>
+                      <th className="py-3 px-3 text-right w-44">Tagihan dan eksposur</th>
+                      <th className="py-3 px-3.5 text-right w-44">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-jkn-divider">
@@ -525,8 +706,8 @@ export function InvestigationQueueInner({
                       const topFinding = inv.claim.risk_findings?.[0];
                       const topEvidenceId = topFinding?.evidence?.[0]?.evidence_id;
                       const primaryDiagnosis = inv.claim.diagnoses?.[0];
-                      const visibleSignals = inv.primary_risk_signals.slice(0, 3);
-                      const hiddenSignalCount = Math.max(0, inv.primary_risk_signals.length - 3);
+                      const visibleSignals = (inv.primary_risk_signals ?? []).slice(0, 3);
+                      const hiddenSignalCount = Math.max(0, (inv.primary_risk_signals ?? []).length - 3);
                       const exposurePct =
                         inv.claim.claim_amount > 0
                           ? Math.min(100, Math.round((inv.potential_exposure / inv.claim.claim_amount) * 100))
@@ -554,7 +735,7 @@ export function InvestigationQueueInner({
                             <div className="font-mono text-[11px] font-bold text-jkn-text tabular-nums mt-1.5">
                               {inv.investigation_id}
                             </div>
-                            <div className="text-[10px] text-jkn-dim tabular-nums mt-0.5">
+                            <div className="text-xs text-jkn-dim tabular-nums mt-0.5">
                               {formatRelativeTime(inv.created_at)}
                             </div>
                           </td>
@@ -571,8 +752,8 @@ export function InvestigationQueueInner({
                             </div>
                             <div className="text-xs font-semibold text-jkn-text mt-1 line-clamp-1">
                               {inv.claim.patient.name}{" "}
-                              <span className="font-normal text-jkn-muted text-[11px]">
-                                ({inv.claim.patient.age} thn · {inv.claim.patient.gender})
+                              <span className="font-normal text-jkn-muted text-xs">
+                                {inv.claim.patient.age > 0 ? `(${inv.claim.patient.age} thn, ${inv.claim.patient.gender})` : "(usia tidak tercatat)"}
                               </span>
                             </div>
                             {primaryDiagnosis && (
@@ -592,8 +773,9 @@ export function InvestigationQueueInner({
                             <div className="text-[11px] text-jkn-muted mt-0.5 line-clamp-1">
                               {providerTypeLabel} · {inv.claim.provider.city}
                             </div>
-                            <div className="text-[10px] text-jkn-dim font-mono tabular-nums mt-1 whitespace-nowrap">
-                              {treatmentClassLabel} · LOS {losDays}h
+                            <div className="text-xs text-jkn-dim font-mono tabular-nums mt-1 whitespace-nowrap">
+                              {treatmentClassLabel}
+                              {inv.claim.service?.treatment_class === "RAWAT_JALAN" ? "" : `, ${losDays} hari`}
                             </div>
                           </td>
 
@@ -636,13 +818,14 @@ export function InvestigationQueueInner({
 
                           {/* 5. Tagihan vs Eksposur */}
                           <td className="py-3.5 px-3.5 text-right whitespace-nowrap">
-                            <div className="text-[10px] text-jkn-dim uppercase tracking-wider">Potensi Eksposur</div>
-                            <div className="font-mono text-xs font-bold text-risk-critical tabular-nums mt-0.5">
+                            <div className="text-xs text-jkn-dim">Potensi eksposur</div>
+                            <div className="font-mono text-sm font-bold text-risk-critical tabular-nums mt-0.5">
                               {formatRupiah(inv.potential_exposure)}
                             </div>
-                            <div className="text-[11px] text-jkn-muted font-mono tabular-nums mt-1">
+                            <div className="text-xs text-jkn-muted font-mono tabular-nums mt-1">
                               dari {formatRupiah(inv.claim.claim_amount)} ({exposurePct}%)
                             </div>
+                            <NationalChip n={inv.claim.national} className="text-xs block mt-0.5" />
                           </td>
 
                           {/* 6. Status, Dosier PDF & Aksi */}
@@ -656,12 +839,12 @@ export function InvestigationQueueInner({
                             </div>
                             <div className="mt-2 inline-flex items-center justify-end gap-1.5">
                               <Link
-                                href={`/investigations/${inv.investigation_id}/report`}
-                                title="Cetak / Unduh Dosier PDF Audit"
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-jkn-border bg-surface-subtle text-[11px] font-semibold text-jkn-muted hover:text-jkn-text hover:bg-surface-secondary transition-colors"
+                                href={`/reports/${inv.investigation_id}`}
+                                title="Buka dosier audit; unduh PDF dari halaman itu"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-jkn-border bg-surface-subtle text-xs font-semibold text-jkn-muted hover:text-jkn-text hover:bg-surface-secondary transition-colors"
                               >
-                                <Printer className="w-3 h-3" />
-                                <span>PDF</span>
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>Dosier</span>
                               </Link>
                               <Link
                                 href={`/investigations/${inv.investigation_id}`}
@@ -685,8 +868,8 @@ export function InvestigationQueueInner({
                   const topFinding = inv.claim.risk_findings?.[0];
                   const topEvidenceId = topFinding?.evidence?.[0]?.evidence_id;
                   const primaryDiagnosis = inv.claim.diagnoses?.[0];
-                  const visibleSignals = inv.primary_risk_signals.slice(0, 3);
-                  const hiddenSignalCount = Math.max(0, inv.primary_risk_signals.length - 3);
+                  const visibleSignals = (inv.primary_risk_signals ?? []).slice(0, 3);
+                  const hiddenSignalCount = Math.max(0, (inv.primary_risk_signals ?? []).length - 3);
                   const exposurePct =
                     inv.claim.claim_amount > 0
                       ? Math.min(100, Math.round((inv.potential_exposure / inv.claim.claim_amount) * 100))
@@ -731,7 +914,7 @@ export function InvestigationQueueInner({
                             <span className="text-[11px] text-jkn-muted">
                               Peserta:{" "}
                               <strong className="text-jkn-text font-semibold">{inv.claim.patient.name}</strong> (
-                              {inv.claim.patient.age} thn, {inv.claim.patient.gender})
+                              {inv.claim.patient.age > 0 ? `${inv.claim.patient.age} thn, ${inv.claim.patient.gender})` : "usia tidak tercatat)"}
                             </span>
                             <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-surface border border-jkn-divider text-jkn-text shrink-0">
                               {primaryDiagnosis?.severity ? `Severity Lv.${primaryDiagnosis.severity}` : "Klaim JKN"} · LOS {losDays}h
@@ -751,8 +934,8 @@ export function InvestigationQueueInner({
                         {/* Specific Forensic Contradiction */}
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-jkn-dim">
-                              Kontradiksi Utama
+                            <span className="text-xs font-semibold text-jkn-dim">
+                              Temuan utama
                             </span>
                             {topEvidenceId && (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-surface-secondary text-bpjs-dark border border-jkn-border">
@@ -784,14 +967,15 @@ export function InvestigationQueueInner({
                         {/* Financial Comparison Strip */}
                         <div className="pt-2.5 border-t border-jkn-divider flex items-end justify-between gap-3">
                           <div>
-                            <span className="text-[10px] text-jkn-dim block">Nilai Tagihan Klaim</span>
+                            <span className="text-xs text-jkn-dim block">Tagihan</span>
                             <span className="text-xs font-mono font-semibold text-jkn-text tabular-nums">
                               {formatRupiah(inv.claim.claim_amount)}
                             </span>
+                            <NationalChip n={inv.claim.national} className="text-xs block" />
                           </div>
                           <div className="text-right">
-                            <span className="text-[10px] text-jkn-dim block">
-                              Potensi Eksposur ({exposurePct}%)
+                            <span className="text-xs text-jkn-dim block">
+                              Eksposur ({exposurePct}%)
                             </span>
                             <span className="text-xs font-mono font-bold text-risk-critical tabular-nums">
                               {formatRupiah(inv.potential_exposure)}
@@ -814,11 +998,11 @@ export function InvestigationQueueInner({
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <Link
-                            href={`/investigations/${inv.investigation_id}/report`}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-jkn-border bg-white text-[11px] font-semibold text-jkn-muted hover:text-jkn-text transition-colors"
+                            href={`/reports/${inv.investigation_id}`}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-jkn-border bg-white text-xs font-semibold text-jkn-muted hover:text-jkn-text transition-colors"
                           >
-                            <Printer className="w-3 h-3" />
-                            <span>PDF</span>
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Dosier</span>
                           </Link>
                           <Link
                             href={`/investigations/${inv.investigation_id}`}
@@ -843,14 +1027,14 @@ export function InvestigationQueueInner({
           <div className={selectedClaim ? "lg:col-span-7" : "lg:col-span-12"}>
             <div className="bg-surface rounded-xl border border-jkn-border overflow-hidden shadow-subtle overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-surface-secondary border-b border-jkn-border text-jkn-dim font-semibold uppercase tracking-wider text-[10px]">
+                <thead className="bg-surface-secondary border-b border-jkn-border text-jkn-dim font-semibold text-xs">
                   <tr>
-                    <th className="py-3 px-3.5">ID Klaim / SEP</th>
-                    <th className="py-3 px-3.5">Peserta (Pseudonim)</th>
-                    <th className="py-3 px-3.5">Fasilitas Kesehatan</th>
-                    <th className="py-3 px-3.5">Diagnosis &amp; LOS</th>
-                    <th className="py-3 px-3.5 text-right">Nilai Tagihan</th>
-                    <th className="py-3 px-3.5">Skor Risiko</th>
+                    <th className="py-3 px-3.5">Klaim</th>
+                    <th className={`py-3 px-3.5 ${selectedClaim ? "hidden" : ""}`}>Peserta (pseudonim)</th>
+                    <th className="py-3 px-3.5">Faskes</th>
+                    <th className="py-3 px-3.5">Diagnosis</th>
+                    <th className="py-3 px-3.5 text-right">Tagihan</th>
+                    <th className="py-3 px-3.5">Skor</th>
                     <th className="py-3 px-3.5 text-center">Status</th>
                   </tr>
                 </thead>
@@ -859,6 +1043,16 @@ export function InvestigationQueueInner({
                     <tr>
                       <td colSpan={7}>
                         <PageLoader label="Memuat sensus repositori klaim..." className="py-14" />
+                      </td>
+                    </tr>
+                  ) : claimsError ? (
+                    <tr>
+                      <td colSpan={7} role="alert" className="p-8 text-center space-y-2">
+                        <div className="text-risk-critical font-semibold">{claimsError}</div>
+                        <button onClick={() => setReloadKey((k) => k + 1)} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-bpjs text-white text-xs font-semibold hover:bg-bpjs-deep transition-all">
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Coba lagi</span>
+                        </button>
                       </td>
                     </tr>
                   ) : claimsTotal === 0 ? (
@@ -886,30 +1080,42 @@ export function InvestigationQueueInner({
                         }`}
                       >
                         <td className="py-3 px-3.5">
-                          <div className="font-mono font-bold text-jkn-text tabular-nums">{claim.claim_id}</div>
-                          <div className="text-[10px] text-jkn-dim font-mono tabular-nums mt-0.5">{claim.sep_number}</div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openClaim(claim);
+                            }}
+                            className="font-mono font-bold text-jkn-text tabular-nums hover:text-bpjs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bpjs rounded"
+                            aria-label={`Buka ringkasan klaim ${claim.claim_id}`}
+                          >
+                            {claim.claim_id}
+                          </button>
+                          <div className="text-xs text-jkn-dim font-mono tabular-nums mt-0.5">{claim.sep_number}</div>
                         </td>
-                        <td className="py-3 px-3.5">
+                        <td className={`py-3 px-3.5 ${selectedClaim ? "hidden" : ""}`}>
                           <div className="font-semibold text-jkn-text">{claim.patient.name}</div>
                           <div className="text-[10px] text-jkn-dim font-mono tabular-nums mt-0.5">
-                            {claim.patient.patient_id} · {claim.patient.age} thn
+                            {claim.patient.patient_id}{claim.patient.age > 0 ? ` · ${claim.patient.age} thn` : ""}
                           </div>
                         </td>
                         <td className="py-3 px-3.5">
-                          <div className="font-semibold text-jkn-text">{claim.provider.name}</div>
-                          <div className="text-[10px] text-jkn-dim mt-0.5">{claim.provider.city}</div>
+                          <div className={`font-semibold text-jkn-text ${selectedClaim ? "truncate max-w-[140px]" : ""}`}>{claim.provider.name}</div>
+                          <div className="text-xs text-jkn-dim mt-0.5">{claim.provider.city}</div>
                         </td>
                         <td className="py-3 px-3.5">
-                          <div className="text-jkn-text truncate max-w-[180px]">
+                          <div className={`text-jkn-text truncate ${selectedClaim ? "max-w-[150px]" : "max-w-[220px]"}`}>
                             <span className="font-mono font-bold text-bpjs-dark">{claim.diagnoses[0]?.code}</span>{" "}
                             <span className="font-medium">{claim.diagnoses[0]?.description}</span>
                           </div>
-                          <div className="text-[10px] text-jkn-dim tabular-nums mt-0.5">
-                            Rawat inap: {claim.service.length_of_stay} hari
+                          <div className="text-xs text-jkn-dim tabular-nums mt-0.5">
+                            {TREATMENT_CLASS_LABEL[claim.service.treatment_class] || claim.service.treatment_class}
+                            {claim.service.treatment_class === "RAWAT_JALAN" ? "" : `, ${claim.service.length_of_stay} hari`}
                           </div>
                         </td>
                         <td className="py-3 px-3.5 text-right font-mono font-bold text-jkn-text tabular-nums whitespace-nowrap">
                           {formatRupiah(claim.claim_amount)}
+                          <NationalChip n={claim.national} className="text-xs font-normal block" />
                         </td>
                         <td className="py-3 px-3.5">
                           <RiskPill score={claim.risk_score} level={claim.risk_level} size="sm" />
@@ -945,9 +1151,7 @@ export function InvestigationQueueInner({
             <div className="lg:col-span-5 bg-surface rounded-xl border border-jkn-border p-4 shadow-card space-y-4 sticky top-20 animate-in slide-in-from-right-3 duration-150">
               <div className="flex items-center justify-between pb-3 border-b border-jkn-divider">
                 <div>
-                  <span className="text-[10px] font-semibold text-jkn-dim uppercase tracking-wider">
-                    Ringkasan Cepat Klaim
-                  </span>
+                  <span className="text-xs font-semibold text-jkn-dim">Ringkasan klaim</span>
                   <h3 className="text-sm font-bold text-jkn-text flex items-center gap-2 mt-0.5">
                     <span className="font-mono tabular-nums">{selectedClaim.claim_id}</span>
                     <RiskPill score={selectedClaim.risk_score} level={selectedClaim.risk_level} size="sm" />
@@ -984,17 +1188,57 @@ export function InvestigationQueueInner({
                   </div>
                 </div>
 
+                {selectedClaim.national && selectedClaim.national.cost_ref > 0 && (
+                  <div>
+                    <span className="text-xs font-semibold text-jkn-dim block mb-2">
+                      Dibanding statistik BPJS {selectedClaim.national.year}
+                    </span>
+                    <div className="divide-y divide-jkn-divider border border-jkn-divider rounded-lg bg-surface-secondary/50 px-3 text-xs tabular-nums">
+                      <div className="flex justify-between gap-3 py-2">
+                        <span className="text-jkn-muted">
+                          Rerata {selectedClaim.national.class_label.toLowerCase()} {selectedClaim.national.level === "INAP" ? "per admisi" : "per kunjungan"}
+                        </span>
+                        <span className="font-mono font-semibold text-jkn-text">
+                          {formatRupiah(selectedClaim.national.cost_ref)} ({selectedClaim.national.cost_ratio?.toLocaleString("id-ID", { maximumFractionDigits: 1 }) ?? "-"}x)
+                        </span>
+                      </div>
+                      {selectedClaim.national.province_cost ? (
+                        <div className="flex justify-between gap-3 py-2">
+                          <span className="text-jkn-muted">Rerata {selectedClaim.national.province_name}</span>
+                          <span className="font-mono font-semibold text-jkn-text">
+                            {formatRupiah(selectedClaim.national.province_cost)} ({(selectedClaim.national.province_ratio || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 })}x)
+                          </span>
+                        </div>
+                      ) : null}
+                      {selectedClaim.national.los_ref ? (
+                        <div className="flex justify-between gap-3 py-2">
+                          <span className="text-jkn-muted">Lama rawat rerata kelas</span>
+                          <span className="font-mono font-semibold text-jkn-text">
+                            {selectedClaim.national.los_ref.toLocaleString("id-ID")} hari, klaim ini {selectedClaim.service.length_of_stay} hari
+                          </span>
+                        </div>
+                      ) : null}
+                      <div className="flex justify-between gap-3 py-2">
+                        <span className="text-jkn-muted">Diagnosis di 100 teratas nasional</span>
+                        <span className="font-mono font-semibold text-jkn-text">
+                          {selectedClaim.national.dx ? `peringkat ${selectedClaim.national.dx.rank}, ${selectedClaim.national.dx.admissions.toLocaleString("id-ID")} ${selectedClaim.national.level === "INAP" ? "admisi" : "kunjungan"}` : "tidak termasuk"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                  <span className="text-[10px] font-semibold text-jkn-dim uppercase tracking-wider block mb-2">
-                    Indikator Anomali Terdeteksi ({selectedClaim.risk_findings.length})
+                  <span className="text-xs font-semibold text-jkn-dim block mb-2">
+                    Indikator anomali ({(selectedClaim.risk_findings ?? []).length})
                   </span>
                   <div className="divide-y divide-jkn-divider border border-jkn-border rounded-lg overflow-hidden">
-                    {selectedClaim.risk_findings.length === 0 && (
+                    {(selectedClaim.risk_findings ?? []).length === 0 && (
                       <p className="text-[11px] text-jkn-muted p-3">
                         Tidak ditemukan sinyal anomali pada klaim ini (status bersih / sesuai tarif INA-CBG).
                       </p>
                     )}
-                    {selectedClaim.risk_findings.map((finding, idx) => (
+                    {(selectedClaim.risk_findings ?? []).map((finding, idx) => (
                       <div
                         key={idx}
                         className="p-2.5 bg-surface hover:bg-surface-secondary/40 text-[11px] space-y-1 transition-colors"
@@ -1013,11 +1257,11 @@ export function InvestigationQueueInner({
               {selectedClaim.investigation_id ? (
                 <div className="flex items-center gap-2">
                   <Link
-                    href={`/investigations/${selectedClaim.investigation_id}/report`}
+                    href={`/reports/${selectedClaim.investigation_id}`}
                     className="h-9 px-3 flex items-center justify-center gap-1.5 rounded-lg border border-jkn-border bg-white text-xs font-semibold text-jkn-text hover:bg-surface-secondary transition-all"
                   >
                     <Printer className="w-3.5 h-3.5" />
-                    <span>PDF Audit</span>
+                    <span>Dosier</span>
                   </Link>
                   <Link
                     href={`/investigations/${selectedClaim.investigation_id}`}
@@ -1029,7 +1273,7 @@ export function InvestigationQueueInner({
                 </div>
               ) : (
                 <div className="text-[11px] text-jkn-muted text-center p-2.5 rounded-lg bg-surface-secondary border border-jkn-divider tabular-nums">
-                  Skor {selectedClaim.risk_score} di bawah ambang antrean investigasi (75).
+                  Skor {selectedClaim.risk_score} di bawah ambang masuk antrean kasus (75).
                 </div>
               )}
             </div>

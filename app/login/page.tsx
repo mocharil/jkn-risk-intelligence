@@ -3,20 +3,44 @@
 import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Lock, Mail, ArrowRight } from "lucide-react";
+import {
+  Loader2,
+  Lock,
+  Mail,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Check,
+  ShieldCheck,
+} from "lucide-react";
 import { resetSessionCache } from "@/lib/auth/client";
 
 const DEMO = [
-  { role: "Investigator", email: "investigator@arsa.id", note: "Pemeriksaan bukti, catatan & status kerja" },
-  { role: "Supervisor", email: "supervisor@arsa.id", note: "Keputusan akhir & unggah dataset SIMRS" },
-  { role: "Admin", email: "admin@arsa.id", note: "Konfigurasi sistem, RBAC & reset demo" },
+  {
+    role: "Investigator",
+    email: "investigator@arsa.id",
+    note: "Pemeriksaan bukti, catatan & status kerja",
+  },
+  {
+    role: "Supervisor",
+    email: "supervisor@arsa.id",
+    note: "Keputusan akhir & unggah dataset SIMRS",
+  },
+  {
+    role: "Admin",
+    email: "admin@arsa.id",
+    note: "Konfigurasi sistem, RBAC & reset demo",
+  },
 ];
+
+const DEMO_PASS = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "Arsa#2026";
 
 function LoginForm() {
   const params = useSearchParams();
   const next = params.get("next") || "/";
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("investigator@arsa.id");
+  const [password, setPassword] = useState(DEMO_PASS);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -40,111 +64,168 @@ function LoginForm() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-[420px] space-y-4">
-        <div className="bg-surface rounded-xl border border-jkn-border shadow-subtle overflow-hidden">
-          {/* Institutional Header */}
-          <div className="px-6 py-5 border-b border-jkn-divider bg-surface-subtle/60 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-white border border-jkn-border p-1.5 shrink-0 flex items-center justify-center">
-              <img src="/arsa_logo.png" alt="ARSA AI" className="w-full h-full object-contain" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-jkn-text tracking-tight">
-                JKN Risk Intelligence
-              </h1>
-              <p className="text-[11px] text-jkn-muted">
-                Otorisasi Verifikator & Auditor Klaim INA-CBG
-              </p>
-            </div>
-          </div>
+  const selectedDemo = DEMO.find((d) => d.email === email);
 
-          <form onSubmit={submit} className="p-6 space-y-4">
+  return (
+    <div className="relative min-h-screen bg-[#F4F7F5] flex flex-col items-center justify-center p-4 sm:p-6 font-sans overflow-hidden">
+      {/* Subtle Ambient Background Texture */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          backgroundImage: "radial-gradient(#C2DFCE 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[560px] h-[320px] rounded-full bg-bpjs/10 blur-3xl"
+      />
+
+      <div className="relative z-10 w-full max-w-[400px] space-y-6">
+        {/* Minimalist Brand Header */}
+        <div className="text-center space-y-2.5">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white border border-jkn-border shadow-card p-2">
+            <img src="/arsa_logo.png" alt="ARSA AI" className="w-full h-full object-contain" />
+          </div>
+          <div>
+            <h1 className="text-xl font-extrabold text-jkn-text tracking-tight">
+              JKN Risk Intelligence
+            </h1>
+            <p className="text-xs text-jkn-muted mt-0.5">
+              Otorisasi Verifikator & Auditor Klaim INA-CBG
+            </p>
+          </div>
+        </div>
+
+        {/* Clean Elevated Card */}
+        <div className="bg-white rounded-2xl border border-jkn-border/90 shadow-elevated overflow-hidden">
+          <form onSubmit={submit} className="p-6 sm:p-7 space-y-4">
             <label className="block">
               <span className="text-xs font-semibold text-jkn-text">Alamat Email Instansi</span>
               <div className="mt-1.5 relative">
-                <Mail className="w-4 h-4 text-jkn-dim absolute left-3 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-jkn-dim absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="email"
                   required
                   autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-9 pl-9 pr-3 rounded-lg border border-jkn-border bg-white text-xs text-jkn-text focus:outline-none focus:ring-2 focus:ring-bpjs/20 focus:border-bpjs"
+                  className="w-full h-10 pl-10 pr-3.5 rounded-xl border border-jkn-border bg-[#F9FBFA] focus:bg-white text-xs text-jkn-text transition-all focus:outline-none focus:ring-2 focus:ring-bpjs/15 focus:border-bpjs"
                   placeholder="nama@bpjs-kesehatan.go.id"
                 />
               </div>
             </label>
+
             <label className="block">
               <span className="text-xs font-semibold text-jkn-text">Kata Sandi</span>
               <div className="mt-1.5 relative">
-                <Lock className="w-4 h-4 text-jkn-dim absolute left-3 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-jkn-dim absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-9 pl-9 pr-3 rounded-lg border border-jkn-border bg-white text-xs text-jkn-text focus:outline-none focus:ring-2 focus:ring-bpjs/20 focus:border-bpjs"
+                  placeholder="••••••••••••"
+                  className="w-full h-10 pl-10 pr-10 rounded-xl border border-jkn-border bg-[#F9FBFA] focus:bg-white text-xs text-jkn-text transition-all focus:outline-none focus:ring-2 focus:ring-bpjs/15 focus:border-bpjs"
                 />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Sembunyikan sandi" : "Tampilkan sandi"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-jkn-dim hover:text-jkn-text transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </label>
+
             {error && (
               <div
                 role="alert"
-                className="text-xs text-risk-critical bg-risk-critical-bg border border-risk-critical-border rounded-lg px-3 py-2"
+                className="text-xs text-risk-critical bg-risk-critical-bg border border-risk-critical-border rounded-xl px-3.5 py-2.5"
               >
                 {error}
               </div>
             )}
+
             <button
               type="submit"
               disabled={busy}
-              className="w-full h-9 flex items-center justify-center gap-2 rounded-lg bg-bpjs text-white text-xs font-semibold hover:bg-bpjs-deep transition-colors disabled:opacity-60"
+              className="w-full h-10 flex items-center justify-center gap-2 rounded-xl bg-[#0B291C] hover:bg-bpjs text-white text-xs font-semibold shadow-subtle transition-all disabled:opacity-60 group"
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               <span>Masuk ke Ruang Kerja</span>
-              {!busy && <ArrowRight className="w-3.5 h-3.5" />}
+              {!busy && (
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              )}
             </button>
-            <div className="pt-2 border-t border-jkn-divider flex items-center justify-between text-[11px] text-jkn-muted">
-              <span>Belum memiliki akses?</span>
-              <Link href="/register" className="text-bpjs font-semibold hover:underline">
-                Registrasi Investigator →
-              </Link>
+
+            {/* Sleek Integrated Role Selector */}
+            <div className="pt-4 border-t border-jkn-divider space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-jkn-dim">
+                  Simulasi Peran (RBAC)
+                </span>
+                <span className="font-mono text-[10px] text-jkn-dim">Sandi: {DEMO_PASS}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {DEMO.map((d) => {
+                  const active = email === d.email;
+                  return (
+                    <button
+                      key={d.email}
+                      type="button"
+                      onClick={() => {
+                        setEmail(d.email);
+                        setPassword(DEMO_PASS);
+                        setError("");
+                      }}
+                      className={`px-2.5 py-2 rounded-xl border text-left transition-all ${
+                        active
+                          ? "bg-bpjs-soft border-bpjs text-bpjs-dark shadow-subtle"
+                          : "bg-[#F9FBFA] border-jkn-border/80 text-jkn-text hover:border-bpjs/50 hover:bg-white"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[11px] font-bold truncate">{d.role}</span>
+                        {active && <Check className="w-3 h-3 text-bpjs shrink-0" />}
+                      </div>
+                      <div className="font-mono text-[9px] text-jkn-dim truncate mt-0.5">
+                        {d.email.split("@")[0]}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedDemo && (
+                <p className="text-[11px] text-jkn-muted text-center bg-surface-subtle rounded-lg py-1.5 px-2.5 border border-jkn-divider">
+                  {selectedDemo.note}
+                </p>
+              )}
             </div>
           </form>
+
+          {/* Card Footer */}
+          <div className="px-6 py-3.5 bg-[#F9FBFA] border-t border-jkn-divider flex items-center justify-between text-xs text-jkn-muted">
+            <span>Belum memiliki akses?</span>
+            <Link
+              href="/register"
+              className="text-bpjs font-semibold hover:text-bpjs-deep hover:underline"
+            >
+              Registrasi Investigator →
+            </Link>
+          </div>
         </div>
 
-        {/* Demo Credentials Ledger */}
-        <div className="bg-surface rounded-xl border border-jkn-border shadow-subtle overflow-hidden">
-          <div className="px-4 py-2.5 bg-surface-secondary border-b border-jkn-border flex items-center justify-between">
-            <span className="text-[10px] font-bold text-jkn-muted uppercase tracking-wider">
-              Kredensial Simulasi Peran (RBAC)
-            </span>
-            <span className="font-mono text-[10px] text-jkn-dim">Sandi: Arsa#2026</span>
-          </div>
-          <div className="divide-y divide-jkn-divider">
-            {DEMO.map((d) => (
-              <button
-                key={d.email}
-                type="button"
-                onClick={() => {
-                  setEmail(d.email);
-                  setPassword("Arsa#2026");
-                }}
-                className="w-full text-left px-4 py-2.5 hover:bg-surface-subtle transition-colors flex items-center justify-between gap-2"
-              >
-                <div>
-                  <div className="text-xs font-semibold text-jkn-text">
-                    {d.role}{" "}
-                    <span className="font-mono font-normal text-jkn-muted">· {d.email}</span>
-                  </div>
-                  <div className="text-[10px] text-jkn-dim mt-0.5">{d.note}</div>
-                </div>
-                <span className="text-[10px] font-semibold text-bpjs shrink-0">Isi otomatis</span>
-              </button>
-            ))}
-          </div>
+        {/* Subtle Trust Footer */}
+        <div className="flex items-center justify-center gap-2 text-[11px] text-jkn-dim">
+          <ShieldCheck className="w-3.5 h-3.5 text-bpjs" />
+          <span>Dilindungi Anonimisasi UU PDP & Jejak Audit SHA-256</span>
         </div>
       </div>
     </div>

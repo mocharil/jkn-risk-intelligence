@@ -2,6 +2,7 @@ import { z } from "zod";
 import { CanonicalClaim } from "@/types/claim";
 import { RiskFinding } from "@/types/risk";
 import { generateJson, getAIStatus } from "./llm";
+import { llmForbiddenByPolicy } from "../governance/policy";
 import { claimItems, ContextItem } from "./context";
 
 const LlmSchema = z.object({
@@ -39,6 +40,7 @@ export async function explainClaimFindings(claim: CanonicalClaim, opts: { force?
     return { mode: "deterministic" as const, reason };
   };
   if (claim.risk_findings.length === 0) return { mode: "deterministic" };
+  if (llmForbiddenByPolicy()) return applyDeterministic("Kebijakan tata kelola: mode deterministik (tanpa LLM).");
   if (!status.available) return applyDeterministic(status.reason || "LLM tidak tersedia");
 
   const context = items.map((i) => `[${i.id}] ${i.title}\n${i.text}`).join("\n\n");

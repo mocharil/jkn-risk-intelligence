@@ -53,11 +53,13 @@ export function initialsOnly(name: string): string {
 
 const NIK_RE = /(?<!\d)\d{16}(?!\d)/g;
 const CARD_RE = /(?<!\d)(?:000\d{10}|\d{13})(?!\d)/g;
-const PHONE_RE = /(?<!\d)(?:\+62|62|0)8\d{8,11}(?!\d)/g;
+// Nomor seluler dengan/ tanpa pemisah: 081288901234, 0812-8890-1234, +62 812 8890 1234.
+const PHONE_RE = /(?<!\d)(?:\+62[\s.-]?|62[\s.-]?|0)8\d{2}(?:[\s.-]?\d){6,9}(?!\d)/g;
 const LANDLINE_RE = /(?<!\d)\(?0[2-9]\d{1,2}\)?[\s.-]?\d{6,8}(?!\d)/g;
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const RT_RW_RE = /\bRT\.?\s*\d{1,3}\s*[/,-]?\s*RW\.?\s*\d{1,3}\b/gi;
-const INLINE_ADDR_RE = /\b(?:Jl\.|Jalan)\s+[A-Z0-9][A-Za-z0-9\s.,/-]{2,35}?(?=[,.;)\n]|$)/g;
+// "Jl. Kenanga No. 12" — titik pada "No." tidak dianggap akhir alamat.
+const INLINE_ADDR_RE = /\b(?:Jl\.|Jalan)\s+[A-Z0-9](?:\bNo\.|[A-Za-z0-9\s/-]){2,40}?(?=\s*(?:[,;)\n]|\.(?!\s*\d)|\[ALAMAT\]|$))/g;
 const HONORIFIC_STOP = /^(?:dr|drg|prof|ir|hj|tn|ny|nn|sdr|sdri|bp|bpk|ibu|an)$/i;
 
 function escapeRegExp(s: string): string {

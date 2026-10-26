@@ -12,7 +12,7 @@ npm run dev                            # http://localhost:3000
 
 | Perintah | Fungsi |
 |---|---|
-| `npm test` | 79 test unit/integrasi (PII, hash chain, 8 detector, ingest, sitasi, adapter LLM, Supabase Auth) |
+| `npm test` | 118 test unit/integrasi (+ 8 test pgvector di `tests/db-pg.test.ts` = 126 test: PII, hash chain, 8 detector, ingest BPJS, sitasi, adapter LLM, governance, Supabase Auth) |
 | `npm run build && npm run test:e2e` | E2E HTTP penuh terhadap server LLM tiruan (provider, streaming, RBAC, ingest, PDF) |
 | `npm run db:up && npm run db:migrate && npm run test:db` | pgvector + audit append-only di Postgres nyata (Docker) |
 | `npm run eval` | precision/recall tiap detector pada data sintetis berlabel |
@@ -47,11 +47,21 @@ Tanpa provider yang bekerja, semua fitur AI memakai **mode deterministik** yang 
 - `lib/auth/` — sesi HMAC + RBAC (+ opsi Supabase Auth); `middleware.ts` melindungi semua rute dan membatasi laju.
 - Data: store in-memory + snapshot `.data/` (gitignored, dapat dialihkan dengan `ARSA_DATA_DIR`).
 
+## Data BPJS Kesehatan (folder `Sample/`)
+`Sample/` berisi 75 statistik agregat resmi dari Portal Data BPJS Kesehatan (https://data.bpjs-kesehatan.go.id/, 2014-2018) beserta buku panduan data sampel. Data ini **agregat nasional, bukan klaim per orang**, jadi dipakai sebagai acuan dan kalibrasi, bukan sebagai pengganti data klaim.
+- `npx tsx scripts/build-bpjs-reference.ts` membangun `lib/data/bpjs-national.json` dari berkas xlsx (diagnosis rawat inap terbanyak, biaya per admisi menurut kelas/provinsi/usia-jenis kelamin, lama rawat, outcome, peserta, FKRTL). Pemuat bertipe: `lib/data/bpjs-national.ts`.
+- Halaman **Acuan Nasional** (`/acuan-nasional`) menampilkan acuan itu dan posisi dataset yang sedang dianalisis terhadapnya.
+- Dataset sintetis bawaan dikalibrasi ke acuan itu: campuran diagnosis (berbobot admisi nasional), pangsa kelas rawat, volume provinsi, dan faktor biaya per kelas. Benchmark tarif dinormalisasi per kelas rawat (kelas 1 membayar lebih mahal dari kelas 3).
+- Mapper impor mengenali kode variabel resmi data mikro BPJS (`FKL02`, `FKL18`, `FKL47`, `PSTV01`, dst.) dan menurunkan faskes dari provinsi/kota/kepemilikan/jenis/tipe karena data BPJS tidak memuat kode faskes. `scripts/make-bpjs-sample.ts --verify` membuat `public/samples/bpjs_sampel_fkrtl.csv` (sintetis, dikalibrasi statistik di atas) dan mengukur akurasi impor + deteksi.
+- Data mikro asli (126 juta baris) memerlukan akun peneliti terdaftar pada portal yang sama. File itu tidak memuat resume medis: detektor berbasis teks (Cloning, Phantom, Unbundling) tidak aktif; yang berjalan adalah Upcoding, Abnormal LOS, Inflated Bills, Repeat Billing, dan Readmission.
+
 ## Batasan yang perlu diketahui
 - Metrik performa diukur pada **data sintetis berlabel** yang dibuat dengan pola serupa logika detector; bukan klaim akurasi di data riil.
 - Klaim "50–70% lebih cepat" belum terverifikasi (butuh baseline waktu manual); yang ada hanya instrumentasi dari audit log.
 - Jalur LLM nyata belum teruji dengan kunci asli (diuji dengan server tiruan protokol OpenAI); Supabase Auth/Postgres Supabase belum diuji ke proyek asli (Postgres+pgvector diuji lewat Docker).
 - Nama orang di teks bebas hanya dapat dikaburkan bila namanya ada di kolom nama baris tersebut (plus pola NIK/telepon/email).
 - Rate limit disimpan di memori per instance.
+- Statistik BPJS tidak memuat tarif per kode diagnosis; tarif per diagnosis pada dataset sintetis tetap ilustratif. Hanya rata-rata nasional/kelas/provinsi yang riil.
+- Pada data tanpa narasi klinis, ABNORMAL_LOS berpresisi lebih rendah (sampel BPJS sintetis: sekitar 0,5) karena lama rawat riil menyebar lebar; hasilnya perlu dokumen untuk dikonfirmasi.
 
 Status per item dan panduan validasi: `Plan/15_DEVELOPMENT_ROADMAP.md`.

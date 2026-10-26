@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { actorOf, guard } from "@/lib/auth/guard";
 import { getStore } from "@/lib/data/store";
+import { MAX_UPLOAD_BYTES } from "@/lib/ingest/parse";
 import { createDatasetFromUpload } from "@/lib/ingest/service";
 
 export async function GET(request: NextRequest) {
@@ -24,6 +25,10 @@ export async function POST(request: NextRequest) {
   }
   if (!file) return NextResponse.json({ error: "File tidak ditemukan" }, { status: 400 });
   if (!/\.(csv|tsv|txt|xlsx|xls|json)$/i.test(file.name)) return NextResponse.json({ error: "Format tidak didukung. Gunakan CSV, XLSX, atau JSON." }, { status: 415 });
+
+  const MAX_BYTES = Math.min(Number(process.env.MAX_UPLOAD_BYTES) || MAX_UPLOAD_BYTES, MAX_UPLOAD_BYTES);
+  if (file.size === 0) return NextResponse.json({ error: "File kosong" }, { status: 400 });
+  if (file.size > MAX_BYTES) return NextResponse.json({ error: `Ukuran file melebihi batas ${Math.round(MAX_BYTES / 1048576)} MB` }, { status: 413 });
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());

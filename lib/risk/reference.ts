@@ -2,10 +2,14 @@
  * Data referensi (sintetis, terinspirasi struktur INA-CBG) yang dipakai sebagai
  * fallback benchmark saat jumlah klaim peer belum cukup, serta aturan unbundling
  * dan harga acuan tindakan. Seluruhnya transparan & dapat diaudit.
+ * Pilihan diagnosis dan bobot campurannya mengacu pada 100 penyakit rawat inap terbanyak BPJS (lib/data/bpjs-national.ts);
+ * tarif per diagnosis tetap ilustratif (tarif INA-CBG per kode tidak ada pada statistik agregat).
  */
 
 export interface DiagnosisReference {
   description: string;
+  /** Awalan ICD-10 pada statistik nasional BPJS (berkas tanpa titik), untuk bobot campuran diagnosis. */
+  icd_prefix?: string;
   expected_severity: 1 | 2 | 3;
   expected_los: number;
   expected_tariff: number;
@@ -14,14 +18,14 @@ export interface DiagnosisReference {
 }
 
 export const DIAGNOSIS_REFERENCE: Record<string, DiagnosisReference> = {
-  A09: { description: "Gastroenteritis & kolitis infeksi", expected_severity: 1, expected_los: 2.2, expected_tariff: 3_800_000, package_procedures: ["99.18", "90.59"] },
-  "K35.8": { description: "Apendisitis akut", expected_severity: 2, expected_los: 3.5, expected_tariff: 12_500_000, package_procedures: ["90.59", "99.18"] },
-  "J18.9": { description: "Pneumonia", expected_severity: 2, expected_los: 4.1, expected_tariff: 8_900_000, package_procedures: ["87.44", "96.56"] },
-  I10: { description: "Hipertensi esensial", expected_severity: 1, expected_los: 1.5, expected_tariff: 2_400_000, package_procedures: ["89.52"] },
-  "E11.9": { description: "Diabetes melitus tipe 2", expected_severity: 2, expected_los: 3.0, expected_tariff: 6_700_000, package_procedures: ["90.59", "90.39"] },
-  "O80.0": { description: "Persalinan spontan normal", expected_severity: 1, expected_los: 2.0, expected_tariff: 4_500_000, package_procedures: ["73.59"] },
-  "M54.5": { description: "Nyeri punggung bawah", expected_severity: 1, expected_los: 1.8, expected_tariff: 3_100_000, package_procedures: ["93.11"] },
-  "S06.0": { description: "Cedera kepala ringan", expected_severity: 2, expected_los: 3.8, expected_tariff: 9_200_000, package_procedures: ["87.03", "99.04"] },
+  A09: { description: "Gastroenteritis & kolitis infeksi", icd_prefix: "A09", expected_severity: 1, expected_los: 2.2, expected_tariff: 3_800_000, package_procedures: ["99.18", "90.59"] },
+  "K35.8": { description: "Apendisitis akut", icd_prefix: "K35", expected_severity: 2, expected_los: 3.5, expected_tariff: 12_500_000, package_procedures: ["90.59", "99.18"] },
+  "J18.9": { description: "Pneumonia", icd_prefix: "J18", expected_severity: 2, expected_los: 4.1, expected_tariff: 8_900_000, package_procedures: ["87.44", "96.56"] },
+  I10: { description: "Hipertensi esensial", icd_prefix: "I10", expected_severity: 1, expected_los: 1.5, expected_tariff: 2_400_000, package_procedures: ["89.52"] },
+  "E11.9": { description: "Diabetes melitus tipe 2", icd_prefix: "E11", expected_severity: 2, expected_los: 3.0, expected_tariff: 6_700_000, package_procedures: ["90.59", "90.39"] },
+  "O80.0": { description: "Persalinan spontan normal", icd_prefix: "O80", expected_severity: 1, expected_los: 2.0, expected_tariff: 4_500_000, package_procedures: ["73.59"] },
+  "A01.0": { description: "Demam tifoid", icd_prefix: "A01", expected_severity: 1, expected_los: 4.2, expected_tariff: 3_600_000, package_procedures: ["90.59", "99.18"] },
+  K30: { description: "Dispepsia", icd_prefix: "K30", expected_severity: 1, expected_los: 2.3, expected_tariff: 2_600_000, package_procedures: ["90.59", "99.18"] },
 };
 
 export const GENERIC_REFERENCE: DiagnosisReference = {

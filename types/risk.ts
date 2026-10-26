@@ -47,8 +47,30 @@ export interface EmergingSignal {
   affected_providers_count: number;
   potential_exposure: number; // in IDR
   confidence: number;
+  /** Akhir jendela analisis (tanggal pengajuan klaim terbaru), bukan waktu jam dinding. */
   detected_at: string;
+  recent_count?: number;
+  previous_count?: number;
+  window_days?: number;
   highlighted_claim_ids: string[];
+}
+
+/** Posisi provinsi terhadap statistik resmi BPJS (2018); hanya pada respons API. */
+export interface ProvinceNational {
+  participants: number;
+  admission_rate_per_10k: number;
+  admissions_est: number;
+  cost_per_admission: number;
+  /** Biaya per admisi provinsi / rerata nasional. */
+  cost_index: number;
+  fkrtl_count: number;
+  fkrtl_per_100k: number;
+  /** Pangsa klaim di data ini vs pangsa admisi RITL nasional provinsi tsb. */
+  dataset_share: number;
+  national_share: number;
+  /** Tagihan / rerata nasional untuk campuran kelas rawat yang sama (null bila tak ada klaim). */
+  cost_ratio: number | null;
+  small_sample: boolean;
 }
 
 export interface ProvinceRiskData {
@@ -63,6 +85,17 @@ export interface ProvinceRiskData {
   dominant_risk_type: RiskType;
   risk_level: RiskLevel;
   top_providers: string[];
+  /** Skor risiko provinsi (0-99) dari entityRiskScore; level diturunkan darinya. */
+  risk_score?: number;
+  national?: ProvinceNational;
+}
+
+export interface TrendPoint {
+  date: string;
+  critical_count: number;
+  high_count: number;
+  medium_count: number;
+  exposure_amount: number;
 }
 
 export interface DashboardKPIs {
@@ -98,13 +131,11 @@ export interface DashboardKPIs {
     medium: number;
     low: number;
   };
-  risk_trends: Array<{
-    date: string;
-    critical_count: number;
-    high_count: number;
-    medium_count: number;
-    exposure_amount: number;
-  }>;
+  risk_trends: TrendPoint[];
+  /** Tanggal pengajuan klaim terbaru pada data; semua "N hari terakhir" dihitung mundur dari tanggal ini. */
+  as_of: string;
+  /** Deret tren per rentang: 7 & 30 hari harian, 90 hari per minggu. */
+  trend_series: Record<"7" | "30" | "90", TrendPoint[]>;
   risk_by_type?: Array<{
     risk_type: RiskType;
     claim_count: number;

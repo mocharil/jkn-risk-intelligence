@@ -16,6 +16,18 @@ interface VisNetworkGraphProps {
 
 type NodeData = GraphNode;
 
+const TYPE_LABEL: Record<GraphNode["type"], string> = {
+  PROVIDER: "Faskes",
+  DOCTOR: "Dokter DPJP",
+  CLAIM: "Klaim",
+  PATIENT: "Pasien (pseudonim)",
+  DIAGNOSIS: "Diagnosis",
+  PROCEDURE: "Tindakan",
+};
+
+const claimHref = (n: GraphNode) =>
+  n.investigation_id ? `/investigations/${n.investigation_id}` : `/investigation-queue?mode=CLAIMS&search=${encodeURIComponent(n.id)}`;
+
 export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
   claimId,
   providerId,
@@ -29,6 +41,7 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
   const [graph, setGraph] = useState<GraphData | null>(null);
   const [error, setError] = useState("");
   const rawNodes: NodeData[] = graph?.nodes || [];
+  const hasCluster = rawNodes.some((n) => !!n.cluster);
   const rawEdges: GraphEdge[] = graph?.edges || [];
 
   // Graf dibangun server dari data analisis (faskes-dokter-klaim-pasien-diagnosis-tindakan), bukan data tetap.
@@ -191,40 +204,38 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 border-b border-jkn-divider pb-2.5">
         <div>
-          <h3 className="text-xs font-bold text-jkn-text uppercase tracking-wider flex items-center gap-2">
+          <h3 className="text-base font-bold text-jkn-text flex items-center gap-2 flex-wrap">
             <span>Graf Relasi Entitas{graph?.nodes.find((n) => n.cluster)?.cluster ? ` · ${graph.nodes.find((n) => n.cluster)?.cluster}` : ""}</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-md bg-risk-critical-bg text-risk-critical border border-risk-critical-border font-bold uppercase">
+            <span className="text-xs px-2 py-0.5 rounded-md bg-risk-critical-bg text-risk-critical border border-risk-critical-border font-semibold">
               {graph ? `${graph.stats.flagged} klaim berisiko tinggi` : "memuat…"}
             </span>
           </h3>
-          <p className="text-[11px] text-jkn-muted mt-0.5">
+          <p className="text-xs text-jkn-muted mt-0.5">
             Relasi dokter DPJP, faskes, klaim anomali, pasien (pseudonim), diagnosis, dan tindakan tanpa jejak dokumen, dibangun dari data analisis.
           </p>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-2 text-[10px] text-jkn-dim bg-surface-secondary px-3 py-1.5 rounded-lg border border-jkn-border flex-wrap">
-          <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded bg-bpjs" />
-            <span>Faskes</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded bg-bpjs-deep" />
-            <span>Dokter</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded bg-risk-critical" />
-            <span>Klaim</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded bg-intel" />
-            <span>Diagnosis</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded bg-amber-600" />
-            <span>Tindakan</span>
-          </div>
-        </div>
+        {/* Legenda: warna dan bentuk sama dengan graf */}
+        <ul className="flex items-center gap-x-3 gap-y-1 text-xs text-jkn-muted bg-surface-secondary px-3 py-1.5 rounded-lg border border-jkn-border flex-wrap" aria-label="Legenda graf">
+          {[
+            ["#00A651", "Faskes (kotak)"],
+            ["#08783E", "Dokter (oval)"],
+            ["#D92D20", "Klaim kritis"],
+            ["#1689C8", "Klaim lain"],
+            ["#475467", "Pasien (titik)"],
+            ["#7A5AF8", "Diagnosis (belah ketupat)"],
+            ["#F04438", "Tindakan tanpa jejak (segitiga)"],
+          ].map(([c, l]) => (
+            <li key={l} className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: c }} aria-hidden />
+              {l}
+            </li>
+          ))}
+          <li className="inline-flex items-center gap-1.5">
+            <span className="w-4 border-t-2 border-dashed border-risk-critical" aria-hidden />
+            relasi bermasalah
+          </li>
+        </ul>
       </div>
 
       {/* Control Bar */}
@@ -232,7 +243,7 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setActiveFilter("ALL")}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
               activeFilter === "ALL"
                 ? "bg-bpjs text-white border-bpjs shadow-xs"
                 : "bg-surface-secondary text-jkn-text border-jkn-border hover:bg-bpjs-soft"
@@ -242,7 +253,9 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
           </button>
           <button
             onClick={() => setActiveFilter("CLUSTER_ONLY")}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+            disabled={!hasCluster}
+            title={hasCluster ? "Tampilkan hanya entitas dalam klaster anomali" : "Tidak ada klaster anomali pada graf ini"}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
               activeFilter === "CLUSTER_ONLY"
                 ? "bg-risk-critical text-white border-risk-critical shadow-xs"
                 : "bg-surface-secondary text-jkn-text border-jkn-border hover:bg-risk-critical-bg"
@@ -257,21 +270,21 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
           <button
             onClick={handleZoomIn}
             className="p-1.5 rounded-lg bg-surface-secondary border border-jkn-border hover:bg-white text-jkn-text"
-            title="Zoom In"
+            title="Perbesar" aria-label="Perbesar"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={handleZoomOut}
             className="p-1.5 rounded-lg bg-surface-secondary border border-jkn-border hover:bg-white text-jkn-text"
-            title="Zoom Out"
+            title="Perkecil" aria-label="Perkecil"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={handleFit}
             className="p-1.5 rounded-lg bg-surface-secondary border border-jkn-border hover:bg-white text-jkn-text"
-            title="Reset Viewport"
+            title="Sesuaikan tampilan" aria-label="Sesuaikan tampilan"
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
@@ -280,7 +293,13 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
 
       {/* Network Canvas Container */}
       <div className="relative w-full h-[420px] bg-gradient-to-b from-[#F2F8F5]/50 to-white rounded-xl border border-jkn-divider overflow-hidden shadow-inner">
-        <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+        <div
+          ref={containerRef}
+          role="img"
+          aria-label={graph ? `Graf relasi: ${graph.nodes.length} entitas, ${graph.edges.length} relasi, ${graph.stats.flagged} klaim berisiko tinggi. Daftar klaimnya ada di bawah graf.` : "Graf sedang dimuat"}
+          className="w-full h-full cursor-grab active:cursor-grabbing"
+        />
+        {graph && graph.nodes.length === 0 && <div className="absolute inset-0 flex items-center justify-center text-sm text-jkn-muted">Belum ada klaim untuk membangun graf.</div>}
         {!graph && !error && <div className="absolute inset-0 flex items-center justify-center text-xs text-jkn-muted">Membangun graf dari data…</div>}
         {error && <div className="absolute inset-0 flex items-center justify-center text-xs text-risk-critical">{error}</div>}
 
@@ -304,6 +323,7 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
               </div>
               <button
                 onClick={() => setSelectedNode(null)}
+                aria-label="Tutup detail entitas"
                 className="text-jkn-dim hover:text-jkn-text p-1"
               >
                 <X className="w-4 h-4" />
@@ -313,9 +333,9 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
             <div className="py-2.5 space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-jkn-muted">Jenis entitas:</span>
-                <span className="font-semibold text-jkn-text">{selectedNode.type}</span>
+                <span className="font-semibold text-jkn-text">{TYPE_LABEL[selectedNode.type] || selectedNode.type}</span>
               </div>
-              {selectedNode.risk_score && (
+              {selectedNode.risk_score !== undefined && (
                 <div className="flex items-center justify-between">
                   <span className="text-jkn-muted">Skor risiko:</span>
                   <RiskPill score={selectedNode.risk_score} level={selectedNode.risk_level as any} size="sm" />
@@ -331,16 +351,54 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
 
             {selectedNode.type === "CLAIM" && (
               <Link
-                href={`/investigations/INV-2026-${selectedNode.id.replace(/\D/g, "").padStart(6, "0")}`}
+                href={claimHref(selectedNode)}
                 className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-bpjs text-white text-xs font-bold hover:bg-bpjs-deep transition-all shadow-xs"
               >
-                <span>Buka investigasi</span>
+                <span>{selectedNode.investigation_id ? "Buka kasus" : "Lihat di daftar klaim"}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             )}
           </div>
         )}
       </div>
+
+      {/* Alternatif teks untuk graf: seluruh klaim pada graf, terurut menurut skor */}
+      {graph && graph.nodes.some((n) => n.type === "CLAIM") && (
+        <details className="mt-3 text-sm">
+          <summary className="cursor-pointer font-semibold text-jkn-text hover:text-bpjs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bpjs rounded">
+            Daftar klaim pada graf ({graph.nodes.filter((n) => n.type === "CLAIM").length})
+          </summary>
+          <div className="mt-2 overflow-x-auto rounded-lg border border-jkn-border">
+            <table className="w-full text-left text-sm tabular-nums">
+              <thead className="bg-surface-secondary text-xs font-semibold text-jkn-muted">
+                <tr>
+                  <th scope="col" className="py-2 px-3">Klaim</th>
+                  <th scope="col" className="py-2 px-3">Skor</th>
+                  <th scope="col" className="py-2 px-3">Nilai dan sinyal</th>
+                  <th scope="col" className="py-2 px-3">Klaster</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-jkn-divider">
+                {graph.nodes
+                  .filter((n) => n.type === "CLAIM")
+                  .sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0))
+                  .map((n) => (
+                    <tr key={n.id}>
+                      <td className="py-2 px-3">
+                        <Link href={claimHref(n)} className="font-mono font-semibold text-bpjs hover:underline">
+                          {n.id}
+                        </Link>
+                      </td>
+                      <td className="py-2 px-3">{n.risk_score !== undefined ? <RiskPill score={n.risk_score} level={n.risk_level as any} size="sm" /> : "-"}</td>
+                      <td className="py-2 px-3 text-jkn-muted">{n.subtitle}</td>
+                      <td className="py-2 px-3 text-jkn-muted">{n.cluster || "-"}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
     </div>
   );
 };

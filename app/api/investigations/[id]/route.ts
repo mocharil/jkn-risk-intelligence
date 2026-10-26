@@ -1,15 +1,17 @@
+import { getGovernancePolicy } from "@/lib/governance/policy";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { actorOf, guard } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/types";
 import { DatabaseService } from "@/lib/supabase/db-service";
+import { nationalContext } from "@/lib/data/bpjs-national";
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const g = await guard(request);
   if (g.error) return g.error;
   const investigation = await DatabaseService.getInvestigationById(params.id);
   if (!investigation) return NextResponse.json({ error: "Investigasi tidak ditemukan" }, { status: 404 });
-  return NextResponse.json({ data: investigation });
+  return NextResponse.json({ data: { ...investigation, claim: { ...investigation.claim, national: nationalContext(investigation.claim) } } });
 }
 
 const Patch = z.object({
@@ -42,6 +44,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 
   const noteText = typeof note === "string" ? note : note?.content;
+  if (isFinal && getGovernancePolicy().require_decision_justification) {
+    const why = (determination?.rationale ?? noteText ?? "").trim();
+    if (why.length < 15) {
+      return NextResponse.json({ error: "Kebijakan tata kelola mewajibkan alasan tertulis (minimal 15 karakter) untuk keputusan akhir.", code: "JUSTIFICATION_REQUIRED" }, { status: 422 });
+    }
+  }
   const existing = await DatabaseService.getInvestigationById(params.id);
   const updated = await DatabaseService.updateInvestigation(
     params.id,

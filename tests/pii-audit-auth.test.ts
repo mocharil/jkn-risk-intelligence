@@ -52,6 +52,14 @@ describe("anonimisasi (UU PDP)", () => {
     expect(containsRawPII(out)).toBe(false);
   });
 
+  it("scrubText: telepon seluler bertanda pemisah & nomor rumah setelah 'No.' ikut dikaburkan", () => {
+    const out = scrubText("Tn. Bambang Sudibyo (HP 0812-8890-1234, alt +62 813 1122 3344), alamat Jl. Kenanga No. 12 RT 03/RW 05, diare cair 4 kali.", ["Bambang Sudibyo"]);
+    expect(out).not.toMatch(/8890|1234|1122|3344/);
+    expect(out).not.toContain("Kenanga");
+    expect(out).not.toMatch(/\.\s*12\b/);
+    expect(out).toContain("diare cair 4 kali");
+  });
+
   it("anonymizeUpload: PII dikaburkan sebelum disimpan / dikirim ke LLM", () => {
     const cols = ["NO_KARTU", "NIK", "NAMA_PASIEN", "ALAMAT", "NO_HP", "RESUME", "DIAG"];
     const rows = [

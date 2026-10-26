@@ -55,7 +55,7 @@ check("briefing oleh LLM", br.ai_briefing.source === "llm");
 
 console.log("\n[AI mapping + embedding Vertex pada analisis]");
 const form = new FormData();
-form.append("file", new Blob([fs.readFileSync("public/samples/simrs_rs_b.csv")], { type: "text/csv" }), "simrs_rs_b.csv");
+form.append("file", new Blob([fs.readFileSync("scripts/fixtures/pii-uji/simrs_rs_b.csv")], { type: "text/csv" }), "simrs_rs_b.csv");
 const up = await (await call("/api/datasets", { method: "POST", body: form })).json();
 console.log("  engine:", up.mapping_engine, "|", (up.note || "").slice(0, 100));
 check("mapping oleh LLM+heuristik", up.mapping_engine === "llm+heuristic", up.note);

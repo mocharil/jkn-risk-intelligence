@@ -1,3 +1,4 @@
+import { getGovernancePolicy } from "../governance/policy";
 import { CanonicalClaim, SimilarClaimRef } from "@/types/claim";
 import { Investigation } from "@/types/investigation";
 import { RiskFinding, RiskLevel } from "@/types/risk";
@@ -50,6 +51,13 @@ export function narrativeText(claim: CanonicalClaim): string {
   const docs = claim.medical_evidence.filter((e) => e.document_type === "RINGKASAN_MEDIS" || e.document_type === "RESUME_PULANG" || e.document_type === "CATATAN_KONSULTASI");
   const text = docs.map((d) => d.content).join(" ");
   return scrubText(text || claim.diagnoses.map((d) => d.description).join(" "));
+}
+
+/** Ada narasi klinis sungguhan (bukan sekadar nama diagnosis atau rincian tagihan)? Tanpa narasi, kemiripan teks tidak bermakna. */
+export function hasNarrative(claim: CanonicalClaim): boolean {
+  return claim.medical_evidence.some(
+    (e) => (e.document_type === "RINGKASAN_MEDIS" || e.document_type === "RESUME_PULANG" || e.document_type === "CATATAN_KONSULTASI") && (e.content || "").trim().length >= 40
+  );
 }
 
 function primaryCode(c: CanonicalClaim): string {
@@ -111,6 +119,12 @@ function levelOf(score: number): RiskLevel {
 
 function investigationIdFor(claimId: string): string {
   const digits = claimId.replace(/\D/g, "");
+  if (!digits) {
+    // ID klaim tanpa angka: pakai hash agar ID investigasi tidak bertabrakan (INV-2026-000000).
+    let h = 0;
+    for (const ch of claimId) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return `INV-2026-${String(h % 1_000_000).padStart(6, "0")}`;
+  }
   return `INV-2026-${digits.padStart(6, "0")}`;
 }
 
@@ -153,10 +167,11 @@ export function analyzeWithVectors(
     const arr = byDx.get(code) || [];
     arr.push(c);
     byDx.set(code, arr);
-    shingleCache.set(c.claim_id, shingles(narrativeText(c)));
+    shingleCache.set(c.claim_id, hasNarrative(c) ? shingles(narrativeText(c)) : new Set<string>());
   }
 
   const byId = new Map(store.claims.map((c) => [c.claim_id, c]));
+  const narrated = new Set(store.claims.filter(hasNarrative).map((c) => c.claim_id));
 
   // Indeks terbalik frasa 3-kata yang LANGKA: kandidat klon lintas diagnosis tanpa pemindaian O(n^2).
   const shingleIndex = new Map<string, string[]>();
@@ -188,18 +203,21 @@ export function analyzeWithVectors(
 
   const targets = only ? store.claims.filter((c) => only.has(c.claim_id)) : store.claims;
   for (const claim of targets) {
-    const bm = benchmarks.get(primaryCode(claim));
+    const bm = benchmarks.get(primaryCode(claim), claim.service.treatment_class);
     claim.approved_tariff = Math.round(bm.expected_tariff);
     claim.tariff_difference = Math.max(0, claim.claim_amount - claim.approved_tariff);
 
     const ext = external?.neighbors.get(claim.claim_id);
-    const similar = buildSimilar(
-      claim,
-      [...(byDx.get(primaryCode(claim)) || []), ...crossCandidates(claim)],
-      vectors,
-      shingleCache,
-      external ? (ext || []).map((n) => ({ other: byId.get(n.other_id) as CanonicalClaim, similarity: n.similarity })).filter((n) => n.other) : undefined
-    );
+    // Klaim tanpa narasi klinis (mis. data mikro BPJS) tidak dicocokkan teksnya: tidak ada teks yang bisa dibandingkan.
+    const similar = narrated.has(claim.claim_id)
+      ? buildSimilar(
+          claim,
+          [...(byDx.get(primaryCode(claim)) || []), ...crossCandidates(claim)].filter((c) => narrated.has(c.claim_id)),
+          vectors,
+          shingleCache,
+          external ? (ext || []).map((n) => ({ other: byId.get(n.other_id) as CanonicalClaim, similarity: n.similarity })).filter((n) => n.other && narrated.has(n.other.claim_id)) : undefined
+        )
+      : [];
     claim.similar_claims = similar;
 
     const ctx: DetectorContext = { benchmarks, similar, cloneThreshold: threshold, lexicalThreshold: LEXICAL_THRESHOLD, semanticOnlyThreshold: SEMANTIC_ONLY_THRESHOLD, history: byPatient.get(`${claim.patient.patient_id}|${claim.provider.provider_id}`) };
@@ -224,7 +242,7 @@ export function analyzeWithVectors(
   const existing = new Map(store.investigations.map((i) => [i.claim_id, i]));
   for (const claim of store.claims) {
     const userLocked = claim.status === "CONFIRMED_RISK" || claim.status === "FALSE_POSITIVE" || claim.status === "IN_INVESTIGATION";
-    const needsCase = claim.risk_score >= 75;
+    const needsCase = claim.risk_score >= getGovernancePolicy().queue_min_score;
     if (!userLocked) claim.status = needsCase ? "FLAGGED" : claim.risk_score >= 50 ? "PENDING_REVIEW" : "RESOLVED_VALID";
 
     const inv = existing.get(claim.claim_id);
@@ -285,19 +303,21 @@ export function analyzeWithVectors(
 /** Analisis sinkron dengan embedding lokal (dipakai saat boot / test). */
 export function analyzeLocal(store: AnalyzableStore): AnalysisSummary {
   const vectors = new Map<string, { model: string; vector: number[] }>();
-  for (const c of store.claims) vectors.set(c.claim_id, { model: LOCAL_MODEL, vector: localEmbed(narrativeText(c)) });
+  // Hanya klaim bernarasi yang diberi vektor: tanpa teks klinis tidak ada yang dapat dibandingkan.
+  for (const c of store.claims) if (hasNarrative(c)) vectors.set(c.claim_id, { model: LOCAL_MODEL, vector: localEmbed(narrativeText(c)) });
   store.embeddings = vectors;
   return analyzeWithVectors(store, vectors, LOCAL_MODEL);
 }
 
 /** Analisis async: memakai embedding Vertex bila tersedia (fallback otomatis ke lokal). */
 export async function analyzeAll(store: AnalyzableStore, opts: { forceLocal?: boolean; only?: Set<string> } = {}): Promise<AnalysisSummary> {
-  const texts = store.claims.map(narrativeText);
-  const emb = await embedTexts(texts, { forceLocal: opts.forceLocal });
+  // Embedding (dan panggilan ke penyedia) hanya untuk klaim yang punya narasi klinis sungguhan.
+  const narrated = store.claims.filter(hasNarrative);
+  const emb = await embedTexts(narrated.map(narrativeText), { forceLocal: opts.forceLocal });
   const vectors = new Map<string, { model: string; vector: number[] }>();
-  store.claims.forEach((c, i) => vectors.set(c.claim_id, { model: emb.model, vector: emb.vectors[i] }));
+  narrated.forEach((c, i) => vectors.set(c.claim_id, { model: emb.model, vector: emb.vectors[i] }));
   store.embeddings = vectors;
-  const rows = store.claims.map((c) => ({ claim_id: c.claim_id, provider_id: c.provider.provider_id, primary_dx: primaryCode(c), vector: vectors.get(c.claim_id)!.vector }));
+  const rows = narrated.map((c) => ({ claim_id: c.claim_id, provider_id: c.provider.provider_id, primary_dx: primaryCode(c), vector: vectors.get(c.claim_id)!.vector }));
   const pg = await searchViaPgvector(rows, emb.model, SIMILARITY_FLOOR, 5);
   if (pg && pg.neighbors) {
     return analyzeWithVectors(store, vectors, emb.model, opts.only, { neighbors: pg.neighbors, backend: "pgvector" });

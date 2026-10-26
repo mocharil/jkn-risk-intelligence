@@ -6,8 +6,8 @@ import { CanonicalClaim } from "../types/claim";
 
 /**
  * Membuat 2 file CSV contoh ala ekspor SIMRS (data PII PALSU) untuk uji manual upload:
- *   public/samples/simrs_rs_a.csv  – header Indonesia, delimiter ';', tanggal yyyy-mm-dd
- *   public/samples/simrs_rs_b.csv  – header berbeda, delimiter ',', tanggal dd/mm/yyyy, "Rp" bertitik, termasuk baris invalid
+ *   scripts/fixtures/pii-uji/simrs_rs_a.csv  – header Indonesia, delimiter ';', tanggal yyyy-mm-dd
+ *   scripts/fixtures/pii-uji/simrs_rs_b.csv  – header berbeda, delimiter ',', tanggal dd/mm/yyyy, "Rp" bertitik, termasuk baris invalid
  */
 const FIRST = ["Ahmad", "Siti", "Budi", "Dewi", "Eko", "Nur", "Hadi", "Sri", "Agus", "Rini", "Joko", "Lestari", "Dian", "Fajar", "Indah", "Rizky"];
 const LAST = ["Kusuma", "Pratama", "Hidayat", "Saputra", "Wibowo", "Santoso", "Utami", "Nugroho", "Firmansyah", "Rahman", "Wijaya", "Susanto"];
@@ -79,7 +79,7 @@ function ownNarrative(c: CanonicalClaim, name: string, extra = ""): string {
       ].map(q).join(";")
     );
   });
-  fs.writeFileSync(path.join("public", "samples", "simrs_rs_a.csv"), lines.join("\n"), "utf8");
+  fs.writeFileSync(path.join("scripts", "fixtures", "pii-uji", "simrs_rs_a.csv"), lines.join("\n"), "utf8");
   console.log("simrs_rs_a.csv rows:", rows.length);
 }
 
@@ -106,6 +106,6 @@ function ownNarrative(c: CanonicalClaim, name: string, extra = ""): string {
         .join(",")
     );
   });
-  fs.writeFileSync(path.join("public", "samples", "simrs_rs_b.csv"), lines.join("\n"), "utf8");
+  fs.writeFileSync(path.join("scripts", "fixtures", "pii-uji", "simrs_rs_b.csv"), lines.join("\n"), "utf8");
   console.log("simrs_rs_b.csv rows:", rows.length, "(6 baris sengaja rusak: ICD salah, nominal negatif, tanggal kosong, ID duplikat, tanggal mustahil)");
 }

@@ -7,8 +7,9 @@ import { seedDefaultUsers } from "../auth/users";
 import { UserRecord } from "../auth/types";
 import { computeProviderStats } from "../analytics/aggregates";
 import { analyzeLocal, AnalysisSummary } from "../risk/engine";
+import { defaultPolicy, getGovernancePolicy, setGovernancePolicy } from "../governance/policy";
 import { deleteState, loadState, PersistedState, scheduleSave } from "./persistence";
-import { generateSyntheticDataset, GroundTruth } from "./synthetic-seed";
+import { generateSyntheticDataset, GroundTruth, SEED_VERSION } from "./synthetic-seed";
 import { mirrorAudit } from "../db/audit-mirror";
 
 /**
@@ -34,17 +35,130 @@ const g = globalThis as unknown as { __arsaStore?: DataStore };
 
 function seedDataset(store: DataStore): Dataset {
   const n = store.claims.length;
-  const names = ["claim_id", "patient_id", "provider_id", "primary_diagnosis", "severity_level", "length_of_stay", "claim_amount", "admission_date", "discharge_date"];
+  const sampleClaims = store.claims.slice(0, 3);
+  const colMeta: Array<{
+    name: string;
+    detected_type: "string" | "number" | "date";
+    sample: string[];
+    pii?: "NIK" | "CARD" | "PATIENT_ID" | "NAME" | "ADDRESS" | "PHONE" | "EMAIL" | "FREE_TEXT";
+    pii_treatment?: "PSEUDONYMIZED" | "INITIALS_ONLY" | "DROPPED" | "SCRUBBED";
+    reason: string;
+  }> = [
+    {
+      name: "claim_id",
+      detected_type: "string",
+      sample: sampleClaims.map((c) => c.claim_id),
+      reason: "Kunci utama klaim (SEP / Nomor Klaim JKN)",
+    },
+    {
+      name: "patient_id",
+      detected_type: "string",
+      sample: sampleClaims.map((c) => c.patient.patient_id),
+      pii: "PATIENT_ID",
+      pii_treatment: "PSEUDONYMIZED",
+      reason: "Token HMAC-SHA256 satu arah dari NIK/No. Kartu JKN (UU PDP)",
+    },
+    {
+      name: "provider_id",
+      detected_type: "string",
+      sample: sampleClaims.map((c) => `${c.provider.provider_id} (${c.provider.name})`),
+      reason: "Kode Faskes & Nama Rumah Sakit Mitra BPJS",
+    },
+    {
+      name: "primary_diagnosis",
+      detected_type: "string",
+      sample: sampleClaims.map((c) => {
+        const primary = c.diagnoses.find((d) => d.is_primary) || c.diagnoses[0];
+        return primary ? `${primary.code} — ${primary.description}` : "—";
+      }),
+      reason: "Kode diagnosis utama ICD-10 beserta deskripsi klinis",
+    },
+    {
+      name: "severity_level",
+      detected_type: "number",
+      sample: sampleClaims.map((c) => {
+        const primary = c.diagnoses.find((d) => d.is_primary) || c.diagnoses[0];
+        return `Tingkat ${primary?.severity ?? 1}`;
+      }),
+      reason: "Tingkat keparahan INA-CBG (Severity Level I / II / III)",
+    },
+    {
+      name: "length_of_stay",
+      detected_type: "number",
+      sample: sampleClaims.map((c) => `${c.service.length_of_stay} hari`),
+      reason: "Lama hari rawat inap (LOS) pasien",
+    },
+    {
+      name: "claim_amount",
+      detected_type: "number",
+      sample: sampleClaims.map((c) => `Rp ${c.claim_amount.toLocaleString("id-ID")}`),
+      reason: "Total nilai tagihan klaim INA-CBG yang diajukan faskes",
+    },
+    {
+      name: "admission_date",
+      detected_type: "date",
+      sample: sampleClaims.map((c) => c.service.admission_date),
+      reason: "Tanggal masuk perawatan (format ISO YYYY-MM-DD)",
+    },
+    {
+      name: "discharge_date",
+      detected_type: "date",
+      sample: sampleClaims.map((c) => c.service.discharge_date),
+      reason: "Tanggal pulang / selesai perawatan (format ISO YYYY-MM-DD)",
+    },
+  ];
+
+  const analysis = store.meta.last_analysis;
+  const flaggedCount = store.claims.filter((c) => c.risk_score >= 40).length;
+
   return {
     dataset_id: "DS-SEED",
-    name: "Synthetic_JKN_Claims_Q3_2026 (dataset sintetis bawaan)",
+    name: "Dataset Sintetis Bawaan (dikalibrasi statistik BPJS 2018)",
     source_format: "CSV",
     file_size_bytes: n * 1800,
     row_count: n,
     status: "READY",
-    columns: names.map((c) => ({ name: c, detected_type: c.includes("date") ? "date" : /amount|los|length|severity/.test(c) ? "number" : "string", sample_values: [], null_count: 0, total_count: n, distinct_count: n })),
-    mappings: names.map((c) => ({ source_field: c, canonical_field: c, confidence: 1, is_ai_suggested: false, status: "CONFIRMED" as const })),
-    quality_summary: { total_rows: n, valid_rows: n, invalid_rows: 0, duplicate_rows: 0, completeness_score: 100, validity_score: 100, missing_required_fields: [] },
+    columns: colMeta.map((c) => ({
+      name: c.name,
+      detected_type: c.detected_type,
+      sample_values: c.sample,
+      null_count: 0,
+      total_count: n,
+      distinct_count: c.name === "severity_level" ? 3 : c.name === "provider_id" ? store.providers.length : n,
+      pii: c.pii,
+      pii_treatment: c.pii_treatment,
+    })),
+    mappings: colMeta.map((c) => ({
+      source_field: c.name,
+      canonical_field: c.name,
+      confidence: 1,
+      is_ai_suggested: false,
+      suggested_by: "heuristic" as const,
+      reason: c.reason,
+      status: "CONFIRMED" as const,
+    })),
+    quality_summary: {
+      total_rows: n,
+      valid_rows: n,
+      invalid_rows: 0,
+      duplicate_rows: 0,
+      completeness_score: 100,
+      validity_score: 100,
+      missing_required_fields: [],
+    },
+    anonymization: {
+      columns_pseudonymized: ["patient_id (NIK/BPJS -> Token HMAC-SHA256)"],
+      columns_initials: ["patient_initials (Nama Pasien -> Inisial)"],
+      columns_dropped: ["alamat_ktp", "no_telepon"],
+      columns_scrubbed: ["clinical_summary_text", "lab_summary_text"],
+    },
+    result: {
+      claims_ingested: n,
+      findings_total: analysis?.findings_total ?? store.claims.reduce((s, c) => s + (c.risk_findings?.length ?? 0), 0),
+      flagged_claims: analysis?.flagged_claims ?? flaggedCount,
+      investigations_created: analysis?.investigations_created ?? store.investigations.length,
+      embedding_model: store.meta.embedding_model || "hash-384 (lokal deterministik)",
+    },
     created_at: "2026-09-30T00:00:00Z",
     updated_at: "2026-09-30T00:00:00Z",
   };
@@ -61,12 +175,14 @@ function snapshot(store: DataStore): PersistedState {
   });
   return {
     version: 1,
+    seed_version: SEED_VERSION,
     datasets: store.datasets.filter((d) => d.dataset_id !== "DS-SEED"),
     ingested_claims: store.claims.filter((c) => store.ingestedClaimIds.has(c.claim_id)),
     investigation_overrides: overrides,
     claim_status: claimStatus,
     audit_log: store.auditLog,
     users: store.users,
+    governance_policy: getGovernancePolicy(),
   };
 }
 
@@ -88,6 +204,9 @@ export function persist() {
 function build(opts: { keepUsers?: UserRecord[]; keepAudit?: AuditEntry[]; ignorePersisted?: boolean } = {}): DataStore {
   const seed = generateSyntheticDataset();
   const persisted = opts.ignorePersisted ? null : loadState();
+  if (persisted?.governance_policy) setGovernancePolicy({ ...defaultPolicy(), ...persisted.governance_policy });
+  // Snapshot dari versi dataset bawaan yang lain: ID klaim bisa merujuk klaim berbeda, jadi override status tidak diterapkan.
+  const staleOverrides = Boolean(persisted && persisted.seed_version !== SEED_VERSION);
 
   const store: DataStore = {
     claims: seed.claims,
@@ -96,7 +215,7 @@ function build(opts: { keepUsers?: UserRecord[]; keepAudit?: AuditEntry[]; ignor
     doctors: seed.doctors,
     datasets: [],
     auditLog: opts.keepAudit ?? persisted?.audit_log ?? [],
-    users: opts.keepUsers ?? persisted?.users ?? seedDefaultUsers(),
+    users: opts.keepUsers ?? (persisted?.users?.length ? persisted.users : seedDefaultUsers()),
     labels: seed.labels,
     ingestedClaimIds: new Set(),
     embeddings: new Map(),
@@ -109,16 +228,18 @@ function build(opts: { keepUsers?: UserRecord[]; keepAudit?: AuditEntry[]; ignor
       store.ingestedClaimIds.add(c.claim_id);
     });
     store.datasets = [...persisted.datasets];
-    store.claims.forEach((c) => {
-      const st = persisted.claim_status[c.claim_id];
-      if (st) c.status = st;
-    });
+    if (!staleOverrides) {
+      store.claims.forEach((c) => {
+        const st = persisted.claim_status[c.claim_id];
+        if (st) c.status = st;
+      });
+    }
   }
 
-  store.datasets.unshift(seedDataset(store));
   store.meta.last_analysis = analyzeLocal(store);
+  store.datasets.unshift(seedDataset(store));
 
-  if (persisted) {
+  if (persisted && !staleOverrides) {
     store.investigations.forEach((inv) => {
       const o = persisted.investigation_overrides[inv.investigation_id];
       if (o) {
@@ -132,11 +253,32 @@ function build(opts: { keepUsers?: UserRecord[]; keepAudit?: AuditEntry[]; ignor
   }
   computeProviderStats(store);
   memo.clear();
+  if (staleOverrides && persisted) {
+    const dropped = Object.keys(persisted.investigation_overrides).length + Object.keys(persisted.claim_status).length;
+    appendEntry(store.auditLog, {
+      claim_id: "SYSTEM",
+      actor: "Sistem",
+      actor_role: "SYSTEM",
+      action: "SEED_REFRESHED",
+      previous_status: null,
+      new_status: null,
+      justification: `Dataset bawaan diperbarui (${persisted.seed_version ?? "versi lama"} -> ${SEED_VERSION}). ${dropped} penanda status kasus versi lama tidak diterapkan karena ID klaim kini merujuk data berbeda. Dataset unggahan, pengguna, dan jejak audit dipertahankan.`,
+    });
+    scheduleSave(() => snapshot(store));
+  }
   return store;
 }
 
 export function getStore(): DataStore {
-  if (!g.__arsaStore) g.__arsaStore = build();
+  if (!g.__arsaStore) {
+    g.__arsaStore = build();
+  } else {
+    // Pastikan DS-SEED pada instance HMR memiliki profil sampel, anonimisasi, dan hasil analisis lengkap
+    const idx = g.__arsaStore.datasets.findIndex((d) => d.dataset_id === "DS-SEED");
+    if (idx !== -1 && (!g.__arsaStore.datasets[idx].anonymization || !g.__arsaStore.datasets[idx].result)) {
+      g.__arsaStore.datasets[idx] = seedDataset(g.__arsaStore);
+    }
+  }
   return g.__arsaStore;
 }
 
@@ -215,7 +357,7 @@ export function updateInvestigation(
     else if (update.status === "UNDER_INVESTIGATION" || update.status === "NEED_EVIDENCE") claim.status = "IN_INVESTIGATION";
     claim.updated_at = now;
     inv.notes.unshift({
-      note_id: `NOT-${Date.now()}`,
+      note_id: `NOT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       author: actor.name,
       role: actor.role,
       content: `Status diubah dari "${STATUS_LABEL[previous]}" menjadi "${STATUS_LABEL[update.status]}".${update.note ? ` Catatan: ${update.note}` : ""}`,
@@ -223,7 +365,7 @@ export function updateInvestigation(
       type: "SYSTEM_AUDIT",
     });
   } else if (update.note) {
-    inv.notes.unshift({ note_id: `NOT-${Date.now()}`, author: actor.name, role: actor.role, content: update.note, created_at: now, type: "USER_NOTE" });
+    inv.notes.unshift({ note_id: `NOT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, author: actor.name, role: actor.role, content: update.note, created_at: now, type: "USER_NOTE" });
   }
 
   if (update.decision) inv.decision = { ...update.decision, decided_by: actor.name, decided_at: now };

@@ -10,7 +10,7 @@ const HEADER_RULES: { kind: PiiKind; re: RegExp }[] = [
   { kind: "PHONE", re: /(^|_)(telp|telepon|tlp|hp|no_hp|phone|whatsapp|wa)(_|$)/ },
   { kind: "EMAIL", re: /email|e_mail/ },
   { kind: "NAME", re: /^(nama|nama_pasien|nm_pasien|namapasien|nama_peserta|patient_name|nama_lengkap)$/ },
-  { kind: "PATIENT_ID", re: /^(id_pasien|patient_id|no_rm|norm|nomor_rm|no_rkm_medis|mrn)$/ },
+  { kind: "PATIENT_ID", re: /^(id_pasien|patient_id|no_rm|norm|nomor_rm|no_rkm_medis|mrn|pstv01|pstv02|fkl01|fkp01|pnk01|no_keluarga|nomor_keluarga)$/ },
   { kind: "CARD", re: /^(kartu|no_kartu|nokartu|nomor_kartu|id_peserta|no_peserta|nomor_peserta|nomor_peserta_bpjs|no_bpjs)$/ },
 ];
 

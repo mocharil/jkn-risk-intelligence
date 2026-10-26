@@ -57,7 +57,7 @@ export interface ServiceDetail {
   discharge_date: string;
   submission_date: string;
   length_of_stay: number;
-  treatment_class: "KELAS_1" | "KELAS_2" | "KELAS_3" | "VIP" | "ICU" | "RAWAT_JALAN";
+  treatment_class: "KELAS_1" | "KELAS_2" | "KELAS_3" | "VIP" | "ICU" | "RAWAT_JALAN" | "TIDAK_DIKETAHUI";
   doctor_id: string;
   doctor_name: string;
   doctor_specialty: string;
@@ -74,6 +74,23 @@ export interface SimilarClaimRef {
   diagnosis_code: string;
   similarity_reasons: string[];
   risk_score: number;
+}
+
+/** Posisi sebuah klaim terhadap statistik resmi BPJS (lib/data/bpjs-national.ts). Dihitung saat dibaca, tidak disimpan. */
+export interface NationalContext {
+  year: string;
+  level: "INAP" | "JALAN";
+  class_label: string;
+  /** Rerata nasional per admisi (rawat inap, menurut kelas) atau per kunjungan (rawat jalan, menurut provinsi). */
+  cost_ref: number;
+  /** null bila acuan nasional tidak tersedia (mis. rawat jalan di provinsi tanpa data). */
+  cost_ratio: number | null;
+  province_name?: string;
+  province_cost?: number;
+  province_ratio?: number;
+  los_ref?: number;
+  los_ratio?: number;
+  dx?: { code: string; description: string; rank: number; admissions: number; share_pct?: number };
 }
 
 export type ClaimStatus = "FLAGGED" | "PENDING_REVIEW" | "IN_INVESTIGATION" | "RESOLVED_VALID" | "CONFIRMED_RISK" | "FALSE_POSITIVE";
@@ -96,6 +113,8 @@ export interface CanonicalClaim {
   risk_findings: RiskFinding[];
   similar_claims: SimilarClaimRef[];
   status: ClaimStatus;
+  /** Hanya pada respons API (daftar & detail): konteks acuan nasional BPJS. */
+  national?: NationalContext;
   investigation_id?: string;
   created_at: string;
   updated_at: string;

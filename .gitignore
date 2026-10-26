@@ -9,6 +9,7 @@
 
 # next.js
 /.next/
+/.next-prod/
 /out/
 
 # production
@@ -45,3 +46,20 @@ gemini_sa.json
 
 # paket arsip lokal
 *.zip
+*.m4v
+
+# data runtime & artefak lokal
+/.data/
+/ArsaAI.zip
+/*.pdf
+/Sample/*.pdf
+/Prompt_Design.md
+/arsa_logo.png
+
+# materi presentasi & aset yang tidak dipakai aplikasi
+/public/deck/
+/public/submission-deck/
+/scripts/deck/
+/public/landing/*
+!/public/landing/arsa-hero-hospital.png
+!/public/landing/arsa-footer-hospital.png

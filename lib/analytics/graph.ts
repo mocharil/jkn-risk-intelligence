@@ -9,6 +9,8 @@ export interface GraphNode {
   risk_score?: number;
   risk_level?: string;
   cluster?: string;
+  /** Hanya node klaim: ID kasus bila skor mencapai ambang antrean. */
+  investigation_id?: string;
 }
 
 export interface GraphEdge {
@@ -36,6 +38,7 @@ export function buildGraph(store: DataStore, opts: { claim_id?: string; provider
   const byId = new Map(store.claims.map((c) => [c.claim_id, c]));
   let focus: GraphData["focus"];
   let claims: CanonicalClaim[] = [];
+  let truncated = false;
 
   if (opts.claim_id && byId.has(opts.claim_id)) {
     const c = byId.get(opts.claim_id)!;
@@ -51,7 +54,9 @@ export function buildGraph(store: DataStore, opts: { claim_id?: string; provider
   } else {
     const prov = opts.provider_id ? store.providers.find((p) => p.provider_id === opts.provider_id) : [...store.providers].sort((a, b) => b.risk_score - a.risk_score)[0];
     focus = prov ? { type: opts.provider_id ? "provider" : "overview", id: prov.provider_id } : { type: "overview", id: "" };
-    claims = store.claims.filter((c) => c.provider.provider_id === prov?.provider_id).sort((a, b) => b.risk_score - a.risk_score).slice(0, MAX_CLAIMS);
+    const provClaims = store.claims.filter((c) => c.provider.provider_id === prov?.provider_id).sort((a, b) => b.risk_score - a.risk_score);
+    truncated = provClaims.length > MAX_CLAIMS;
+    claims = provClaims.slice(0, MAX_CLAIMS);
     // sertakan klaim mirip lintas faskes agar relasi antar-faskes terlihat
     claims.slice(0, 6).forEach((c) =>
       c.similar_claims.slice(0, 1).forEach((s) => {
@@ -89,8 +94,8 @@ export function buildGraph(store: DataStore, opts: { claim_id?: string; provider
     addNode({ id: c.provider.provider_id, label: c.provider.name, type: "PROVIDER", subtitle: `${prov?.province_name || ""} · skor ${prov?.risk_score ?? "-"}`, risk_score: prov?.risk_score, risk_level: prov?.risk_level, cluster: cluster && prov ? cluster : undefined });
     const doc = prov?.doctors.find((d) => d.doctor_id === c.service.doctor_id);
     addNode({ id: c.service.doctor_id, label: c.service.doctor_name, type: "DOCTOR", subtitle: `DPJP · ${doc?.high_risk_claims_count ?? 0} klaim berisiko tinggi`, risk_score: doc?.risk_score, risk_level: doc ? (doc.risk_score >= 90 ? "CRITICAL" : doc.risk_score >= 75 ? "HIGH" : doc.risk_score >= 50 ? "MEDIUM" : "LOW") : undefined, cluster: inCluster ? clusterId : undefined });
-    addNode({ id: c.claim_id, label: c.claim_id, type: "CLAIM", subtitle: `${rp(c.claim_amount)} · ${c.risk_signals.join("+") || "wajar"}`, risk_score: c.risk_score, risk_level: c.risk_level, cluster });
-    addNode({ id: c.patient.patient_id, label: c.patient.patient_id, type: "PATIENT", subtitle: `Pasien (pseudonim) ${c.patient.age} th` });
+    addNode({ id: c.claim_id, label: c.claim_id, type: "CLAIM", subtitle: `${rp(c.claim_amount)} · ${c.risk_signals.join("+") || "wajar"}`, risk_score: c.risk_score, risk_level: c.risk_level, cluster, investigation_id: c.investigation_id });
+    addNode({ id: c.patient.patient_id, label: c.patient.patient_id, type: "PATIENT", subtitle: c.patient.age > 0 ? `Pasien (pseudonim) ${c.patient.age} th` : "Pasien (pseudonim)" });
     const dx = c.diagnoses.find((d) => d.is_primary) || c.diagnoses[0];
     if (dx) addNode({ id: `DIAG-${dx.code}`, label: `${dx.code} · ${dx.description}`, type: "DIAGNOSIS", subtitle: `Severity ${dx.severity}` });
 
@@ -119,7 +124,7 @@ export function buildGraph(store: DataStore, opts: { claim_id?: string; provider
     nodes: Array.from(nodes.values()),
     edges,
     focus,
-    truncated: false,
+    truncated,
     stats: {
       claims: claims.length,
       doctors: Array.from(nodes.values()).filter((n) => n.type === "DOCTOR").length,

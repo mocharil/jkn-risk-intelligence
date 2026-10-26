@@ -31,12 +31,15 @@ export default function ReportDetailPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setNotFound(false);
+    setInvestigation(null);
     fetch(`/api/investigations/${investigationId}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.data) {
+        if (cancelled) return;
+        if (data?.data) {
           setInvestigation(data.data);
         } else {
           setNotFound(true);
@@ -44,10 +47,14 @@ export default function ReportDetailPage() {
         setLoading(false);
       })
       .catch((err) => {
+        if (cancelled) return;
         console.error(err);
         setNotFound(true);
         setLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [investigationId]);
 
   if (loading) {
@@ -75,7 +82,8 @@ export default function ReportDetailPage() {
     );
   }
 
-  const { claim, decision } = investigation;
+  const { decision } = investigation;
+  const claim = { ...investigation.claim, risk_findings: investigation.claim.risk_findings ?? [] };
   const topFinding = claim.risk_findings[0];
 
   return (
@@ -225,7 +233,7 @@ export default function ReportDetailPage() {
                   </div>
                   <p className="text-xs text-jkn-muted leading-relaxed">{finding.summary}</p>
                   <div className="space-y-1.5 pt-1">
-                    {finding.evidence.map((e, i) => (
+                    {(finding.evidence ?? []).map((e, i) => (
                       <div
                         key={i}
                         className="text-[11px] pl-3 border-l-2 border-bpjs py-0.5 space-y-0.5"
@@ -282,7 +290,7 @@ export default function ReportDetailPage() {
               {decision?.rationale ||
                 (topFinding
                   ? `Rekomendasi tindak lanjut: koreksi ke kode tarif INA-CBG yang sesuai bukti klinis atau penangguhan komponen biaya yang tidak didukung dokumen (${
-                      topFinding.recommended_actions.join("; ") || topFinding.summary
+                      (topFinding.recommended_actions ?? []).join("; ") || topFinding.summary
                     }).`
                   : "Tidak diperlukan tindakan koreksi pada klaim ini.")}
             </p>
@@ -299,9 +307,9 @@ export default function ReportDetailPage() {
               <span className="text-jkn-dim font-medium">Verifikator Pemeriksa,</span>
               <div>
                 <span className="font-bold text-jkn-text underline block">
-                  {investigation.assigned_to.name}
+                  {investigation.assigned_to?.name ?? "-"}
                 </span>
-                <span className="text-[10px] text-jkn-dim">{investigation.assigned_to.role}</span>
+                <span className="text-[10px] text-jkn-dim">{investigation.assigned_to?.role ?? ""}</span>
               </div>
             </div>
             <div className="space-y-12">

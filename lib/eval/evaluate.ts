@@ -50,10 +50,13 @@ export function evaluate(claims: CanonicalClaim[], labels: GroundTruth): Evaluat
     per.push({ risk_type: t, tp, fp, fn, tn, precision: r3(precision), recall: r3(recall), f1: r3(safe(2 * precision * recall, precision + recall)), positives: tp + fn });
   }
 
+  // Rerata makro hanya atas detektor yang punya kasus berlabel; detektor tanpa positif aktual (mis. kloning pada data tanpa narasi) tidak berlaku, bukan gagal.
+  const scored = per.filter((m) => m.positives > 0);
+  const macroSet = scored.length ? scored : per;
   const macro = {
-    precision: r3(per.reduce((a, m) => a + m.precision, 0) / per.length),
-    recall: r3(per.reduce((a, m) => a + m.recall, 0) / per.length),
-    f1: r3(per.reduce((a, m) => a + m.f1, 0) / per.length),
+    precision: r3(macroSet.reduce((a, m) => a + m.precision, 0) / macroSet.length),
+    recall: r3(macroSet.reduce((a, m) => a + m.recall, 0) / macroSet.length),
+    f1: r3(macroSet.reduce((a, m) => a + m.f1, 0) / macroSet.length),
   };
   const TP = per.reduce((a, m) => a + m.tp, 0), FP = per.reduce((a, m) => a + m.fp, 0), FN = per.reduce((a, m) => a + m.fn, 0);
   const mp = safe(TP, TP + FP), mr = safe(TP, TP + FN);

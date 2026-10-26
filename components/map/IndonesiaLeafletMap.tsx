@@ -1,292 +1,384 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { ProvinceRiskData, RiskType } from "@/types/risk";
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import { Building2, ArrowRight, Navigation, X } from "lucide-react";
+import { ProvinceRiskData, RiskLevel, RiskType } from "@/types/risk";
 import { INDONESIA_PROVINCES } from "@/lib/data/indonesia-provinces";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
 import { RiskPill } from "../ui/RiskPill";
-import { Building2, MapPin, ArrowRight, X, ZoomIn, ZoomOut, Navigation } from "lucide-react";
-import Link from "next/link";
-import "leaflet/dist/leaflet.css";
-
-// Dynamic import Leaflet components inside useEffect or direct Leaflet API to avoid SSR window issues
-import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, useMap } from "react-leaflet";
-import L from "leaflet";
 
 interface IndonesiaLeafletMapProps {
   provinceData: ProvinceRiskData[];
   selectedRiskType?: RiskType | "ALL";
   onSelectProvince?: (provinceCode: string) => void;
+  /** Pilih & dekati provinsi dari luar (mis. dari tabel). */
+  focusProvince?: string;
   className?: string;
+  /** Hanya tampilkan lapisan statistik BPJS (biaya, akses, FKRTL). */
+  nationalOnly?: boolean;
+  /** Lapisan dikendalikan dari luar (menyembunyikan header & pemilih lapisan bawaan). */
+  metric?: "NAT_COST" | "NAT_ACCESS" | "NAT_FKRTL";
 }
 
-// Controller component to zoom to regions
+type Metric = "RISK" | "EXPOSURE" | "COST_RATIO" | "NAT_COST" | "NAT_ACCESS" | "NAT_FKRTL";
+
+const METRICS: { key: Metric; label: string; group: "Dataset klaim" | "Statistik BPJS 2018"; unit: string; hint: string }[] = [
+  { key: "RISK", label: "Tingkat risiko", group: "Dataset klaim", unit: "", hint: "Warna menurut skor risiko provinsi; ukuran menurut jumlah klaim berisiko tinggi." },
+  { key: "EXPOSURE", label: "Eksposur", group: "Dataset klaim", unit: "Rp", hint: "Selisih tarif klaim terflag terhadap median peer." },
+  { key: "COST_RATIO", label: "Biaya klaim vs rerata nasional", group: "Dataset klaim", unit: "x", hint: "Tagihan dibagi rerata nasional BPJS untuk campuran kelas rawat yang sama." },
+  { key: "NAT_COST", label: "Biaya per admisi", group: "Statistik BPJS 2018", unit: "Rp", hint: "Rerata biaya klaim per admisi rawat inap tingkat lanjut (RITL), data resmi BPJS." },
+  { key: "NAT_ACCESS", label: "Admisi per 10.000 peserta", group: "Statistik BPJS 2018", unit: "", hint: "Seberapa sering peserta dirawat inap; cerminan akses layanan." },
+  { key: "NAT_FKRTL", label: "FKRTL per 100 ribu peserta", group: "Statistik BPJS 2018", unit: "", hint: "Rasio rumah sakit/fasilitas rujukan yang bekerja sama dengan BPJS." },
+];
+
+const LEVEL_COLOR: Record<RiskLevel, string> = { CRITICAL: "#B91C1C", HIGH: "#EA580C", MEDIUM: "#CA8A04", LOW: "#059669" };
+const LEVEL_LABEL: Record<RiskLevel, string> = { CRITICAL: "Kritis", HIGH: "Tinggi", MEDIUM: "Sedang", LOW: "Rendah" };
+const NO_DATA = "#9CA3AF";
+
+const REGIONS = [
+  { key: "ALL", label: "Nasional", center: [-2.5, 118.0] as [number, number], zoom: 5 },
+  { key: "JAWA", label: "Jawa", center: [-7.0, 110.0] as [number, number], zoom: 7 },
+  { key: "SUMATERA", label: "Sumatera", center: [0.5, 101.5] as [number, number], zoom: 6 },
+  { key: "KALIMANTAN", label: "Kalimantan", center: [-0.5, 114.0] as [number, number], zoom: 6 },
+  { key: "SULAWESI", label: "Sulawesi", center: [-2.0, 121.0] as [number, number], zoom: 6 },
+  { key: "EAST", label: "Bali dan timur", center: [-5.0, 130.0] as [number, number], zoom: 5 },
+];
+
 function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
   useEffect(() => {
-    map.flyTo(center, zoom, { duration: 1.2 });
+    map.flyTo(center, zoom, { duration: 1.0 });
   }, [center, zoom, map]);
   return null;
 }
 
-export const IndonesiaLeafletMap: React.FC<IndonesiaLeafletMapProps> = ({
-  provinceData,
-  selectedRiskType = "ALL",
-  onSelectProvince,
-  className,
-}) => {
-  const [selectedProvince, setSelectedProvince] = useState<ProvinceRiskData | null>(null);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([-2.5, 118.0]);
-  const [mapZoom, setMapZoom] = useState<number>(5);
-  const [activeRegion, setActiveRegion] = useState<string>("ALL");
+const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+function lerpColor(a: string, b: string, t: number): string {
+  const [r1, g1, b1] = hex(a);
+  const [r2, g2, b2] = hex(b);
+  const k = Math.max(0, Math.min(1, t));
+  return `rgb(${Math.round(r1 + (r2 - r1) * k)}, ${Math.round(g1 + (g2 - g1) * k)}, ${Math.round(b1 + (b2 - b1) * k)})`;
+}
 
-  const getProvinceData = (code: string) => {
-    return provinceData.find((p) => p.province_code === code);
-  };
+/** Nilai metrik per provinsi; null = tidak ada data. */
+function valueOf(m: Metric, d?: ProvinceRiskData): number | null {
+  if (!d) return null;
+  const n = d.national;
+  switch (m) {
+    case "RISK":
+      return d.total_claims > 0 ? d.risk_score ?? 0 : null;
+    case "EXPOSURE":
+      return d.total_claims > 0 ? d.potential_exposure : null;
+    case "COST_RATIO":
+      return n?.cost_ratio ?? null;
+    case "NAT_COST":
+      return n ? n.cost_per_admission : null;
+    case "NAT_ACCESS":
+      return n ? n.admission_rate_per_10k : null;
+    case "NAT_FKRTL":
+      return n ? n.fkrtl_per_100k : null;
+  }
+}
 
-  const getRiskColor = (level: string) => {
-    switch (level) {
-      case "CRITICAL":
-        return { color: "#D92D20", fillColor: "#D92D20", fillOpacity: 0.85, radius: 16 };
-      case "HIGH":
-        return { color: "#F04438", fillColor: "#F04438", fillOpacity: 0.75, radius: 13 };
-      case "MEDIUM":
-        return { color: "#F79009", fillColor: "#F79009", fillOpacity: 0.7, radius: 10 };
-      case "LOW":
+function formatMetric(m: Metric, v: number | null): string {
+  if (v === null) return "tidak ada data";
+  if (m === "RISK") return `skor ${v}`;
+  if (m === "EXPOSURE" || m === "NAT_COST") return formatRupiah(v, true);
+  if (m === "COST_RATIO") return `${v.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}x`;
+  return v.toLocaleString("id-ID", { maximumFractionDigits: 1 });
+}
+
+export const IndonesiaLeafletMap: React.FC<IndonesiaLeafletMapProps> = ({ provinceData, onSelectProvince, focusProvince, className, nationalOnly, metric: controlledMetric }) => {
+  const [selected, setSelected] = useState<ProvinceRiskData | null>(null);
+  const [view, setView] = useState<{ center: [number, number]; zoom: number }>({ center: [-2.5, 118.0], zoom: 5 });
+  const [activeRegion, setActiveRegion] = useState("ALL");
+  const [innerMetric, setMetric] = useState<Metric>(nationalOnly ? "NAT_COST" : "RISK");
+  const metric: Metric = controlledMetric ?? innerMetric;
+
+  const byCode = useMemo(() => new Map(provinceData.map((p) => [p.province_code, p])), [provinceData]);
+
+  // Skala min-maks untuk metrik numerik (diambil dari provinsi yang punya data).
+  const range = useMemo(() => {
+    const vals = INDONESIA_PROVINCES.map((g) => valueOf(metric, byCode.get(g.code))).filter((v): v is number => v !== null);
+    return { min: Math.min(...vals, Infinity), max: Math.max(...vals, -Infinity) };
+  }, [metric, byCode]);
+
+  useEffect(() => {
+    if (!focusProvince) return;
+    const geo = INDONESIA_PROVINCES.find((g) => g.code === focusProvince);
+    if (!geo) return;
+    setSelected(byCode.get(focusProvince) || null);
+    setView({ center: [geo.lat, geo.lng], zoom: 7 });
+    setActiveRegion("");
+  }, [focusProvince, byCode]);
+
+  const styleFor = (code: string) => {
+    const d = byCode.get(code);
+    const v = valueOf(metric, d);
+    if (v === null || !d) return { fill: NO_DATA, radius: 6, opacity: 0.55 };
+    const span = Math.max(1e-9, range.max - range.min);
+    const t = (v - range.min) / span;
+    switch (metric) {
+      case "RISK":
+        return { fill: LEVEL_COLOR[d.risk_level], radius: 7 + Math.min(15, Math.sqrt(d.high_risk_claims) * 2), opacity: 0.8 };
+      case "EXPOSURE":
+        return { fill: lerpColor("#FCA5A5", "#7F1D1D", t), radius: 6 + Math.sqrt(t) * 16, opacity: 0.85 };
+      case "COST_RATIO":
+        return { fill: v >= 1.5 ? "#B91C1C" : v >= 1.25 ? "#EA580C" : v >= 1.05 ? "#CA8A04" : "#059669", radius: 7 + Math.min(14, Math.sqrt(d.total_claims)), opacity: 0.8 };
       default:
-        return { color: "#12B76A", fillColor: "#12B76A", fillOpacity: 0.6, radius: 8 };
+        return { fill: lerpColor("#BBF7D0", "#064E3B", t), radius: 11, opacity: 0.85 };
     }
   };
 
-  const regions = [
-    { key: "ALL", label: "Nasional", center: [-2.5, 118.0] as [number, number], zoom: 5 },
-    { key: "JAWA", label: "Jawa & DKI", center: [-7.0, 110.0] as [number, number], zoom: 7 },
-    { key: "SUMATERA", label: "Sumatera", center: [0.5, 101.5] as [number, number], zoom: 6 },
-    { key: "KALIMANTAN", label: "Kalimantan", center: [-0.5, 114.0] as [number, number], zoom: 6 },
-    { key: "SULAWESI", label: "Sulawesi", center: [-2.0, 121.0] as [number, number], zoom: 6 },
-    { key: "EAST", label: "Bali & Indonesia Timur", center: [-5.0, 130.0] as [number, number], zoom: 5 },
-  ];
-
-  const handleRegionClick = (reg: typeof regions[0]) => {
-    setActiveRegion(reg.key);
-    setMapCenter(reg.center);
-    setMapZoom(reg.zoom);
+  const meta = METRICS.find((m) => m.key === metric)!;
+  const focusRegion = (r: (typeof REGIONS)[number]) => {
+    setActiveRegion(r.key);
+    setView({ center: r.center, zoom: r.zoom });
   };
+
+  const nat = selected?.national;
 
   return (
     <div className={`relative bg-surface rounded-xl border border-jkn-border p-4 sm:p-5 shadow-subtle overflow-hidden flex flex-col ${className || ""}`}>
-      {/* Map Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-        <div>
-          <h3 className="text-sm font-bold text-jkn-text">Sebaran Geospasial Risiko Klaim Nasional</h3>
-          <p className="text-xs text-jkn-muted mt-0.5">
-            Pemetaan klaster anomali dan potensi eksposur finansial di 34 provinsi Indonesia
-          </p>
+      {!controlledMetric && <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <h3 className="text-base font-bold text-jkn-text">{nationalOnly ? "Biaya dan akses layanan per provinsi" : "Sebaran risiko klaim per provinsi"}</h3>
+          <p className="text-xs text-jkn-muted mt-0.5 max-w-xl">{meta.hint}</p>
         </div>
-
-        {/* Legend */}
-        <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-jkn-muted bg-surface-secondary px-3 py-1.5 rounded-md border border-jkn-border shrink-0">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-risk-critical" />
-            <span>Kritis (&ge;100)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-risk-high" />
-            <span>Tinggi (50–99)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-risk-medium" />
-            <span>Sedang (20–49)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-risk-low" />
-            <span>Rendah (&lt;20)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Region Quick Jump Bar */}
-      <div className="flex items-center gap-1.5 mb-2.5 overflow-x-auto pb-1 text-xs">
-        <span className="text-[11px] text-jkn-dim font-bold uppercase tracking-wider flex items-center gap-1 shrink-0 mr-1">
-          <Navigation className="w-3 h-3 text-bpjs" />
-          Wilayah:
-        </span>
-        {regions.map((reg) => (
-          <button
-            key={reg.key}
-            onClick={() => handleRegionClick(reg)}
-            className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors shrink-0 ${
-              activeRegion === reg.key
-                ? "bg-bpjs text-white border-bpjs font-semibold"
-                : "bg-surface-secondary text-jkn-text border-jkn-border hover:border-bpjs/50 hover:bg-bpjs-soft"
-            }`}
+        <label className="flex items-center gap-2 text-sm shrink-0">
+          <span className="text-jkn-muted">Lapisan</span>
+          <select
+            aria-label="Lapisan peta"
+            value={metric}
+            onChange={(e) => setMetric(e.target.value as Metric)}
+            className="h-9 px-3 rounded-xl border border-jkn-border bg-surface-subtle text-sm text-jkn-text focus:outline-none focus:border-bpjs"
           >
-            {reg.label}
-          </button>
-        ))}
+            {(nationalOnly ? (["Statistik BPJS 2018"] as const) : (["Dataset klaim", "Statistik BPJS 2018"] as const)).map((g) => (
+              <optgroup key={g} label={g}>
+                {METRICS.filter((m) => m.group === g).map((m) => (
+                  <option key={m.key} value={m.key}>
+                    {m.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+      </div>}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          <span className="text-xs text-jkn-dim font-semibold flex items-center gap-1 shrink-0 mr-1">
+            <Navigation className="w-3 h-3 text-bpjs" aria-hidden />
+            Wilayah
+          </span>
+          {REGIONS.map((r) => (
+            <button
+              key={r.key}
+              type="button"
+              aria-pressed={activeRegion === r.key}
+              onClick={() => focusRegion(r)}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors shrink-0 ${activeRegion === r.key ? "bg-bpjs text-white border-bpjs font-semibold" : "bg-surface-secondary text-jkn-text border-jkn-border hover:border-bpjs/50 hover:bg-bpjs-soft"}`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Legenda sesuai lapisan */}
+        <div className="flex flex-wrap items-center gap-3 text-xs text-jkn-muted bg-surface-secondary px-3 py-1.5 rounded-md border border-jkn-border">
+          {metric === "RISK" ? (
+            <>
+              {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as RiskLevel[]).map((l) => (
+                <span key={l} className="inline-flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: LEVEL_COLOR[l] }} aria-hidden />
+                  {LEVEL_LABEL[l]} {l === "CRITICAL" ? "(90+)" : l === "HIGH" ? "(75-89)" : l === "MEDIUM" ? "(50-74)" : "(<50)"}
+                </span>
+              ))}
+            </>
+          ) : metric === "COST_RATIO" ? (
+            <>
+              {[
+                ["#059669", "di bawah 1,05x"],
+                ["#CA8A04", "1,05-1,25x"],
+                ["#EA580C", "1,25-1,5x"],
+                ["#B91C1C", "1,5x ke atas"],
+              ].map(([c, l]) => (
+                <span key={l} className="inline-flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c }} aria-hidden />
+                  {l}
+                </span>
+              ))}
+            </>
+          ) : (
+            <span className="inline-flex items-center gap-2">
+              <span>{formatMetric(metric, Number.isFinite(range.min) ? range.min : null)}</span>
+              <span
+                className="inline-block w-24 h-2.5 rounded-full"
+                style={{ background: metric === "EXPOSURE" ? "linear-gradient(90deg,#FCA5A5,#7F1D1D)" : "linear-gradient(90deg,#BBF7D0,#064E3B)" }}
+                aria-hidden
+              />
+              <span>{formatMetric(metric, Number.isFinite(range.max) ? range.max : null)}</span>
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: NO_DATA }} aria-hidden />
+            tanpa data
+          </span>
+        </div>
       </div>
 
-      {/* Interactive Leaflet Map Container */}
-      <div className="relative w-full h-[400px] rounded-lg border border-jkn-divider overflow-hidden z-0">
-        <MapContainer
-          center={mapCenter}
-          zoom={mapZoom}
-          minZoom={4}
-          maxZoom={9}
-          scrollWheelZoom={true}
-          style={{ width: "100%", height: "100%", background: "#EEF3F0" }}
-        >
-          <MapController center={mapCenter} zoom={mapZoom} />
+      <div className={`relative w-full ${controlledMetric ? "h-[460px]" : "h-[500px]"} rounded-lg border border-jkn-divider overflow-hidden z-0`}>
+        <MapContainer center={view.center} zoom={view.zoom} minZoom={4} maxZoom={9} scrollWheelZoom style={{ width: "100%", height: "100%", background: "#EEF3F0" }}>
+          <MapController center={view.center} zoom={view.zoom} />
+          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-          {/* CartoDB Positron Light Tiles */}
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> '
-            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-
-          {/* 34 Province Hotspots */}
           {INDONESIA_PROVINCES.map((geo) => {
-            const data = getProvinceData(geo.code);
-            const level = data?.risk_level || "LOW";
-            const visual = getRiskColor(level);
-            const isSelected = selectedProvince?.province_code === geo.code;
-
+            const d = byCode.get(geo.code);
+            const st = styleFor(geo.code);
+            const isSel = selected?.province_code === geo.code;
+            const v = valueOf(metric, d);
             return (
-              <React.Fragment key={geo.code}>
-                {/* Outer Ring for Critical & High Risk */}
-                {(level === "CRITICAL" || level === "HIGH") && (
-                  <CircleMarker
-                    center={[geo.lat, geo.lng]}
-                    radius={visual.radius + 8}
-                    pathOptions={{
-                      color: visual.color,
-                      fillColor: visual.fillColor,
-                      fillOpacity: 0.15,
-                      weight: 1.5,
-                      dashArray: "3 3",
-                    }}
-                  />
-                )}
-
-                {/* Main Province Node Circle */}
-                <CircleMarker
-                  center={[geo.lat, geo.lng]}
-                  radius={visual.radius}
-                  pathOptions={{
-                    color: isSelected ? "#007A3A" : "#FFFFFF",
-                    fillColor: visual.fillColor,
-                    fillOpacity: visual.fillOpacity,
-                    weight: isSelected ? 3 : 2,
-                  }}
-                  eventHandlers={{
-                    click: () => {
-                      setSelectedProvince(data || null);
-                      if (onSelectProvince) onSelectProvince(geo.code);
-                    },
-                  }}
-                >
-                  {/* Tooltip on Hover */}
-                  <Tooltip direction="top" offset={[0, -10]} opacity={0.95}>
-                    <div className="p-1 text-xs font-sans space-y-1 min-w-[160px] tabular-nums">
-                      <div className="font-bold text-jkn-text flex items-center justify-between gap-2 border-b border-jkn-divider pb-1">
-                        <span>{geo.name}</span>
-                        <span
-                          className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
-                            level === "CRITICAL"
-                              ? "bg-risk-critical-bg text-red-900"
-                              : level === "HIGH"
-                              ? "bg-risk-high-bg text-rose-900"
-                              : level === "MEDIUM"
-                              ? "bg-risk-medium-bg text-amber-900"
-                              : "bg-risk-low-bg text-emerald-900"
-                          }`}
-                        >
-                          {level === "CRITICAL" ? "Kritis" : level === "HIGH" ? "Tinggi" : level === "MEDIUM" ? "Sedang" : "Rendah"}
+              <CircleMarker
+                key={geo.code}
+                center={[geo.lat, geo.lng]}
+                radius={st.radius}
+                pathOptions={{ color: isSel ? "#071A12" : "#FFFFFF", fillColor: st.fill, fillOpacity: st.opacity, weight: isSel ? 3 : 1.5 }}
+                eventHandlers={{
+                  click: () => {
+                    setSelected(d || null);
+                    onSelectProvince?.(geo.code);
+                  },
+                }}
+              >
+                <Tooltip direction="top" offset={[0, -8]} opacity={0.97}>
+                  <div className="text-xs font-sans space-y-0.5 min-w-[180px] tabular-nums">
+                    <div className="font-bold text-jkn-text border-b border-jkn-divider pb-1">{geo.name}</div>
+                    <div className="flex justify-between gap-3">
+                      <span>{meta.label}</span>
+                      <span className="font-mono font-bold">{formatMetric(metric, v)}</span>
+                    </div>
+                    {d && d.total_claims > 0 && (
+                      <div className="flex justify-between gap-3 text-jkn-muted">
+                        <span>Klaim berisiko</span>
+                        <span className="font-mono">
+                          {formatNumber(d.high_risk_claims)} dari {formatNumber(d.total_claims)}
                         </span>
                       </div>
-                      <div className="text-[11px] text-jkn-muted space-y-0.5 pt-0.5">
-                        <div className="flex justify-between gap-3">
-                          <span>Klaim Berisiko:</span>
-                          <span className="font-mono font-bold text-risk-critical">
-                            {formatNumber(data?.high_risk_claims || 0)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <span>Potensi Eksposur:</span>
-                          <span className="font-mono font-bold text-jkn-text">
-                            {formatRupiah(data?.potential_exposure || 0, true)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <span>Pola Dominan:</span>
-                          <span className="font-semibold text-bpjs-dark">
-                            {data?.dominant_risk_type}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </Tooltip>
-                </CircleMarker>
-              </React.Fragment>
+                    )}
+                    {d?.total_claims === 0 && <div className="text-jkn-muted">Belum ada klaim pada data ini</div>}
+                  </div>
+                </Tooltip>
+              </CircleMarker>
             );
           })}
         </MapContainer>
 
-        {/* Selected Province Inspector Drawer (Inside Map) */}
-        {selectedProvince && (
-          <div className="absolute bottom-3 right-3 left-3 md:left-auto md:w-80 bg-white/95 backdrop-blur-md border border-jkn-border rounded-xl p-4 shadow-elevated z-[1000] animate-in slide-in-from-bottom-3 duration-150 tabular-nums">
-            <div className="flex items-center justify-between pb-2.5 border-b border-jkn-divider">
+        {selected && !controlledMetric && (
+          <div className="absolute bottom-3 right-3 left-3 md:left-auto md:w-96 max-h-[476px] overflow-y-auto bg-white border border-jkn-border rounded-xl p-4 shadow-elevated z-[1000] tabular-nums" role="dialog" aria-label={`Ringkasan ${selected.province_name}`}>
+            <div className="flex items-start justify-between pb-2.5 border-b border-jkn-divider">
               <div>
-                <h4 className="text-xs font-bold text-jkn-text flex items-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-bpjs" />
-                  {selectedProvince.province_name}
+                <h4 className="text-sm font-bold text-jkn-text flex items-center gap-1.5">
+                  <Building2 className="w-4 h-4 text-bpjs" aria-hidden />
+                  {selected.province_name}
                 </h4>
-                <p className="text-[10px] text-jkn-muted">Ringkasan Risiko Provinsi</p>
+                <p className="text-xs text-jkn-muted">{selected.island_group}</p>
               </div>
-              <button
-                onClick={() => setSelectedProvince(null)}
-                aria-label="Tutup detail provinsi"
-                className="text-jkn-dim hover:text-jkn-text p-1"
-              >
+              <button type="button" onClick={() => setSelected(null)} aria-label="Tutup ringkasan provinsi" className="text-jkn-dim hover:text-jkn-text p-1">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="py-2.5 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-jkn-muted">Tingkat Risiko:</span>
-                <RiskPill level={selectedProvince.risk_level} size="sm" />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-jkn-muted">Estimasi Eksposur:</span>
-                <span className="font-mono font-bold text-risk-critical">
-                  {formatRupiah(selectedProvince.potential_exposure)}
-                </span>
-              </div>
-              {selectedProvince.top_providers.length > 0 && (
-                <div>
-                  <span className="text-[11px] text-jkn-dim font-medium">Faskes Prioritas Pengawasan:</span>
-                  <div className="mt-1 space-y-1">
-                    {selectedProvince.top_providers.map((tp) => (
-                      <div
-                        key={tp}
-                        className="text-[11px] font-semibold text-bpjs-dark bg-bpjs-soft px-2 py-1 rounded border border-bpjs-border/60"
-                      >
-                        {tp}
-                      </div>
-                    ))}
+            <div className="grid grid-cols-2 gap-2 pt-2.5">
+              <Link href={`/investigation-queue?mode=CLAIMS&province=${selected.province_code}`} className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-bpjs text-white text-sm font-semibold hover:bg-bpjs-deep transition-colors">
+                <span>Klaim</span>
+                <ArrowRight className="w-3.5 h-3.5" aria-hidden />
+              </Link>
+              <Link href={`/providers?province=${selected.province_code}`} className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-jkn-border bg-white text-sm font-semibold text-jkn-text hover:bg-surface-secondary transition-colors">
+                <span>Faskes</span>
+                <ArrowRight className="w-3.5 h-3.5" aria-hidden />
+              </Link>
+            </div>
+
+            <div className="py-2.5 space-y-3 text-sm">
+              {selected.total_claims > 0 ? (
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold text-jkn-dim">Data klaim</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-jkn-muted">Tingkat risiko</span>
+                    <RiskPill score={selected.risk_score} level={selected.risk_level} size="sm" />
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-jkn-muted">Klaim berisiko</span>
+                    <span className="font-mono font-semibold">
+                      {formatNumber(selected.high_risk_claims)} dari {formatNumber(selected.total_claims)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-jkn-muted">Eksposur</span>
+                    <span className="font-mono font-bold text-risk-critical">{formatRupiah(selected.potential_exposure)}</span>
+                  </div>
+                  {nat?.cost_ratio != null && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-jkn-muted">Biaya vs rerata nasional</span>
+                      <span className="font-mono font-semibold">{formatMetric("COST_RATIO", nat.cost_ratio)}</span>
+                    </div>
+                  )}
+                  {nat?.small_sample && <p className="text-xs text-risk-medium">Baru {selected.total_claims} klaim di provinsi ini; skor belum dapat disimpulkan.</p>}
+                </div>
+              ) : (
+                <p className="text-sm text-jkn-muted">Belum ada klaim dari provinsi ini pada data yang dianalisis.</p>
+              )}
+
+              {nat && (
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold text-jkn-dim">Statistik BPJS 2018</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-jkn-muted">Peserta JKN</span>
+                    <span className="font-mono font-semibold">{formatNumber(nat.participants)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-jkn-muted">Biaya per admisi</span>
+                    <span className="font-mono font-semibold">
+                      {formatRupiah(nat.cost_per_admission, true)} ({nat.cost_index.toLocaleString("id-ID", { maximumFractionDigits: 2 })}x nasional)
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-jkn-muted">Admisi per 10.000 peserta</span>
+                    <span className="font-mono font-semibold">{nat.admission_rate_per_10k.toLocaleString("id-ID", { maximumFractionDigits: 0 })}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-jkn-muted">FKRTL bekerja sama</span>
+                    <span className="font-mono font-semibold">
+                      {formatNumber(nat.fkrtl_count)} ({nat.fkrtl_per_100k.toLocaleString("id-ID")} per 100 ribu)
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-jkn-muted">Pangsa klaim data / admisi nasional</span>
+                    <span className="font-mono font-semibold">
+                      {(nat.dataset_share * 100).toLocaleString("id-ID", { maximumFractionDigits: 1 })}% / {(nat.national_share * 100).toLocaleString("id-ID", { maximumFractionDigits: 1 })}%
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {selected.top_providers.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-jkn-dim mb-1">Faskes dengan eksposur terbesar</div>
+                  <ul className="space-y-1">
+                    {selected.top_providers.map((tp) => (
+                      <li key={tp} className="text-xs font-medium text-bpjs-dark bg-bpjs-soft px-2 py-1 rounded border border-bpjs-border/60">
+                        {tp}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>
 
-            <Link
-              href={`/claims?risk_level=${selectedProvince.risk_level}`}
-              className="w-full mt-2 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-bpjs text-white text-xs font-semibold hover:bg-bpjs-deep transition-colors"
-            >
-              <span>Telusuri Klaim Wilayah Ini</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
           </div>
         )}
       </div>
