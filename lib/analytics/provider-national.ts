@@ -32,7 +32,9 @@ export function computeProviderNational(store: { claims: CanonicalClaim[]; provi
   }
 
   const provs = provinceReference(LATEST_YEAR);
-  const meanFkrtlRatio = provs.reduce((s, p) => s + p.fkrtl_per_100k, 0) / (provs.length || 1);
+  // Rasio nasional tertimbang peserta: total FKRTL / total peserta x 100 ribu (bukan rerata sederhana antarprovinsi).
+  const totalParticipants = provs.reduce((s, p) => s + p.participants, 0);
+  const meanFkrtlRatio = totalParticipants ? (provs.reduce((s, p) => s + p.fkrtl_count, 0) / totalParticipants) * 100_000 : 0;
   const out = new Map<string, ProviderNational>();
   for (const p of store.providers) {
     const a = acc.get(p.provider_id);

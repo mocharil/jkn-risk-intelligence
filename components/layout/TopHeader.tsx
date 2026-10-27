@@ -202,7 +202,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           >
             <div className="flex items-center gap-2 min-w-0">
               <Search className="w-3.5 h-3.5 text-jkn-dim group-hover:text-bpjs transition-colors shrink-0" />
-              <span className="truncate">Cari klaim (CLM-10293), faskes, atau ICD-10...</span>
+              <span className="truncate">Cari klaim, faskes, atau ICD-10...</span>
             </div>
             <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-white border border-jkn-border rounded-md text-jkn-dim shadow-2xs shrink-0 ml-2">
               Ctrl K

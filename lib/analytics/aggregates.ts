@@ -31,13 +31,27 @@ function mean(values: number[]): number {
   return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 }
 
-/** Skor risiko entitas (faskes/provinsi/dokter) dari proporsi klaim berisiko tinggi & rerata skor klaim terflag. */
+/** Laju dasar klaim berisiko tinggi di seluruh data; diperbarui tiap statistik entitas dihitung ulang. */
+let BASE_HIGH_RATE = 0.05;
+function setBaseline(claims: CanonicalClaim[]) {
+  if (claims.length) BASE_HIGH_RATE = Math.min(0.5, Math.max(0.01, claims.filter(HIGH).length / claims.length));
+}
+
+/**
+ * Skor risiko entitas (faskes/provinsi/dokter, 0-99): seberapa jauh jumlah klaim berisiko tinggi melebihi yang diharapkan
+ * bila entitas itu sama saja dengan rata-rata (uji binomial, z dengan koreksi kontinuitas). Satu klaim berisiko pada faskes
+ * kecil tidak menjadikannya berisiko; pola yang berulang pada banyak klaim menaikkan skor.
+ * Skor ditimbang sedikit oleh rerata skor klaim terflag.
+ */
 export function entityRiskScore(claims: CanonicalClaim[]): number {
-  if (!claims.length) return 0;
-  const highRate = claims.filter(HIGH).length / claims.length;
-  const flagged = claims.filter(FLAGGED);
-  const avgFlag = mean(flagged.map((c) => c.risk_score));
-  return Math.min(99, Math.round(highRate * 220 + avgFlag * 0.2));
+  const n = claims.length;
+  if (!n) return 0;
+  const k = claims.filter(HIGH).length;
+  const p0 = BASE_HIGH_RATE;
+  const z = (k - n * p0 - 0.5) / Math.sqrt(n * p0 * (1 - p0));
+  const avgFlag = mean(claims.filter(FLAGGED).map((c) => c.risk_score));
+  const evidence = Math.tanh(Math.max(0, z) / 3);
+  return Math.min(99, Math.round(100 * evidence * (0.8 + 0.2 * (avgFlag / 100))));
 }
 
 function dominantType(claims: CanonicalClaim[]): RiskType {
@@ -68,6 +82,7 @@ function daysBetween(a: string, b: string): number {
 // Statistik faskes & dokter (memutakhirkan objek provider di tempat)
 // ---------------------------------------------------------------------------
 export function computeProviderStats(store: AggStore): void {
+  setBaseline(store.claims);
   const byProvider = new Map<string, CanonicalClaim[]>();
   store.claims.forEach((c) => {
     const arr = byProvider.get(c.provider.provider_id) || [];
@@ -163,6 +178,7 @@ export function computeProviderStats(store: AggStore): void {
 // Peta provinsi
 // ---------------------------------------------------------------------------
 export function computeProvinceRisk(store: AggStore): ProvinceRiskData[] {
+  setBaseline(store.claims);
   return INDONESIA_PROVINCES.map((prov) => {
     const claims = store.claims.filter((c) => c.provider.province_code === prov.code);
     const score = entityRiskScore(claims);
@@ -309,6 +325,9 @@ const TYPE_TITLE: Record<RiskType, string> = {
   READMISSION: "Pola Rawat Ulang Dini",
 };
 
+/** Ambang z minimum (satu sisi, ~p<0,07) agar kenaikan dianggap sinyal emergen. */
+const SIGNAL_MIN_Z = 1.5;
+
 export function computeEmergingSignals(store: AggStore): EmergingSignal[] {
   const asOf = asOfDate(store.claims);
   const signals: EmergingSignal[] = [];
@@ -323,12 +342,15 @@ export function computeEmergingSignals(store: AggStore): EmergingSignal[] {
       else if (age >= 14 && age < 28) prevCount++;
     }
     if (recent.length < 3) continue;
+    // Lonjakan harus bermakna secara statistik (selisih hitungan Poisson), bukan sekadar naik dari 1 ke 3 klaim.
+    const z = (recent.length - prevCount) / Math.sqrt(recent.length + prevCount + 1);
+    if (z < SIGNAL_MIN_Z) continue;
     const change = pctChange(recent.length, prevCount);
     const providers = new Set(recent.map((c) => c.provider.provider_id));
     const exposure = recent.reduce((a, c) => a + (c.tariff_difference || 0), 0);
     const confidence = mean(recent.flatMap((c) => c.risk_findings.filter((f) => f.risk_type === type).map((f) => f.confidence)));
     const top = [...recent].sort((a, b) => b.risk_score - a.risk_score).slice(0, 3);
-    const severity: RiskLevel = change >= 60 || recent.length >= 25 ? "CRITICAL" : change >= 20 || recent.length >= 12 ? "HIGH" : "MEDIUM";
+    const severity: RiskLevel = z >= 3.5 ? "CRITICAL" : z >= 2.5 ? "HIGH" : "MEDIUM";
 
     signals.push({
       signal_id: `SIG-${type.slice(0, 3)}-${asOf.replace(/-/g, "")}`,

@@ -57,7 +57,7 @@ export default function RiskIntelligencePage() {
   const [sortKey, setSortKey] = useState<SortKey>("exposure");
   const mapRef = useRef<HTMLDivElement>(null);
 
-  // Tautan dalam (?tab=graph&claim=CLM-10293, ?tab=peta&province=ID-JK) dibaca sekali saat halaman dibuka.
+  // Tautan dalam (?tab=graph&claim=<id klaim>, ?tab=peta&province=ID-JK) dibaca sekali saat halaman dibuka.
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const tab = (sp.get("tab") || "").toLowerCase();
@@ -406,7 +406,7 @@ export default function RiskIntelligencePage() {
             >
               <label className="flex flex-col gap-1">
                 <span className="font-semibold text-jkn-text">Atau fokus ke satu klaim</span>
-                <input value={claimInput} onChange={(e) => setClaimInput(e.target.value)} placeholder="mis. CLM-10293" className="h-9 px-3 rounded-lg border border-jkn-border bg-white text-sm w-52 font-mono" />
+                <input value={claimInput} onChange={(e) => setClaimInput(e.target.value)} placeholder="ID klaim" className="h-9 px-3 rounded-lg border border-jkn-border bg-white text-sm w-52 font-mono" />
               </label>
               <button type="submit" className="h-9 px-3.5 rounded-lg bg-[#071A12] text-white text-sm font-semibold hover:bg-[#0D2B1E] transition-colors">
                 Tampilkan

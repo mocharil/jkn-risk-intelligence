@@ -14,6 +14,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { INDONESIA_PROVINCES } from "../lib/data/indonesia-provinces";
+import { SYNTH } from "../lib/data/synthetic-config";
 import * as N from "../lib/data/bpjs-national";
 import { KEMENDAGRI_PROVINCE, normalizeRows } from "../lib/ingest/normalize";
 import { parseUpload } from "../lib/ingest/parse";
@@ -26,6 +27,9 @@ import { CanonicalClaim } from "../types/claim";
 import { RiskType } from "../types/risk";
 
 const N_ROWS = 1500;
+/** Prevalensi penyimpangan per jenis: satu sumber dengan dataset bawaan (lib/data/synthetic-config.ts). */
+const BR = Object.fromEntries(Object.entries(SYNTH.anomaly.base_rate).map(([k, v]) => [k, v * SYNTH.anomaly.sample_file_multiplier])) as Record<RiskType, number>;
+const SUBTLE = SYNTH.anomaly.subtle_share;
 const WINDOW_START = "2026-07-10";
 const WINDOW_DAYS = 78;
 
@@ -213,7 +217,7 @@ while (rows.length < N_ROWS && guard++ < N_ROWS * 4) {
   }
 
   // ---- anomali berbasis riwayat: pakai ulang pasien & strata dari episode sebelumnya ----
-  if (kindRoll < 0.08 + 0.03 && lastInpatient.length > 40) {
+  if (kindRoll < 0.08 + BR.REPEAT_BILLING && lastInpatient.length > 40) {
     // REPEAT_BILLING: episode yang sama ditagih lagi (tumpang tindih / bersambung)
     const prior = lastInpatient[intBetween(0, lastInpatient.length - 1)];
     if ((labels[prior.row.FKL02] || []).length === 0 && prior.row.FKL10 === "RITL") {
@@ -222,7 +226,7 @@ while (rows.length < N_ROWS && guard++ < N_ROWS * 4) {
       continue;
     }
   }
-  if (kindRoll < 0.08 + 0.03 + 0.03 && lastInpatient.length > 40) {
+  if (kindRoll < 0.08 + BR.REPEAT_BILLING + BR.READMISSION && lastInpatient.length > 40) {
     // READMISSION: masuk lagi 3-12 hari setelah pulang dengan diagnosis sama
     const prior = lastInpatient[intBetween(0, lastInpatient.length - 1)];
     if ((labels[prior.row.FKL02] || []).length === 0 && prior.row.FKL10 === "RITL") {
@@ -245,15 +249,15 @@ while (rows.length < N_ROWS && guard++ < N_ROWS * 4) {
   const verified = b.amount * between(0.97, 1);
   const injected: RiskType[] = [];
   const r = rng();
-  if (r < 0.05) {
+  if (r < BR.UPCODING) {
     sev = 3;
-    amount = b.amount * between(1.8, 2.7);
+    amount = b.amount * (rng() < SUBTLE.UPCODING ? between(1.25, 1.55) : between(1.8, 2.7));
     injected.push("UPCODING");
-  } else if (r < 0.09) {
-    amount = b.amount * between(2.0, 2.9);
+  } else if (r < BR.UPCODING + BR.INFLATED_BILLS) {
+    amount = b.amount * (rng() < SUBTLE.INFLATED_BILLS ? between(1.4, 1.7) : between(2.0, 2.9));
     injected.push("INFLATED_BILLS");
-  } else if (r < 0.125) {
-    los = Math.min(60, Math.round(b.los * between(2.6, 3.6)) + 2);
+  } else if (r < BR.UPCODING + BR.INFLATED_BILLS + BR.ABNORMAL_LOS) {
+    los = Math.min(60, Math.round(b.los * (rng() < SUBTLE.ABNORMAL_LOS ? between(1.6, 2.0) : between(2.6, 3.6))) + 2);
     amount = b.amount * between(1.05, 1.2);
     injected.push("ABNORMAL_LOS");
   }

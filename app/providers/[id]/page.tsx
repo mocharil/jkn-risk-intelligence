@@ -302,7 +302,7 @@ export default function ProviderDetailPage() {
                 <span className="text-xs text-jkn-dim block">Konteks {provider.national.province.name}</span>
                 <span className="text-2xl font-mono font-bold text-jkn-text block mt-1">{formatNumber(provider.national.province.fkrtl_count)} FKRTL</span>
                 <span className="text-xs text-jkn-muted block mt-1">
-                  {provider.national.province.fkrtl_per_100k.toLocaleString("id-ID")} per 100 ribu peserta (rerata provinsi {provider.national.province.fkrtl_per_100k_national_mean.toLocaleString("id-ID")}).
+                  {provider.national.province.fkrtl_per_100k.toLocaleString("id-ID")} per 100 ribu peserta (nasional {provider.national.province.fkrtl_per_100k_national_mean.toLocaleString("id-ID")}).
                   Biaya per admisi di provinsi ini {formatRupiah(provider.national.province.cost_per_admission, true)}, indeks {provider.national.province.cost_index.toLocaleString("id-ID", { maximumFractionDigits: 2 })} terhadap nasional.
                 </span>
               </div>

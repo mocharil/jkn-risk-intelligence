@@ -57,9 +57,11 @@ const NARRATIVE_TYPES: EvidenceItem["document_type"][] = ["RINGKASAN_MEDIS", "RE
 /** Ambang z (dalam simpangan robust skala-log peer) agar suatu rasio dianggap menyimpang, bukan variasi wajar. */
 export const LOS_RATIO_MIN = 1.75;
 export const LOS_Z_MIN = 2.0;
+/** Selisih lama rawat minimum (hari) di atas median; pada median 1-2 hari, rasio 2x hanyalah satu hari tambahan. */
+export const LOS_MIN_EXCESS_DAYS = 2;
 export const AMOUNT_RATIO_MIN = 1.6;
 export const LINE_RATIO_MIN = 1.8;
-export const AMOUNT_Z_MIN = 2.2;
+export const AMOUNT_Z_MIN = 2.5;
 
 export const upcodingDetector: RiskDetector = {
   id: "UPCODING",
@@ -68,7 +70,7 @@ export const upcodingDetector: RiskDetector = {
   run(claim, ctx) {
     const diag = primaryDiag(claim);
     if (!diag) return null;
-    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class);
+    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class, claim.provider.province_code);
 
     let score = 0;
     const reasons: string[] = [];
@@ -244,10 +246,10 @@ export const abnormalLosDetector: RiskDetector = {
     const diag = primaryDiag(claim);
     if (!diag) return null;
     // Bandingkan dengan peer sebucket (rawat jalan vs rawat inap) agar LOS rawat jalan tidak dibanding rawat inap.
-    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class);
+    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class, claim.provider.province_code);
     const los = claim.service.length_of_stay;
     const ratio = los / (bm.expected_los || 1);
-    if (ratio < LOS_RATIO_MIN) return null;
+    if (ratio < LOS_RATIO_MIN || los - bm.expected_los < LOS_MIN_EXCESS_DAYS) return null;
     // Selain rasio, harus keluar dari sebaran peer: pada data riil lama rawat menyebar lebar sehingga 1,75x median bisa wajar.
     if (bm.los_log_sigma !== undefined && Math.log(ratio) < LOS_Z_MIN * bm.los_log_sigma) return null;
 
@@ -294,7 +296,7 @@ export const unbundlingDetector: RiskDetector = {
   run(claim, ctx) {
     const diag = primaryDiag(claim);
     if (!diag) return null;
-    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class);
+    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class, claim.provider.province_code);
     const ref = referenceFor(diag.code);
 
     const packaged = new Set<string>(ref.package_procedures);
@@ -342,7 +344,7 @@ export const inflatedBillsDetector: RiskDetector = {
   run(claim, ctx) {
     const diag = primaryDiag(claim);
     if (!diag) return null;
-    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class);
+    const bm = ctx.benchmarks.get(diag.code, claim.service.treatment_class, claim.provider.province_code);
 
     const lineHits = claim.procedures
       .map((p) => ({ p, ref: procedureRef(p.code) }))

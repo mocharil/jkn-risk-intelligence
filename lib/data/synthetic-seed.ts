@@ -2,8 +2,9 @@ import { CanonicalClaim, Diagnosis, EvidenceItem, Procedure } from "@/types/clai
 import { Doctor, Provider } from "@/types/provider";
 import { ALL_RISK_TYPES, RiskType } from "@/types/risk";
 import { INDONESIA_PROVINCES } from "./indonesia-provinces";
-import { DIAGNOSIS_REFERENCE, PROCEDURE_REFERENCE, BUNDLE_COMPONENTS, referenceFor } from "../risk/reference";
+import { DIAGNOSIS_REFERENCE, PROCEDURE_REFERENCE, BUNDLE_COMPONENTS, patientEligible, referenceFor } from "../risk/reference";
 import { anonymizePatient } from "../pii/anonymize";
+import { SYNTH } from "./synthetic-config";
 import { admissionsForIcdPrefix, classAdmissionShare, classCostFactor, provinceReference, sampleAgeSex } from "./bpjs-national";
 
 /**
@@ -15,11 +16,9 @@ import { admissionsForIcdPrefix, classAdmissionShare, classCostFactor, provinceR
  * - Data pasien mentah dibuat lalu langsung dianonimisasi (sama seperti jalur ingest).
  */
 
-export const AS_OF_DATE = "2026-09-30";
+export const AS_OF_DATE: string = SYNTH.as_of;
 /** Versi pembangkit data bawaan. Naikkan bila komposisi dataset berubah, agar snapshot lama (status kasus per ID klaim) tidak menempel ke klaim yang berbeda. */
-export const SEED_VERSION = "calibrated-bpjs-2018-v2";
-/** Trio klaim demo utama; tidak dijadikan sumber klon massal agar pasangan klon hero tetap CLM-09283. */
-const HERO_IDS = new Set(["CLM-10293", "CLM-09283", "CLM-08741"]);
+export const SEED_VERSION = "realistic-bpjs-v3";
 export const SEED = 20261002;
 
 export type GroundTruth = Record<string, RiskType[]>;
@@ -49,6 +48,8 @@ function addDays(date: string, days: number): string {
 // Faskes (34 provinsi) & dokter
 // ---------------------------------------------------------------------------
 const CLASS_FACTOR = classCostFactor();
+/** Biaya per admisi provinsi relatif terhadap nasional (BPJS Sample/66), dipakai menggeser tarif klaim. */
+const provinceFactor = (code: string): number => Math.pow(PROV_REF_INDEX.get(code) ?? 1, SYNTH.province_cost_exponent);
 
 const CAPITALS: Record<string, string> = {
   "ID-AC": "Banda Aceh", "ID-SU": "Medan", "ID-SB": "Padang", "ID-RI": "Pekanbaru", "ID-KR": "Tanjung Pinang", "ID-JA": "Jambi",
@@ -59,6 +60,7 @@ const CAPITALS: Record<string, string> = {
   "ID-MU": "Sofifi", "ID-MA": "Ambon", "ID-PB": "Manokwari", "ID-PA": "Jayapura",
 };
 
+
 interface ProviderSeed {
   id: string;
   name: string;
@@ -68,75 +70,105 @@ interface ProviderSeed {
   address: string;
   weight: number;
   rates: Partial<Record<RiskType, number>>;
+  /** Jenis penyimpangan yang menjadi ciri khas faskes ini (kosong = faskes biasa). */
+  hot: RiskType[];
 }
 
-/** Total klaim massal yang dialokasikan ke provinsi (di luar klaim hero). */
-const MASS_CLAIMS = 1180;
+// Kosakata nama (fiktif) dan kota tambahan. Ini bukan data statistik; hanya untuk membentuk identitas faskes sintetis.
+const NAME_WORDS = ["Sehat", "Harapan", "Bhakti", "Medika", "Prima", "Citra", "Karya", "Bunda", "Husada", "Sentosa", "Permata", "Kasih", "Surya", "Mitra", "Nusantara", "Insani", "Amanah", "Bintang", "Graha"];
+const STREETS = ["Ahmad Yani", "Diponegoro", "Jenderal Sudirman", "Pemuda", "Gatot Subroto", "Veteran", "Pahlawan", "Merdeka", "Imam Bonjol", "Kartini", "Pasteur", "Raya Darmo", "S. Parman", "Perintis Kemerdekaan"];
+const EXTRA_CITIES: Record<string, string[]> = {
+  "ID-JB": ["Bekasi", "Bogor", "Depok", "Cirebon", "Tasikmalaya"], "ID-JT": ["Surakarta", "Magelang", "Purwokerto", "Tegal", "Kudus"],
+  "ID-JI": ["Malang", "Kediri", "Jember", "Sidoarjo"], "ID-SU": ["Pematang Siantar", "Binjai"], "ID-BT": ["Tangerang", "Cilegon"],
+  "ID-SN": ["Bone", "Parepare"], "ID-LA": ["Metro"], "ID-SS": ["Lubuklinggau"], "ID-KS": ["Banjarbaru"], "ID-BA": ["Singaraja"], "ID-JK": ["Jakarta Timur", "Jakarta Barat", "Jakarta Utara", "Jakarta Pusat"],
+};
+const PROV_REF = new Map(provinceReference().map((r) => [r.code, r]));
+const PROV_REF_INDEX = new Map(provinceReference().map((r) => [r.code, r.cost_index]));
 
-const NAMED_PROVIDERS: ProviderSeed[] = [
-  { id: "HOSP-01", name: "RS Sehat Sentosa", type: "RS_KELAS_B", province: "ID-JK", city: "Jakarta Selatan", address: "Jl. Jenderal Sudirman No. 45, Kebayoran Baru", weight: 90, rates: { UPCODING: 0.34, PHANTOM_BILLING: 0.16, ABNORMAL_LOS: 0.14, CLONING: 0.1, UNBUNDLING: 0.06, INFLATED_BILLS: 0.04 } },
-  { id: "HOSP-02", name: "RS Medika Utama", type: "RS_KELAS_B", province: "ID-JB", city: "Kota Bandung", address: "Jl. Pasteur No. 120, Sukajadi", weight: 60, rates: { CLONING: 0.28, UPCODING: 0.12, PHANTOM_BILLING: 0.06, ABNORMAL_LOS: 0.05 } },
-  { id: "HOSP-03", name: "RS Mitra Kasih Surabaya", type: "RS_KELAS_A", province: "ID-JI", city: "Kota Surabaya", address: "Jl. Raya Darmo No. 88, Wonokromo", weight: 70, rates: { PHANTOM_BILLING: 0.22, UPCODING: 0.08, CLONING: 0.06, ABNORMAL_LOS: 0.05, UNBUNDLING: 0.07 } },
-  { id: "HOSP-04", name: "RS Graha Medika Semarang", type: "RS_KELAS_B", province: "ID-JT", city: "Kota Semarang", address: "Jl. Pandanaran No. 56", weight: 50, rates: { ABNORMAL_LOS: 0.2, UPCODING: 0.06, INFLATED_BILLS: 0.07 } },
-  { id: "HOSP-05", name: "RS Prima Husada Medan", type: "RS_KELAS_B", province: "ID-SU", city: "Kota Medan", address: "Jl. S. Parman No. 102", weight: 55, rates: { UPCODING: 0.3, ABNORMAL_LOS: 0.08, INFLATED_BILLS: 0.08, CLONING: 0.04 } },
-  { id: "HOSP-06", name: "RS Bintang Kasih Makassar", type: "RS_KELAS_B", province: "ID-SN", city: "Kota Makassar", address: "Jl. Perintis Kemerdekaan KM 11", weight: 45, rates: { PHANTOM_BILLING: 0.15, ABNORMAL_LOS: 0.08, UNBUNDLING: 0.08 } },
-  { id: "HOSP-07", name: "RS Surya Husada Bali", type: "RS_KELAS_B", province: "ID-BA", city: "Kota Denpasar", address: "Jl. Pulau Seram No. 1", weight: 40, rates: { UPCODING: 0.03, ABNORMAL_LOS: 0.02 } },
-  { id: "KLIN-01", name: "Klinik Utama Sehat Bersama", type: "KLINIK_UTAMA", province: "ID-JK", city: "Jakarta Timur", address: "Jl. Pemuda No. 78, Rawamangun", weight: 35, rates: { CLONING: 0.3, UNBUNDLING: 0.1, INFLATED_BILLS: 0.08 } },
-];
+function lognormal(rng: Rng, sigma: number): number {
+  // Box-Muller; dinormalkan agar rata-rata ~ 1
+  const z = Math.sqrt(-2 * Math.log(Math.max(1e-9, rng()))) * Math.cos(2 * Math.PI * rng());
+  return Math.exp(sigma * z - (sigma * sigma) / 2);
+}
 
+function weightedPick<T extends string>(rng: Rng, mix: Record<T, number>): T {
+  const entries = Object.entries(mix) as [T, number][];
+  const total = entries.reduce((a, [, w]) => a + w, 0);
+  let r = rng() * total;
+  for (const [k, w] of entries) {
+    r -= w;
+    if (r <= 0) return k;
+  }
+  return entries[entries.length - 1][0];
+}
+
+/**
+ * Faskes dibangkitkan dari statistik BPJS: jumlah faskes per provinsi mengikuti jumlah FKRTL (Sample/61) dan jumlah klaim
+ * per provinsi mengikuti perkiraan admisi RITL (Sample/27 x 57). Penyimpangan tidak ditulis tangan: tiap faskes memperoleh
+ * "kecenderungan" acak (sebagian besar bersih) dan sebagian kecil memiliki pola khas.
+ */
 function buildProviderSeeds(): ProviderSeed[] {
   const rng = mulberry32(SEED ^ 0x51ed);
-  const seeds = [...NAMED_PROVIDERS];
-  let n = 8;
-  for (const prov of INDONESIA_PROVINCES) {
-    n++;
-    const city = CAPITALS[prov.code] || prov.name;
-    const rates: Partial<Record<RiskType, number>> = {};
-    const base = 0.02 + rng() * 0.03;
-    ALL_RISK_TYPES.forEach((t) => (rates[t] = base));
-    if (rng() < 0.22) rates[pick(rng, ["UPCODING", "PHANTOM_BILLING", "CLONING", "INFLATED_BILLS"] as RiskType[])] = 0.14 + rng() * 0.1;
-    seeds.push({
-      id: `HOSP-${String(n).padStart(2, "0")}`,
-      name: `RSUD ${city}`,
-      type: rng() < 0.3 ? "RS_KELAS_C" : "RS_KELAS_B",
-      province: prov.code,
-      city: `Kota ${city}`,
-      address: `Jl. Pelayanan Kesehatan No. ${intBetween(rng, 1, 120)}, ${city}`,
-      weight: intBetween(rng, 22, 34),
-      rates,
-    });
-  }
-  // Volume klaim per provinsi proporsional dengan admisi RITL nasional (BPJS 2018). Faskes contoh dengan pola
-  // kecurangan sengaja ditanam tetap ada, tetapi bobotnya dikecilkan bila melebihi jatah provinsinya.
+  const P = SYNTH.providers;
+  const A = SYNTH.anomaly;
   const refs = provinceReference();
   const totalAdm = refs.reduce((a, r) => a + r.admissions_est, 0) || 1;
-  const NAMED_IDS = new Set(NAMED_PROVIDERS.map((x) => x.id));
-  for (const prov of INDONESIA_PROVINCES) {
-    const share = (refs.find((r) => r.code === prov.code)?.admissions_est || 0) / totalAdm;
-    const target = Math.max(8, Math.round(MASS_CLAIMS * share));
-    const here = seeds.filter((x) => x.province === prov.code);
-    const named = here.filter((x) => NAMED_IDS.has(x.id));
-    const generic = here.filter((x) => !NAMED_IDS.has(x.id));
-    const namedSum = named.reduce((a, x) => a + x.weight, 0);
-    if (namedSum > target * 0.85) {
-      const k = (target * 0.85) / namedSum;
-      named.forEach((x) => (x.weight = Math.max(10, Math.round(x.weight * k))));
-    }
-    const left = target - named.reduce((a, x) => a + x.weight, 0);
-    generic.forEach((g) => (g.weight = Math.max(0, left)));
-  }
-  const keep = seeds.filter((x) => x.weight >= 8);
-  seeds.length = 0;
-  seeds.push(...keep);
+  const seeds: ProviderSeed[] = [];
+  const usedNames = new Set<string>();
+  let n = 0;
 
-  const hot = (id: string, t: RiskType, r: number) => {
-    const sd = seeds.find((x) => x.id === id);
-    if (sd) sd.rates[t] = r;
-  };
-  hot("HOSP-01", "READMISSION", 0.05);
-  hot("HOSP-03", "READMISSION", 0.07);
-  hot("HOSP-05", "REPEAT_BILLING", 0.06);
-  hot("KLIN-01", "REPEAT_BILLING", 0.05);
+  for (const prov of INDONESIA_PROVINCES) {
+    const ref = PROV_REF.get(prov.code);
+    const count = Math.max(1, Math.round((ref?.fkrtl_count ?? 0) / P.fkrtl_per_synthetic_provider));
+    const provClaims = Math.max(6, Math.round((SYNTH.claims * (ref?.admissions_est ?? 0)) / totalAdm));
+    const capital = CAPITALS[prov.code] || prov.name;
+    const cities = [capital, ...(EXTRA_CITIES[prov.code] || [])];
+    const local: ProviderSeed[] = [];
+    for (let i = 0; i < count; i++) {
+      n++;
+      const type = weightedPick(rng, P.type_mix) as Provider["type"];
+      const city = cities[i % cities.length];
+      let name = "";
+      for (let tries = 0; tries < 12 && (!name || usedNames.has(name)); tries++) {
+        if (type === "KLINIK_UTAMA") name = `Klinik Utama ${pick(rng, NAME_WORDS)} ${city}`;
+        else if (rng() < 0.4 && !usedNames.has(`RSUD ${city}`)) name = `RSUD ${city}`;
+        else name = `RS ${pick(rng, NAME_WORDS)} ${pick(rng, NAME_WORDS)} ${city}`.replace(/(\b\w+\b) \1/, "$1");
+      }
+      usedNames.add(name);
+      local.push({
+        id: `FKL-${String(n).padStart(3, "0")}`,
+        name,
+        type,
+        province: prov.code,
+        city: /Jakarta/.test(city) ? city : `Kota ${city}`,
+        address: `Jl. ${pick(rng, STREETS)} No. ${intBetween(rng, 1, 180)}, ${city}`,
+        weight: P.volume_factor[type as keyof typeof P.volume_factor] * lognormal(rng, P.volume_sigma),
+        rates: {},
+        hot: [],
+      });
+    }
+    // alokasikan klaim provinsi ke faskes proporsional bobot (sisa pembulatan ke faskes terbesar)
+    const wsum = local.reduce((a, x) => a + x.weight, 0);
+    local.forEach((x) => (x.weight = Math.max(2, Math.floor((provClaims * x.weight) / wsum))));
+    const diff = provClaims - local.reduce((a, x) => a + x.weight, 0);
+    if (diff > 0) local.sort((a, b) => b.weight - a.weight)[0].weight += diff;
+    seeds.push(...local);
+  }
+
+  // Kecenderungan penyimpangan per faskes
+  const types = Object.keys(A.base_rate) as RiskType[];
+  for (const sd of seeds) {
+    const propensity = lognormal(rng, A.provider_propensity_sigma);
+    if (rng() < A.hot_provider_share && sd.weight >= 12) {
+      const k = 1 + (rng() < 0.4 ? 1 : 0);
+      while (sd.hot.length < k) {
+        const t = pick(rng, ["UPCODING", "PHANTOM_BILLING", "CLONING", "INFLATED_BILLS", "ABNORMAL_LOS", "UNBUNDLING"] as RiskType[]);
+        if (!sd.hot.includes(t)) sd.hot.push(t);
+      }
+    }
+    const mult = between(rng, A.hot_multiplier[0], A.hot_multiplier[1]);
+    for (const t of types) sd.rates[t] = Math.min(0.45, A.base_rate[t] * propensity * (sd.hot.includes(t) ? mult : 1));
+  }
   return seeds;
 }
 
@@ -155,13 +187,12 @@ function buildDoctors(seeds: ProviderSeed[]): Doctor[] {
   const rng = mulberry32(SEED ^ 0xd0c);
   const out: Doctor[] = [];
   seeds.forEach((s, idx) => {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < SYNTH.providers.doctors_per_provider; i++) {
       const sp = SPECIALTY[(idx + i) % SPECIALTY.length];
-      const fixed = s.id === "HOSP-01" && i === 0;
       out.push({
-        doctor_id: fixed ? "DR-01" : `DR-${String(idx + 1).padStart(2, "0")}${i + 1}`,
-        name: fixed ? "dr. Hendra Prasetyo, Sp.OT" : `dr. ${pick(rng, FIRST)} ${pick(rng, LAST)}, ${sp.code}`,
-        specialty: fixed ? "Spesialis Bedah Ortopedi" : sp.label,
+        doctor_id: `DR-${String(idx + 1).padStart(3, "0")}${i + 1}`,
+        name: `dr. ${pick(rng, FIRST)} ${pick(rng, LAST)}, ${sp.code}`,
+        specialty: sp.label,
         sip_number: `SIP.440/${intBetween(rng, 1000, 1999)}/DSP/${2021 + (i % 4)}`,
         total_claims_handled: 0,
         high_risk_claims_count: 0,
@@ -336,14 +367,14 @@ function median(values: number[]): number {
 function makeClaim(rng: Rng, o: MakeOpts, providerGeo: { name: string; province: string }): { claim: CanonicalClaim; labels: RiskType[] } {
   const ref = referenceFor(o.code);
   // Tarif paket dasar disesuaikan kelas rawat (faktor biaya riil BPJS RITL 2018).
-  const tariff = ref.expected_tariff * CLASS_FACTOR[String(o.klass)];
+  const tariff = ref.expected_tariff * CLASS_FACTOR[String(o.klass)] * provinceFactor(o.provider.province);
   const labels = new Set<RiskType>(o.forced);
   const claimId = `CLM-${o.claimNum}`;
 
   // --- baseline normal ---
   let severity: 1 | 2 | 3 = ref.expected_severity;
-  let los = Math.max(1, Math.round(ref.expected_los + between(rng, -0.6, 0.9)));
-  let amount = Math.round(tariff * between(rng, 0.9, 1.12));
+  let los = Math.max(1, Math.round(ref.expected_los * lognormal(rng, SYNTH.variation.los_sigma)));
+  let amount = Math.round(tariff * lognormal(rng, SYNTH.variation.amount_sigma));
   const procedures: Procedure[] = ref.package_procedures.slice(0, 1 + intBetween(rng, 0, 1)).map((c) => ({
     code: c,
     description: PROCEDURE_REFERENCE[c]?.description || c,
@@ -356,14 +387,14 @@ function makeClaim(rng: Rng, o: MakeOpts, providerGeo: { name: string; province:
 
   // --- hard negatives (sah) ---
   const clean = labels.size === 0; // kasus sah hanya dibuat pada klaim tanpa anomali lain (agar narasi konsisten)
-  const legitSevere = clean && rng() < 0.07 && severity < 3;
+  const legitSevere = clean && rng() < SYNTH.realism.legit_severe_share && severity < 3;
   if (legitSevere) {
     severity = Math.min(3, severity + 1) as 1 | 2 | 3;
     severeNarrative = true;
     amount = Math.round(amount * between(rng, 1.18, 1.4));
     los = Math.max(los + 1, Math.round(ref.expected_los * between(rng, 1.3, 1.6)));
   }
-  const legitLongLos = clean && !legitSevere && rng() < 0.04;
+  const legitLongLos = clean && !legitSevere && rng() < SYNTH.realism.legit_long_los_share;
   if (legitLongLos) {
     severeNarrative = true;
     los = Math.ceil(ref.expected_los * between(rng, 2.0, 2.6));
@@ -372,7 +403,7 @@ function makeClaim(rng: Rng, o: MakeOpts, providerGeo: { name: string; province:
     legitProc = { code: "47.01", description: PROCEDURE_REFERENCE["47.01"].description, date: o.admissionDate, cost: undefined };
     procedures.push(legitProc);
     extraLegitSurgeryDoc = true;
-  } else if (!labels.has("PHANTOM_BILLING") && rng() < 0.05 && o.code !== "O80.0") {
+  } else if (!labels.has("PHANTOM_BILLING") && rng() < SYNTH.realism.legit_extra_procedure_share && o.code !== "O80.0") {
     legitProc = { code: "45.13", description: PROCEDURE_REFERENCE["45.13"].description, date: o.admissionDate, cost: PROCEDURE_REFERENCE["45.13"].reference_price };
     procedures.push(legitProc);
     amount += PROCEDURE_REFERENCE["45.13"].reference_price;
@@ -381,7 +412,7 @@ function makeClaim(rng: Rng, o: MakeOpts, providerGeo: { name: string; province:
 
   // --- injeksi anomali ---
   if (labels.has("UPCODING")) {
-    const subtle = rng() < 0.12;
+    const subtle = rng() < SYNTH.anomaly.subtle_share.UPCODING;
     const gap = ref.expected_severity === 1 ? (rng() < 0.55 ? 2 : 1) : 1;
     severity = Math.min(3, ref.expected_severity + gap) as 1 | 2 | 3;
     if (severity === ref.expected_severity) severity = Math.min(3, severity + 1) as 1 | 2 | 3;
@@ -389,7 +420,8 @@ function makeClaim(rng: Rng, o: MakeOpts, providerGeo: { name: string; province:
     severeNarrative = false;
   }
   if (labels.has("ABNORMAL_LOS")) {
-    los = Math.ceil(ref.expected_los * between(rng, 2.0, 3.2));
+    const subtleLos = rng() < SYNTH.anomaly.subtle_share.ABNORMAL_LOS;
+    los = Math.ceil(ref.expected_los * (subtleLos ? between(rng, 1.45, 1.8) : between(rng, 2.0, 3.2)));
     severeNarrative = false;
     amount = Math.round(amount * between(rng, 1.05, 1.2));
   }
@@ -432,7 +464,8 @@ function makeClaim(rng: Rng, o: MakeOpts, providerGeo: { name: string; province:
   }
   if (labels.has("INFLATED_BILLS")) {
     if (rng() < 0.5) {
-      amount = Math.round(tariff * between(rng, 1.75, 2.5));
+      const subtleAmt = rng() < SYNTH.anomaly.subtle_share.INFLATED_BILLS;
+      amount = Math.round(tariff * (subtleAmt ? between(rng, 1.3, 1.6) : between(rng, 1.75, 2.5)));
     } else {
       const packaged = new Set(ref.package_procedures);
       const cand = ["89.52", "87.44", "90.39", "93.11", "99.04", "96.56"].filter((c) => !packaged.has(c) && !procedures.some((p) => p.code === c));
@@ -483,6 +516,10 @@ function makeClaim(rng: Rng, o: MakeOpts, providerGeo: { name: string; province:
     });
   }
   evidence.push(...extraDocs);
+  // Cacat data nyata: sebagian klaim tidak melampirkan ringkasan medis/resume (ekspor SIMRS tidak lengkap).
+  if (!o.cloneFrom && !labels.has("CLONING") && !labels.has("PHANTOM_BILLING") && rng() < SYNTH.realism.missing_narrative_share) {
+    for (let i = evidence.length - 1; i >= 0; i--) if (evidence[i].document_type === "RINGKASAN_MEDIS" || evidence[i].document_type === "RESUME_PULANG") evidence.splice(i, 1);
+  }
 
   const lineItems = [`Paket INA-CBG ${o.code}: Rp ${Math.round(tariff).toLocaleString("id-ID")}`, ...procedures.filter((p) => (p.cost ?? 0) > 0).map((p) => `${p.description} [${p.code}]: Rp ${(p.cost as number).toLocaleString("id-ID")}`)];
   evidence.push({
@@ -561,6 +598,8 @@ export interface SyntheticDataset {
   labels: GroundTruth;
 }
 
+/** Nomor klaim sintetis dimulai dari sini. */
+const BASE_CLAIM_NUM = 10001;
 const DX_CODES = Object.keys(DIAGNOSIS_REFERENCE);
 
 /** Bobot campuran diagnosis = jumlah admisi RITL nasional 2018 pada awalan ICD-10 tiap diagnosis (BPJS, 100 penyakit terbanyak). */
@@ -601,12 +640,8 @@ export function generateSyntheticDataset(): SyntheticDataset {
     byDx.set(code, arr);
   };
 
-  // ---- Klaim pahlawan (hero) CLM-10293 beserta pasangan klonnya ----
-  const hero = buildHeroClaims(rng);
-  hero.forEach((h) => register(h.claim, h.labels));
-
-  // ---- Klaim massal ----
-  let counter = 10300;
+  // ---- Klaim massal (tanpa klaim/faskes tulis-tangan) ----
+  let counter = BASE_CLAIM_NUM;
   const patientPool = new Map<string, { id: string; name: string; card: string; nik: string; age: number; gender: "L" | "P" }[]>();
   const asOf = AS_OF_DATE;
   type PatientRaw = { id: string; name: string; card: string; nik: string; age: number; gender: "L" | "P" };
@@ -619,17 +654,18 @@ export function generateSyntheticDataset(): SyntheticDataset {
     const pool = patientPool.get(prov.id) || [];
     patientPool.set(prov.id, pool);
     for (let i = 0; i < prov.weight; i++) {
-      const dayOffset = intBetween(rng, 0, 83);
+      const dayOffset = intBetween(rng, 0, SYNTH.window_days - 1);
       const admission = addDays(asOf, -(dayOffset + 9)); // digeser setelah klaim dibuat agar TANGGAL SUBMIT seragam hingga tanggal acuan
-      const recent = dayOffset <= 14;
+      const recent = dayOffset <= SYNTH.anomaly.recent_days;
 
       // Pemilihan diagnosis: bias ke A09 untuk RS panas (agar sinyal emergent terlihat)
-      let code = prov.rates.UPCODING && prov.rates.UPCODING > 0.2 && rng() < 0.35 ? "A09" : pickDx(rng);
+      let code = prov.hot.includes("UPCODING") && rng() < 0.35 ? "A09" : pickDx(rng);
       const forced: RiskType[] = [];
       ALL_RISK_TYPES.forEach((t) => {
-        let rate = prov.rates[t] ?? 0.02;
-        if (recent && t === "UPCODING" && code === "A09") rate *= 1.9;
-        if (recent && t === "PHANTOM_BILLING") rate *= 1.4;
+        let rate = prov.rates[t] ?? SYNTH.anomaly.base_rate[t];
+        if (recent && t === "UPCODING" && code === "A09") rate *= SYNTH.anomaly.recent_boost.UPCODING_A09;
+        if (recent && t === "PHANTOM_BILLING") rate *= SYNTH.anomaly.recent_boost.PHANTOM_BILLING;
+        if (recent && prov.hot.includes(t)) rate *= SYNTH.anomaly.recent_hot_boost;
         if (rng() < rate) forced.push(t);
       });
 
@@ -638,7 +674,7 @@ export function generateSyntheticDataset(): SyntheticDataset {
       let priorFor: CanonicalClaim | undefined;
       if (forced.includes("REPEAT_BILLING") || forced.includes("READMISSION")) {
         const elig = claims.filter(
-          (c) => c.provider.provider_id === prov.id && Number(c.claim_id.slice(4)) >= 10300 && labels[c.claim_id]?.length === 0 && c.service.submission_date <= addDays(asOf, -16) && rawByClaim.has(c.claim_id) && !usedPriors.has(c.claim_id)
+          (c) => c.provider.provider_id === prov.id && Number(c.claim_id.slice(4)) >= BASE_CLAIM_NUM && labels[c.claim_id]?.length === 0 && c.service.submission_date <= addDays(asOf, -16) && rawByClaim.has(c.claim_id) && !usedPriors.has(c.claim_id)
         );
         if (elig.length) {
           priorFor = pick(rng, elig);
@@ -651,21 +687,26 @@ export function generateSyntheticDataset(): SyntheticDataset {
 
       let cloneFrom: CanonicalClaim | undefined;
       if (forced.includes("CLONING")) {
-        const sameDx = (byDx.get(code) || []).filter((c) => !HERO_IDS.has(c.claim_id) && !c.medical_evidence.some((e) => e.excerpt.includes("Tidak ada catatan tindakan")));
+        const sameDx = (byDx.get(code) || []).filter((c) => !c.medical_evidence.some((e) => e.excerpt.includes("Tidak ada catatan tindakan")));
+        // Salin-tempel umumnya terjadi di faskes yang sama; antarfaskes hanya dalam provinsi yang sama, jarang sekali lintas provinsi.
         const sameProv = sameDx.filter((c) => c.provider.provider_id === prov.id);
-        const pool2 = sameProv.length && rng() < 0.65 ? sameProv : sameDx;
+        const sameRegion = sameDx.filter((c) => c.provider.province_code === prov.province);
+        const pool2 = sameProv.length && rng() < 0.85 ? sameProv : sameRegion.length ? sameRegion : [];
         if (pool2.length) cloneFrom = pick(rng, pool2);
         else forced.splice(forced.indexOf("CLONING"), 1);
       }
 
       // pasien (12% pasien lama → peluang readmisi)
       let patientRaw: PatientRaw;
-      const reuse = pool.length && rng() < 0.12 ? pick(rng, pool) : undefined;
+      const reuse = pool.length && rng() < SYNTH.realism.returning_patient_share ? pick(rng, pool) : undefined;
       if (priorFor) patientRaw = rawByClaim.get(priorFor.claim_id) as PatientRaw;
-      else if (reuse && !patientDx.get(reuse.id)?.has(code)) patientRaw = reuse; // pasien lama hanya dengan diagnosis BERBEDA (bukan readmisi sengaja)
+      else if (reuse && !patientDx.get(reuse.id)?.has(code) && patientEligible(code, reuse.age, reuse.gender)) patientRaw = reuse; // pasien lama hanya dengan diagnosis BERBEDA (bukan readmisi sengaja)
       else {
         // Usia & jenis kelamin dari distribusi admisi RITL menurut usia-JK (Sample/29), bukan seragam.
-        const { age: pAge, gender } = sampleAgeSex(rng(), rng());
+        // Pengambilan ulang sampai usia/jenis kelamin masuk akal untuk diagnosis (mis. persalinan: perempuan usia subur).
+        let sampled = sampleAgeSex(rng(), rng());
+        for (let t = 0; t < 400 && !patientEligible(code, sampled.age, sampled.gender); t++) sampled = sampleAgeSex(rng(), rng());
+        const { age: pAge, gender } = sampled;
         patientRaw = {
           id: `RAW-${counter}-${i}`,
           name: `${pick(rng, FIRST)} ${pick(rng, LAST)}`,
@@ -678,7 +719,7 @@ export function generateSyntheticDataset(): SyntheticDataset {
       }
 
       // dokter: anomali terkonsentrasi di dokter pertama (cluster)
-      const doctor = forced.length > 0 && rng() < 0.62 ? provDoctors[0] : pick(rng, provDoctors);
+      const doctor = forced.length > 0 && rng() < SYNTH.anomaly.doctor_concentration ? provDoctors[0] : pick(rng, provDoctors);
       const klass = pickClass(rng);
 
       const { claim, labels: l } = makeClaim(
@@ -712,7 +753,7 @@ export function generateSyntheticDataset(): SyntheticDataset {
       province_name: geo.name,
       city: s.city || CAPITALS[s.province],
       address: s.address,
-      phone: `(021) ${intBetween(rng, 200, 899)}-${intBetween(rng, 1000, 9999)}`,
+      phone: `(0${intBetween(rng, 21, 79)}) ${intBetween(rng, 200, 899)}-${intBetween(rng, 1000, 9999)}`,
       risk_score: 0,
       risk_level: "LOW",
       total_claims: 0,
@@ -733,98 +774,3 @@ export function generateSyntheticDataset(): SyntheticDataset {
 
   return { claims, providers, doctors, labels };
 }
-
-// ---------------------------------------------------------------------------
-// Klaim pahlawan (diperkirakan sebagai kasus demo utama) — teks Indonesia, pasien teranonimisasi
-// ---------------------------------------------------------------------------
-function buildHeroClaims(rng: Rng): { claim: CanonicalClaim; labels: RiskType[] }[] {
-  const heroDoctor: Doctor = { doctor_id: "DR-01", name: "dr. Hendra Prasetyo, Sp.OT", specialty: "Spesialis Bedah Ortopedi", sip_number: "SIP.440/1029/DSP/2023", total_claims_handled: 0, high_risk_claims_count: 0, risk_score: 0, provider_id: "HOSP-01" };
-  const heroProvider = { provider_id: "HOSP-01", name: "RS Sehat Sentosa", type: "RS_KELAS_B" as const, province_code: "ID-JK", city: "Jakarta Selatan" };
-
-  const baseSummary =
-    "Pasien laki-laki usia 48 tahun datang dengan keluhan diare cair 4 kali sejak pagi tanpa darah dan lendir, mual dan muntah 1 kali, demam ringan 37,6 C. Pemeriksaan fisik: abdomen supel, bising usus meningkat ringan, tidak ada distensi maupun tanda peritonitis. TD 118/76 mmHg, nadi 84/menit. Penunjang: hemoglobin 14,2 g/dL, leukosit 8.900/uL, kalium 3,6 mEq/L, natrium 138 mEq/L, dalam batas normal. Terapi: rehidrasi oral dan infus RL 20 tpm, zinc 20 mg 1x1, probiotik. Evaluasi: pada hari ke-2 pasien membaik, asupan oral baik, kondisi stabil tanpa komplikasi.";
-  const baseResume = "Kondisi pulang: pasien dinyatakan stabil secara klinis sejak hari ke-2, tanda vital normal, tanpa gejala. Obat pulang: oralit, zinc 20 mg 1x1, probiotik.";
-  const baseExcerpt = "Diare cair 4 kali tanpa darah dan lendir. Pada hari ke-2 pasien membaik, kondisi stabil tanpa komplikasi.";
-
-  const mk = (num: number, patientIdx: number, amount: number, los: number, admission: string, withHeroSurgery: boolean, summary: string): CanonicalClaim => {
-    const { patient: anon } = anonymizePatient({ id: `RAW-HERO-${patientIdx}`, name: ["Bambang Sudibyo", "Hartono Wijaya", "Slamet Riyadi"][patientIdx], card_number: `00018928${37460 + patientIdx}`, nik: `31740512087500${String(patientIdx).padStart(2, "0")}`, age: 48 - patientIdx, gender: "L" });
-    const patient = { ...anon, province_code: "ID-JK" };
-    const dischargeDate = addDays(admission, los);
-    const submission = addDays(dischargeDate, 2);
-    const procs: Procedure[] = withHeroSurgery
-      ? [
-          { code: "44.95", description: PROCEDURE_REFERENCE["44.95"].description, date: addDays(admission, 2), cost: 12_500_000 },
-          { code: "99.18", description: PROCEDURE_REFERENCE["99.18"].description, date: admission, cost: 950_000 },
-        ]
-      : [{ code: "99.18", description: PROCEDURE_REFERENCE["99.18"].description, date: admission }];
-    const evidence: EvidenceItem[] = [
-      { evidence_id: `DOC-${num}-01`, document_type: "RINGKASAN_MEDIS", title: "Ringkasan Medis Rawat Inap", date: admission, excerpt: baseExcerpt, content: summary, status: "CONTRADICTS_CLAIM", attached_file_name: `Discharge_Summary_CLM${num}.pdf` },
-      { evidence_id: `DOC-${num}-02`, document_type: "RESUME_PULANG", title: "Resume Pulang & Instruksi DPJP", date: dischargeDate, excerpt: "Pasien dinyatakan stabil secara klinis sejak hari ke-2, namun pemulangan ditunda hingga hari ke-6.", content: baseResume, status: "NEEDS_REVIEW", attached_file_name: `Discharge_Instructions_CLM${num}.pdf` },
-      { evidence_id: `DOC-${num}-03`, document_type: "BUKTI_BILLING", title: "Rincian Tagihan Faskes", date: submission, excerpt: `Paket INA-CBG A09: Rp 3.800.000; ${withHeroSurgery ? "Prosedur bedah digestif laparoskopik [44.95]: Rp 12.500.000" : ""}`, content: `Rincian tagihan: Paket INA-CBG A09: Rp 3.800.000${withHeroSurgery ? "; Prosedur bedah digestif laparoskopik [44.95]: Rp 12.500.000; Infus elektrolit & hidrasi [99.18]: Rp 950.000" : ""}. Total tagihan Rp ${amount.toLocaleString("id-ID")}.`, status: "NEEDS_REVIEW", attached_file_name: `Billing_CLM${num}.pdf` },
-    ];
-    if (withHeroSurgery) {
-      evidence.push({
-        evidence_id: `DOC-${num}-04`,
-        document_type: "CATATAN_TINDAKAN",
-        title: "Lembar Perintah DPJP & Registri Kamar Operasi",
-        date: addDays(admission, 2),
-        excerpt: "Tidak ada catatan tindakan bedah digestif (44.95) pada lembar perintah DPJP maupun registri kamar operasi.",
-        content: `Perintah DPJP ${addDays(admission, 2)}: lanjutkan infus, cek ulang elektrolit, diet bubur lunak. Pasien tirah baring di bangsal Melati 3. Tidak ada catatan tindakan bedah digestif (44.95) pada lembar perintah DPJP maupun registri kamar operasi; tidak ada persetujuan tindakan atau penjadwalan ke instalasi bedah sentral (IBS).`,
-        status: "CONTRADICTS_CLAIM",
-        attached_file_name: `Physician_Orders_CLM${num}.pdf`,
-      });
-      evidence.push({
-        evidence_id: `DOC-${num}-05`,
-        document_type: "HASIL_LABORATORIUM",
-        title: "Hematologi & Elektrolit",
-        date: admission,
-        excerpt: "Hb 14,2 g/dL, leukosit 8.900/uL, trombosit 245.000/uL, kalium 3,6, natrium 138.",
-        content: "Parameter hematologi dan elektrolit dalam rentang normal. Tidak ada bukti sepsis, syok hipovolemik, maupun asidosis metabolik akut.",
-        status: "SUPPORTS_CLAIM",
-        attached_file_name: `Hematology_Report_CLM${num}.pdf`,
-      });
-    }
-    return {
-      claim_id: `CLM-${num}`,
-      sep_number: `0045R0010826V00${num}`,
-      patient,
-      provider: heroProvider,
-      service: { admission_date: admission, discharge_date: dischargeDate, submission_date: submission, length_of_stay: los, treatment_class: "KELAS_2", doctor_id: heroDoctor.doctor_id, doctor_name: heroDoctor.name, doctor_specialty: heroDoctor.specialty },
-      diagnoses: [
-        { code: "A09", description: DIAGNOSIS_REFERENCE["A09"].description, is_primary: true, severity: 3 },
-        { code: "K52.9", description: "Gastroenteritis non-infeksi", is_primary: false, severity: 2 },
-      ],
-      procedures: procs,
-      claim_amount: amount,
-      medical_evidence: evidence,
-      risk_score: 0,
-      risk_level: "LOW",
-      risk_signals: [],
-      risk_findings: [],
-      similar_claims: [],
-      status: "FLAGGED",
-      created_at: `${submission}T08:30:00Z`,
-      updated_at: `${submission}T08:30:00Z`,
-    };
-  };
-
-  const partner = mk(9283, 1, 17_900_000, 5, addDays(AS_OF_DATE, -40), false, microEdit(rng, baseSummary));
-  partner.claim_id = "CLM-09283";
-  partner.sep_number = "0045R0010826V0009283";
-  partner.procedures = [{ code: "99.18", description: PROCEDURE_REFERENCE["99.18"].description, date: partner.service.admission_date, cost: 900_000 }];
-  const third = mk(8741, 2, 18_200_000, 6, addDays(AS_OF_DATE, -55), false, "Pasien laki-laki usia 51 tahun dengan gastroenteritis akut, keluhan diare dan muntah 2 hari. Pemeriksaan fisik: turgor sedikit menurun, abdomen supel. Terapi: cairan intravena dan antiemetik. Evaluasi: keluhan membaik hari ke-2, kondisi stabil.");
-  third.claim_id = "CLM-08741";
-  third.sep_number = "0045R0010826V0008741";
-  const heroClaim = mk(10293, 0, 18_450_000, 6, addDays(AS_OF_DATE, -30), true, baseSummary);
-  heroClaim.claim_id = "CLM-10293";
-  heroClaim.sep_number = "0045R0010826V0010293";
-  heroClaim.investigation_id = "INV-2026-010293";
-
-  return [
-    { claim: heroClaim, labels: ["UPCODING", "PHANTOM_BILLING", "ABNORMAL_LOS", "CLONING", "UNBUNDLING"] },
-    { claim: partner, labels: ["UPCODING", "CLONING", "ABNORMAL_LOS", "UNBUNDLING"] },
-    { claim: third, labels: ["UPCODING", "ABNORMAL_LOS"] },
-  ];
-}
-
-export { median };

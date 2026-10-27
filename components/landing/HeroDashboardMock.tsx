@@ -63,7 +63,7 @@ export function HeroDashboardMock({ stats }: { stats: PublicStats | null }) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-[11px] text-stone-400 w-56 sm:w-72">
             <Search className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Cari klaim (CLM-10293), faskes, atau ICD-10...</span>
+            <span className="truncate">Cari klaim, faskes, atau ICD-10...</span>
           </div>
           <div className="text-[10px] text-stone-500 hidden sm:block">
             Operasional › <span className="font-semibold text-stone-700">Command Center</span>

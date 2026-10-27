@@ -15,6 +15,8 @@ export interface DiagnosisReference {
   expected_tariff: number;
   /** Tindakan rutin yang SUDAH termasuk dalam paket tarif diagnosis ini. */
   package_procedures: string[];
+  /** Batas pasien yang masuk akal secara klinis (mis. persalinan hanya perempuan usia subur). */
+  patient?: { gender?: "L" | "P"; age?: [number, number] };
 }
 
 export const DIAGNOSIS_REFERENCE: Record<string, DiagnosisReference> = {
@@ -23,7 +25,7 @@ export const DIAGNOSIS_REFERENCE: Record<string, DiagnosisReference> = {
   "J18.9": { description: "Pneumonia", icd_prefix: "J18", expected_severity: 2, expected_los: 4.1, expected_tariff: 8_900_000, package_procedures: ["87.44", "96.56"] },
   I10: { description: "Hipertensi esensial", icd_prefix: "I10", expected_severity: 1, expected_los: 1.5, expected_tariff: 2_400_000, package_procedures: ["89.52"] },
   "E11.9": { description: "Diabetes melitus tipe 2", icd_prefix: "E11", expected_severity: 2, expected_los: 3.0, expected_tariff: 6_700_000, package_procedures: ["90.59", "90.39"] },
-  "O80.0": { description: "Persalinan spontan normal", icd_prefix: "O80", expected_severity: 1, expected_los: 2.0, expected_tariff: 4_500_000, package_procedures: ["73.59"] },
+  "O80.0": { description: "Persalinan spontan normal", icd_prefix: "O80", expected_severity: 1, expected_los: 2.0, expected_tariff: 4_500_000, package_procedures: ["73.59"], patient: { gender: "P", age: [15, 45] } },
   "A01.0": { description: "Demam tifoid", icd_prefix: "A01", expected_severity: 1, expected_los: 4.2, expected_tariff: 3_600_000, package_procedures: ["90.59", "99.18"] },
   K30: { description: "Dispepsia", icd_prefix: "K30", expected_severity: 1, expected_los: 2.3, expected_tariff: 2_600_000, package_procedures: ["90.59", "99.18"] },
 };
@@ -75,4 +77,13 @@ export function referenceFor(code: string): DiagnosisReference {
 
 export function procedureRef(code: string): ProcedureReference | undefined {
   return PROCEDURE_REFERENCE[code];
+}
+
+/** Apakah pasien (usia, jenis kelamin) masuk akal untuk diagnosis ini. */
+export function patientEligible(code: string, age: number, gender: "L" | "P"): boolean {
+  const c = referenceFor(code).patient;
+  if (!c) return true;
+  if (c.gender && c.gender !== gender) return false;
+  if (c.age && (age < c.age[0] || age > c.age[1])) return false;
+  return true;
 }

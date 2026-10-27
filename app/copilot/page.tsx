@@ -398,9 +398,9 @@ export default function AICopilotPage() {
   }, []);
 
   const starterCards = useMemo(() => {
-    const cId = live.claim || "CLM-10293";
-    const prov1 = live.p1 || "DKI Jakarta";
-    const prov2 = live.p2 || "Jawa Barat";
+    const cId = live.claim || "klaim teratas";
+    const prov1 = live.p1 || "provinsi risiko tertinggi";
+    const prov2 = live.p2 || "provinsi lain";
     return [
       {
         index: "01",

@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "eval": "tsx scripts/evaluate.ts",
+    "verify:bpjs": "tsx scripts/verify-bpjs-reference.ts",
     "typecheck": "tsc --noEmit",
     "db:up": "docker compose up -d db",
     "db:migrate": "tsx scripts/db-migrate.ts",

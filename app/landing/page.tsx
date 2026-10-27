@@ -319,7 +319,7 @@ function AdvantageCardVisual({
               ))}
             </div>
             <div className="mx-auto max-w-[210px] px-2.5 py-1 rounded-lg bg-black/30 border border-white/15 backdrop-blur-md flex items-center justify-between text-[9px] text-emerald-100">
-              <span>Konsensus Bukti #CLM-10293</span>
+              <span>Konsensus bukti {stats?.spotlight ? `#${stats.spotlight.claim_id}` : ""}</span>
               <span className="font-mono font-bold text-emerald-300">3/3 Sah</span>
             </div>
           </div>
@@ -1003,7 +1003,7 @@ export default function LandingPage() {
           <PriorityQueueCard stats={stats} />
           <AuditChainCard stats={stats} />
           <OverviewCard stats={stats} />
-          <CopilotCard />
+          <CopilotCard qa={stats?.spotlight?.qa ?? null} />
         </div>
       </section>
 

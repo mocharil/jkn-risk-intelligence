@@ -42,6 +42,18 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
       .then((data) => setProviders(data.data || []));
   }, [isOpen, query]);
 
+  // Saran pencarian diturunkan dari hasil teratas (query kosong = diurutkan menurut risiko), bukan daftar tulisan tangan.
+  const suggestions = React.useMemo(() => {
+    const out: { label: string; query: string }[] = [];
+    const c = claims[0];
+    if (c) out.push({ label: `${c.claim_id} (klaim teratas)`, query: c.claim_id });
+    providers.slice(0, 2).forEach((p) => out.push({ label: p.name, query: p.name }));
+    const dx = c?.diagnoses?.[0];
+    if (dx) out.push({ label: `${dx.description} ${dx.code}`, query: dx.code });
+    if (c?.provider?.city) out.push({ label: c.provider.city, query: c.provider.city });
+    return out;
+  }, [claims, providers]);
+
   if (!isOpen) return null;
 
   return (
@@ -52,7 +64,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
           <Search className="w-4 h-4 text-bpjs shrink-0" />
           <input
             type="text"
-            placeholder="Cari nomor klaim (CLM-10293), nama faskes, pasien, atau kode diagnosis ICD-10..."
+            placeholder="Cari nomor klaim, nama faskes, pasien, atau kode diagnosis ICD-10..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
@@ -76,13 +88,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
                 Pencarian Cepat
               </h5>
               <div className="flex flex-wrap gap-1.5">
-                {[
-                  { label: "CLM-10293 (Klaim Prioritas)", query: "CLM-10293" },
-                  { label: "RS Sehat Sentosa", query: "RS Sehat Sentosa" },
-                  { label: "RS Medika Utama", query: "RS Medika Utama" },
-                  { label: "Gastroenteritis A09", query: "A09" },
-                  { label: "Jakarta", query: "Jakarta" },
-                ].map((item) => (
+                {suggestions.map((item) => (
                   <button
                     key={item.label}
                     onClick={() => setQuery(item.query)}

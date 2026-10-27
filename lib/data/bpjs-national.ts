@@ -299,3 +299,10 @@ export function nationalContext(c: ContextClaim, year: string = LATEST_YEAR): Na
   }
   return ctx;
 }
+
+/** Indeks biaya per admisi provinsi terhadap rerata nasional (BPJS RITL, tahun terbaru). */
+export function provinceCostIndex(code: string, year: string = LATEST_YEAR): number {
+  const nat = NATIONAL.biaya_per_admisi_ritl.total[year];
+  const v = NATIONAL.biaya_per_admisi_ritl.by_province[code]?.[year];
+  return nat && v ? v / nat : 1;
+}

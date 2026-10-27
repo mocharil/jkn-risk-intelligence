@@ -170,14 +170,10 @@ export function OverviewCard({ stats }: { stats: PublicStats | null }) {
   );
 }
 
-const QUESTION = "Mengapa klaim CLM-10293 dianggap berisiko?";
-const ANSWER: Array<{ text: string; cite?: string }> = [
-  { text: "Tagihan memuat bedah laparoskopik Rp 12,5 juta, tetapi catatan tindakan DPJP tidak mencatat tindakan bedah apa pun.", cite: "DOC-10293-04" },
-  { text: "Lama rawat 6 hari juga melebihi median peer untuk gastroenteritis.", cite: "DOC-10293-02" },
-];
-
 /** Percakapan Copilot yang berulang: pertanyaan diketik, bukti ditelusuri, jawaban mengalir dengan sitasi yang divalidasi. */
-export function CopilotCard() {
+export function CopilotCard({ qa }: { qa: { question: string; answer: Array<{ text: string; cite?: string }> } | null }) {
+  const QUESTION = qa?.question ?? "Mengapa klaim teratas dianggap berisiko?";
+  const ANSWER = qa?.answer?.length ? qa.answer : [{ text: "Belum ada klaim berisiko tinggi pada data saat ini, jadi tidak ada penjelasan yang dapat ditampilkan." }];
   const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { margin: "-80px" });

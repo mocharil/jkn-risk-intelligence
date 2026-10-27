@@ -4,16 +4,22 @@ import { evaluate } from "@/lib/eval/evaluate";
 import { DETECTOR_REGISTRY } from "@/lib/risk/detectors";
 import { verifyChain } from "@/lib/audit/chain";
 import { computeDashboardKPIs, computeProvinceRisk } from "@/lib/analytics/aggregates";
+import { pickSpotlight } from "@/lib/analytics/spotlight";
 
 /**
  * Statistik AGREGAT untuk halaman landing (publik). Tidak memuat data pasien/klaim individual selain
- * klaim demo sintetis CLM-10293 yang sudah teranonimkan. Seluruh angka dihitung dari data hasil analisis.
+ * satu klaim sintetis teranonimkan sebagai contoh. Seluruh angka dan contoh dihitung dari data hasil analisis, tanpa nilai tulisan tangan.
  */
 export async function GET() {
   const data = memoized("public.stats", () => {
     const store = getStore();
-    const hero = store.claims.find((c) => c.claim_id === "CLM-10293");
-    const clone = hero?.similar_claims[0];
+    // Pasangan klaim paling mirip (temuan cloning) dari hasil analisis nyata.
+    let clone: { claim_id: string; partner: string; similarity: number } | undefined;
+    for (const c of store.claims) {
+      if (!c.risk_signals.includes("CLONING")) continue;
+      const top = c.similar_claims[0];
+      if (top && (!clone || top.similarity_score > clone.similarity)) clone = { claim_id: c.claim_id, partner: top.claim_id, similarity: top.similarity_score };
+    }
     const report = evaluate(store.claims, store.labels);
     const inv = store.investigations;
     const doneStatus = new Set(["CONFIRMED_RISK", "FALSE_POSITIVE", "CLOSED"]);
@@ -56,18 +62,8 @@ export async function GET() {
       narratives_embedded: store.embeddings.size,
       embedding_model: store.meta.embedding_model,
       macro_f1: report.macro.f1,
-      hero: hero
-        ? {
-            claim_id: hero.claim_id,
-            amount: hero.claim_amount,
-            peer_median: hero.approved_tariff,
-            exposure: hero.tariff_difference,
-            score: hero.risk_score,
-            signals: hero.risk_signals.length,
-            clone_partner: clone?.claim_id,
-            clone_similarity: clone?.similarity_score,
-          }
-        : null,
+      spotlight: pickSpotlight(store.claims),
+      clone: clone ?? null,
     };
   });
   return NextResponse.json({ data }, { headers: { "Cache-Control": "public, max-age=60" } });

@@ -307,6 +307,7 @@ export default function ModelPerformancePage() {
                   </td>
                   <td className="py-2.5 px-3 text-right font-mono text-jkn-text">
                     {m.positives}
+                    {m.positives < 10 && <span className="block text-[10px] font-sans text-amber-700" title="Kasus berlabel terlalu sedikit; angka hanya indikatif">sampel kecil</span>}
                   </td>
                   <td className="py-2.5 px-3 text-right font-mono font-semibold text-bpjs-dark">
                     {m.tp}

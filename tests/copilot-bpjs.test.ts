@@ -17,8 +17,9 @@ describe("Copilot: konteks statistik BPJS", () => {
   });
 
   it("klaim yang dibahas membawa posisi terhadap rerata nasional (butir terkutip)", () => {
-    const list = buildContext(getStore(), { question: "Apakah biaya klaim CLM-10293 wajar?" });
-    const b = list.find((i) => i.id === "bpjs:claim:CLM-10293")!;
+    const c = getStore().claims.find((x) => x.diagnoses[0].code === "A09" && x.service.treatment_class === "KELAS_2")!;
+    const list = buildContext(getStore(), { question: `Apakah biaya klaim ${c.claim_id} wajar?` });
+    const b = list.find((i) => i.id === `bpjs:claim:${c.claim_id}`)!;
     expect(b).toBeTruthy();
     expect(b.text).toMatch(/x rerata nasional kelas 2/);
     expect(b.text).toMatch(/peringkat 2 nasional/); // A09 = peringkat 2 di statistik BPJS 2018
@@ -76,9 +77,10 @@ describe("Copilot: konteks statistik BPJS", () => {
   });
 
   it("validator sitasi menerima id bpjs:* yang ada dan membuang yang dikarang", () => {
-    const items = buildContext(getStore(), { question: "biaya klaim CLM-10293" });
-    const v = validateCitations("Biaya 3,9x [bpjs:claim:CLM-10293]. Palsu [bpjs:claim:CLM-99999].", items);
-    expect(v.used).toEqual(["bpjs:claim:CLM-10293"]);
+    const cid = getStore().claims[0].claim_id;
+    const items = buildContext(getStore(), { question: `biaya klaim ${cid}` });
+    const v = validateCitations(`Biaya 3,9x [bpjs:claim:${cid}]. Palsu [bpjs:claim:CLM-99999].`, items);
+    expect(v.used).toEqual([`bpjs:claim:${cid}`]);
     expect(v.removed).toBe(1);
   });
 });
@@ -88,7 +90,7 @@ describe("Copilot: kebijakan tata kelola ditegakkan", () => {
 
   it("mode DETERMINISTIC_ONLY memaksa jawaban tanpa LLM, tetap bersitasi", async () => {
     setGovernancePolicy({ ...defaultPolicy(), copilot_mode: "DETERMINISTIC_ONLY" });
-    const r = await askCopilot(getStore(), { question: "Mengapa klaim CLM-10293 dianggap berisiko?" });
+    const r = await askCopilot(getStore(), { question: `Mengapa klaim ${[...getStore().claims].sort((a, b) => b.risk_score - a.risk_score)[0].claim_id} dianggap berisiko?` });
     expect(r.mode).toBe("deterministic");
     expect(r.fallback_reason).toMatch(/Kebijakan tata kelola/);
     expect(r.grounding.valid_citations).toBeGreaterThan(0);
