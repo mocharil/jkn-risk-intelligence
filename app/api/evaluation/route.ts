@@ -33,6 +33,6 @@ export async function GET(request: NextRequest) {
     handling_time: handling,
     embedding_model: store.meta.embedding_model,
     disclaimer:
-      "Metrik dihitung pada data SINTETIS berlabel yang dibangkitkan dengan pola anomali yang dikenal. Angka ini membuktikan detector bekerja sebagaimana dirancang dan dapat diaudit; BUKAN klaim akurasi pada data klaim riil BPJS, yang memerlukan validasi dengan label investigasi nyata.",
+      "Metrik dihitung pada data SINTETIS berlabel. Penyimpangan disisipkan dengan prevalensi realistis (±6-7%), sebagian sengaja tipis, dan ada klaim sah yang tampak janggal serta klaim tanpa dokumen, sehingga hasilnya tidak sempurna. Angka ini bukan akurasi pada klaim riil BPJS, yang memerlukan validasi dengan label investigasi nyata. Detektor dengan sedikit kasus berlabel (di bawah 10) hanya indikatif.",
   });
 }

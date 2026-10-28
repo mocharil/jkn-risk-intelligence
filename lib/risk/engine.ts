@@ -203,7 +203,7 @@ export function analyzeWithVectors(
 
   const targets = only ? store.claims.filter((c) => only.has(c.claim_id)) : store.claims;
   for (const claim of targets) {
-    const bm = benchmarks.get(primaryCode(claim), claim.service.treatment_class);
+    const bm = benchmarks.get(primaryCode(claim), claim.service.treatment_class, claim.provider.province_code);
     claim.approved_tariff = Math.round(bm.expected_tariff);
     claim.tariff_difference = Math.max(0, claim.claim_amount - claim.approved_tariff);
 

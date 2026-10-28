@@ -6,7 +6,7 @@ import { DashboardShell } from "@/components/layout/DashboardShell";
 import { RiskPill } from "@/components/ui/RiskPill";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { Pagination } from "@/components/ui/Pagination";
-import { FacilityMark, PersonAvatar } from "@/components/ui/Avatar";
+import { FacilityPhoto, facilityPhotoFor, PersonAvatar } from "@/components/ui/Avatar";
 import { Provider } from "@/types/provider";
 import { RiskLevel, RiskType } from "@/types/risk";
 import { INDONESIA_PROVINCES } from "@/lib/data/indonesia-provinces";
@@ -278,10 +278,10 @@ export default function ProvidersListPage() {
 
       {!loading && providers.length > 0 && (
         <div className="bg-surface rounded-2xl border border-jkn-border/90 shadow-card overflow-hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-jkn-divider tabular-nums">
-          <div className="p-5 bg-[#071A12] text-white">
-            <span className="text-sm font-medium text-emerald-100/80">Potensi eksposur faskes</span>
-            <div className="mt-2 text-2xl font-mono font-bold tracking-tight">{formatRupiah(summary.exposure, true)}</div>
-            <div className="mt-2 text-xs text-emerald-100/70">Selisih tarif klaim terflag, {providers.length} faskes</div>
+          <div className="p-5">
+            <span className="text-sm font-medium text-jkn-muted">Potensi eksposur faskes</span>
+            <div className="mt-2 text-2xl font-mono font-bold tracking-tight text-jkn-text">{formatRupiah(summary.exposure, true)}</div>
+            <div className="mt-2 text-xs text-jkn-muted">Selisih tarif klaim terflag, {providers.length} faskes</div>
           </div>
           <div className="p-5">
             <span className="text-sm font-medium text-jkn-muted">Faskes kritis dan tinggi</span>
@@ -412,95 +412,73 @@ export default function ProvidersListPage() {
               const ratio = highRiskRatio(p);
               const delta = peerDelta(p);
               return (
-                <article key={p.provider_id} className="bg-surface rounded-2xl border border-jkn-border/90 hover:border-bpjs/60 shadow-subtle hover:shadow-card transition-all flex flex-col overflow-hidden">
-                  <div className="p-4 flex items-start justify-between gap-3 border-b border-jkn-divider">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <FacilityMark level={p.risk_level} size={40} />
-                      <div className="min-w-0">
-                        <Link href={`/providers/${p.provider_id}`} className="block text-base font-bold text-jkn-text hover:text-bpjs leading-snug truncate">
-                          {p.name}
-                        </Link>
-                        <p className="text-xs text-jkn-muted mt-0.5 inline-flex items-center gap-1 max-w-full">
-                          <MapPin className="w-3 h-3 shrink-0" aria-hidden />
-                          <span className="truncate">
-                            {p.city}, {p.province_name}
-                          </span>
-                        </p>
-                        <p className="text-xs text-jkn-dim mt-0.5 font-mono">
-                          {p.provider_id} · {FACILITY_TYPE_LABELS[p.type] || p.type}
-                        </p>
-                      </div>
+                <article key={p.provider_id} className="group bg-surface rounded-2xl border border-jkn-border/90 hover:border-bpjs/60 shadow-subtle hover:shadow-card transition-all flex flex-col overflow-hidden">
+                  <div className="relative h-32 bg-surface-secondary">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={facilityPhotoFor(p.provider_id)} alt="" aria-hidden="true" loading="lazy" className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
+                    <div className="absolute right-3 top-3 w-12 h-12 rounded-full bg-white/95 flex items-center justify-center" title={`Skor risiko ${p.risk_score}`}>
+                      <svg viewBox="0 0 48 48" className="absolute inset-0 w-12 h-12" role="img" aria-label={`Skor risiko ${p.risk_score}`}>
+                        <circle cx="24" cy="24" r="19" fill="none" stroke="#E4ECE8" strokeWidth="4" />
+                        <circle
+                          cx="24"
+                          cy="24"
+                          r="19"
+                          fill="none"
+                          stroke={p.risk_level === "CRITICAL" ? "#B91C1C" : p.risk_level === "HIGH" ? "#EA580C" : p.risk_level === "MEDIUM" ? "#CA8A04" : "#059669"}
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          strokeDasharray={`${(p.risk_score / 100) * 2 * Math.PI * 19} ${2 * Math.PI * 19}`}
+                          transform="rotate(-90 24 24)"
+                        />
+                      </svg>
+                      <span className="relative text-sm font-semibold text-jkn-text tabular-nums">{p.risk_score}</span>
                     </div>
-                    <RiskPill score={p.risk_score} level={p.risk_level} size="sm" />
                   </div>
 
-                  <div className="p-4 space-y-3.5 flex-1">
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div className="rounded-xl bg-surface-subtle border border-jkn-divider p-3">
-                        <span className="text-xs text-jkn-dim block">Potensi eksposur</span>
-                        <span className="font-mono text-base font-bold text-jkn-text tabular-nums block mt-0.5">{formatRupiah(p.potential_exposure, true)}</span>
-                        <span className={`text-xs font-mono tabular-nums ${delta > 25 ? "text-risk-critical" : delta > 0 ? "text-risk-high" : "text-bpjs"}`}>
+                  <div className="p-4 flex-1 flex flex-col gap-3">
+                    <div className="min-w-0">
+                      <Link href={`/providers/${p.provider_id}`} className="block text-base font-semibold text-jkn-text hover:text-bpjs leading-snug truncate">
+                        {p.name}
+                      </Link>
+                      <p className="text-xs text-jkn-muted mt-0.5 truncate">
+                        {p.city}, {p.province_name} · <span className="font-mono">{p.provider_id}</span> · {FACILITY_TYPE_LABELS[p.type] || p.type}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-3 divide-x divide-jkn-divider rounded-xl border border-jkn-divider tabular-nums">
+                      <div className="px-3 py-2.5">
+                        <span className="text-[11px] text-jkn-dim block">Eksposur</span>
+                        <span className="font-mono text-sm font-semibold text-jkn-text block mt-0.5">{formatRupiah(p.potential_exposure, true)}</span>
+                        <span className={`text-[11px] font-mono ${delta > 25 ? "text-risk-critical" : delta > 0 ? "text-risk-high" : "text-bpjs"}`}>
                           {delta > 0 ? "+" : ""}
-                          {delta}% vs median peer
+                          {delta}% peer
                         </span>
                       </div>
-                      <div className="rounded-xl bg-surface-subtle border border-jkn-divider p-3">
-                        <span className="text-xs text-jkn-dim block">Klaim berisiko</span>
-                        <span className="font-mono text-base font-bold text-jkn-text tabular-nums block mt-0.5">
-                          {formatNumber(p.high_risk_claims)} <span className="text-xs font-normal text-jkn-dim">dari {formatNumber(p.total_claims)}</span>
+                      <div className="px-3 py-2.5">
+                        <span className="text-[11px] text-jkn-dim block">Klaim berisiko</span>
+                        <span className="font-mono text-sm font-semibold text-jkn-text block mt-0.5">
+                          {formatNumber(p.high_risk_claims)}
+                          <span className="text-[11px] font-normal text-jkn-dim">/{formatNumber(p.total_claims)}</span>
                         </span>
-                        <div className="mt-1.5 h-1.5 w-full rounded-full bg-surface-secondary overflow-hidden">
-                          <div className={`h-full rounded-full ${p.risk_level === "CRITICAL" ? "bg-risk-critical" : p.risk_level === "HIGH" ? "bg-risk-high" : "bg-bpjs"}`} style={{ width: `${Math.min(100, ratio)}%` }} />
-                        </div>
+                        <span className="text-[11px] font-mono text-jkn-muted">{Math.round(ratio)}%</span>
+                      </div>
+                      <div className="px-3 py-2.5">
+                        <span className="text-[11px] text-jkn-dim block">Vs nasional</span>
+                        <span className={`font-mono text-sm font-semibold block mt-0.5 ${ratioTone(p.national?.cost_ratio)}`} title="Tagihan faskes dibagi rerata nasional BPJS 2018 untuk campuran kelas rawat yang sama">
+                          {ratioText(p.national?.cost_ratio)}
+                        </span>
+                        <span className="text-[11px] text-jkn-muted">biaya</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className="text-jkn-muted">Biaya vs rerata nasional</span>
-                      <span className={`font-mono font-semibold tabular-nums ${ratioTone(p.national?.cost_ratio)}`} title="Tagihan faskes dibagi rerata nasional BPJS 2018 untuk campuran kelas rawat yang sama">
-                        {ratioText(p.national?.cost_ratio)}
-                      </span>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div>{dominantLabel(p.dominant_risk_type)}</div>
+                      {p.national?.small_sample && <SmallSampleBadge n={p.national.claims} />}
                     </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <span className="text-xs text-jkn-dim block mb-1">Pola dominan</span>
-                        {dominantLabel(p.dominant_risk_type)}
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs text-jkn-dim block mb-1">Tren skor bulanan</span>
-                        <Sparkline trend={p.monthly_risk_trend} level={p.risk_level} />
-                      </div>
-                    </div>
-
-                    <Composition comp={p.risk_composition} />
-
-                    {p.national?.small_sample && <SmallSampleBadge n={p.national.claims} />}
-
-                    {p.doctors && p.doctors.length > 0 && (
-                      <div className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl bg-surface-subtle border border-jkn-divider">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="flex -space-x-1 shrink-0">
-                            {p.doctors.slice(0, 3).map((d) => (
-                              <span key={d.doctor_id} className="ring-2 ring-white rounded-full" title={`${d.name}, ${d.specialty}, skor ${d.risk_score}`}>
-                                <PersonAvatar name={d.name} size={30} />
-                              </span>
-                            ))}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold text-jkn-text truncate">{p.doctors[0].name}</div>
-                            <div className="text-xs text-jkn-muted truncate">
-                              {p.doctors[0].specialty}
-                              {p.doctors.length > 1 ? `, +${p.doctors.length - 1} DPJP` : ""}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
-                  <div className="px-4 py-3 border-t border-jkn-divider flex items-center justify-between gap-2">
-                    <button type="button" onClick={() => setInspect(p)} className="h-8 px-3 rounded-xl border border-jkn-border bg-surface-subtle hover:bg-surface-secondary text-sm font-semibold text-jkn-muted hover:text-jkn-text inline-flex items-center gap-1.5 transition-colors">
+                  <div className="px-4 pb-4 flex items-center justify-between gap-2">
+                    <button type="button" onClick={() => setInspect(p)} className="h-8 px-3 rounded-xl border border-jkn-border hover:bg-surface-secondary text-sm font-semibold text-jkn-muted hover:text-jkn-text inline-flex items-center gap-1.5 transition-colors">
                       <Eye className="w-3.5 h-3.5" aria-hidden />
                       <span>Ringkasan</span>
                     </button>
@@ -538,7 +516,7 @@ export default function ProvidersListPage() {
                     <tr key={p.provider_id} className="hover:bg-surface-subtle/80 transition-colors">
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <FacilityMark level={p.risk_level} size={32} />
+                          <FacilityPhoto id={p.provider_id} level={p.risk_level} size={32} rounded="rounded-lg" />
                           <div className="min-w-0">
                             <div className="font-semibold text-jkn-text">{p.name}</div>
                             <div className="text-xs text-jkn-muted">
@@ -592,7 +570,7 @@ export default function ProvidersListPage() {
             <div>
               <div className="p-5 border-b border-jkn-divider flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
-                  <FacilityMark level={inspect.risk_level} size={44} />
+                  <FacilityPhoto id={inspect.provider_id} level={inspect.risk_level} size={48} />
                   <div className="min-w-0">
                     <h2 className="text-lg font-bold text-jkn-text leading-snug">{inspect.name}</h2>
                     <p className="text-sm text-jkn-muted">

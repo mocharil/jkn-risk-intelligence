@@ -76,6 +76,9 @@ async function main() {
   check("login investigator", (await inv.login("investigator@arsa.id")).status === 200);
   check("login supervisor", (await sup.login("supervisor@arsa.id")).status === 200);
   check("login admin", (await adm.login("admin@arsa.id")).status === 200);
+  // klaim dan kasus teratas diambil dari data, bukan ID tulis tangan
+  const TOP = (await sup.json("/api/claims?limit=1")).body.data[0].claim_id;
+  const INV = (await sup.json("/api/investigations?limit=1")).body.data[0].investigation_id;
 
   console.log("\n[2] Status AI (provider OpenAI-compatible tiruan)");
   const st = (await inv.json("/api/system/status")).body;
@@ -83,22 +86,22 @@ async function main() {
   check("embedding tersedia dari provider", st.ai.embedding_available === true);
 
   console.log("\n[3] RBAC");
-  const fin = { determination: { verdict: "CONFIRMED_RISK", rationale: "Registri IBS tidak memuat tindakan (DOC-10293-04)" } };
-  check("investigator ditolak keputusan final (403)", (await inv.patch("/api/investigations/INV-2026-010293", fin)).status === 403);
-  const ok = await sup.patch("/api/investigations/INV-2026-010293", fin);
+  const fin = { determination: { verdict: "CONFIRMED_RISK", rationale: "Registri IBS tidak memuat tindakan (bukti dokumen)" } };
+  check("investigator ditolak keputusan final (403)", (await inv.patch(`/api/investigations/${INV}`, fin)).status === 403);
+  const ok = await sup.patch(`/api/investigations/${INV}`, fin);
   check("supervisor boleh keputusan final", ok.status === 200 && ok.body.data.status === "CONFIRMED_RISK");
   check("investigator boleh upload dataset (izin dataset.upload); permintaan kosong ditolak 400, bukan 403", (await inv.req("/api/datasets", { method: "POST" })).status === 400);
   check("non-admin ditolak reset demo (403)", (await sup.post("/api/demo/reset", {})).status === 403);
 
   console.log("\n[4] Copilot via LLM: sitasi tervalidasi");
-  const c1 = (await inv.post("/api/copilot", { question: "Mengapa klaim CLM-10293 dianggap kritis?" })).body;
+  const c1 = (await inv.post("/api/copilot", { question: `Mengapa klaim ${TOP} dianggap kritis?` })).body;
   check("mode llm dengan sitasi valid", c1.mode === "llm" && c1.grounding.valid_citations >= 1, JSON.stringify(c1.grounding));
   check("sitasi dinomori [n] dan punya bukti", /\[1\]/.test(c1.answer) && c1.evidence_citations.length >= 1);
   const c2 = (await inv.post("/api/copilot", { question: "HALUSINASI tolong" })).body;
   check("sitasi karangan ditolak -> fallback deterministik", c2.mode === "deterministic" && /sitasi/i.test(c2.fallback_reason || ""), JSON.stringify({ m: c2.mode, r: c2.fallback_reason }));
 
   console.log("\n[5] Copilot streaming (SSE)");
-  const sr = await inv.req("/api/copilot?stream=1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: "Mengapa klaim CLM-10293 dianggap kritis?" }) });
+  const sr = await inv.req("/api/copilot?stream=1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: `Mengapa klaim ${TOP} dianggap kritis?` }) });
   const raw = await sr.text();
   const events = raw.split("\n\n").filter((l) => l.startsWith("data:")).map((l) => JSON.parse(l.slice(5)));
   check("urutan event start -> delta+ -> final", events[0]?.type === "start" && events.some((e) => e.type === "delta") && events[events.length - 1]?.type === "final");
@@ -108,7 +111,7 @@ async function main() {
   check("streaming: jawaban halusinasi diganti deterministik pada final", sev[sev.length - 1].response.mode === "deterministic");
 
   console.log("\n[6] Penjelasan temuan & briefing");
-  const ex = (await inv.json("/api/claims/CLM-10293/explain", { method: "POST" })).body;
+  const ex = (await inv.json(`/api/claims/${TOP}/explain`, { method: "POST" })).body;
   check("penjelasan oleh LLM bersitasi dokumen", ex.explanation_mode === "llm" && ex.data.risk_findings.every((f) => f.ai_explanation?.source === "llm"), JSON.stringify(ex.fallback_reason));
   const t0 = Date.now();
   const dash = (await inv.json("/api/dashboard")).body;
@@ -139,7 +142,7 @@ async function main() {
   console.log("\n[8] Audit, laporan, metrik");
   const au = (await sup.json("/api/audit?limit=5")).body;
   check("hash chain valid", au.verification.valid === true && au.total > 3);
-  const pdf = await sup.req("/api/reports/INV-2026-010293/pdf");
+  const pdf = await sup.req(`/api/reports/${INV}/pdf`);
   const bytes = Buffer.from(await pdf.arrayBuffer());
   check("PDF laporan valid (header %PDF)", pdf.status === 200 && bytes.slice(0, 4).toString() === "%PDF");
   const ev = (await sup.json("/api/evaluation")).body;

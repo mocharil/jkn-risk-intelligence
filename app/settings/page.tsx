@@ -319,124 +319,60 @@ export default function SettingsPage() {
 
   return (
     <DashboardShell>
-      {/* Top Executive Governance Header */}
-      <div className="relative overflow-hidden rounded-2xl border border-emerald-900/15 bg-gradient-to-br from-[#071A12] via-[#0B271B] to-[#0E3323] p-5 md:p-6 text-white shadow-sm">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-20"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 85% 20%, rgba(52,211,153,0.35), transparent 45%), radial-gradient(circle at 15% 80%, rgba(16,185,129,0.2), transparent 40%)",
-          }}
-        />
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[11px] font-semibold tracking-wide">
-                <Shield className="w-3 h-3" /> Tata Kelola &amp; Otorisasi Audit
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-emerald-100 text-[11px] font-medium">
-                <Lock className="w-3 h-3 text-emerald-300" /> UU PDP No. 27/2022 Patuh
-              </span>
-            </div>
-            <h1 className="text-lg md:text-xl font-bold tracking-tight text-white">
-              Pengaturan Kebijakan, Hak Akses (RBAC) &amp; Audit Trail
-            </h1>
-            <p className="text-xs text-emerald-100/75 max-w-2xl leading-relaxed">
-              Atur parameter kebijakan operasional audit klaim, kelola peran dan akses personel
-              verifikator/auditor, serta pantau jejak audit berantai SHA-256 yang tidak dapat
-              dimanipulasi (*append-only*).
-            </p>
-          </div>
+      {/* Judul bagian: satu h1, satu baris keterangan, aksi nyata di kanan */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold text-jkn-text">Kebijakan &amp; audit</h1>
+          <p className="mt-1 text-sm text-jkn-muted max-w-2xl">
+            Atur ambang antrean dan mode Copilot, kelola peran personel, dan periksa jejak audit berantai SHA-256 yang hanya bisa ditambah.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setRevealHash((v) => !v)}
+            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-md border border-jkn-border text-sm font-medium text-jkn-text hover:bg-frame"
+          >
+            {!revealHash ? <Eye className="w-3.5 h-3.5" aria-hidden /> : <EyeOff className="w-3.5 h-3.5" aria-hidden />}
+            <span>{!revealHash ? "Tampilkan hash penuh" : "Samarkan hash"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => load(true)}
+            disabled={refreshing}
+            className="h-8 inline-flex items-center gap-1.5 px-3 rounded-md bg-[#1d1f20] text-white text-sm font-medium hover:bg-black disabled:opacity-60"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} aria-hidden />
+            <span>{refreshing ? "Memuat" : "Muat ulang"}</span>
+          </button>
+        </div>
+      </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setRevealHash((v) => !v)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/15 bg-white/10 hover:bg-white/15 text-xs font-medium text-emerald-50 transition-colors"
-            >
-              {!revealHash ? (
-                <>
-                  <Eye className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Tampilkan Hash Penuh</span>
-                </>
-              ) : (
-                <>
-                  <EyeOff className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Samarkan Hash</span>
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => load(true)}
-              disabled={refreshing}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#00A859] hover:bg-[#00924d] text-white text-xs font-semibold shadow-sm transition-colors disabled:opacity-60"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              <span>{refreshing ? "Memuat..." : "Muat Ulang"}</span>
-            </button>
+      {/* Tiga angka dalam satu wadah */}
+      <div className="rounded-xl border border-jkn-divider overflow-hidden grid grid-cols-1 sm:grid-cols-3 gap-px bg-jkn-divider">
+        <div className="bg-white px-5 py-4">
+          <div className="text-sm text-jkn-muted">Kebijakan antrean</div>
+          <div className="mt-1 text-lg text-jkn-text tabular-nums">
+            Skor ≥ {queueMinScore}, SLA {slaTargetHours} jam
+          </div>
+          <div className="mt-1 text-xs text-jkn-muted">Copilot: {copilotMode === "HYBRID_CITATION" ? "AI hibrida dengan sitasi verbatim" : "deterministik murni"}</div>
+        </div>
+        <div className="bg-white px-5 py-4">
+          <div className="text-sm text-jkn-muted">Personel dan peran</div>
+          <div className="mt-1 text-lg text-jkn-text tabular-nums">
+            {isAdmin ? `${users.filter((u) => u.active).length} aktif dari ${users.length}` : "Hanya administrator"}
+          </div>
+          <div className="mt-1 text-xs text-jkn-muted">
+            Sesi Anda: {user?.name || "-"} ({role ? ROLE_LABEL[role] : "-"})
           </div>
         </div>
-
-        {/* 3 Focused KPI Strip */}
-        <div className="relative mt-5 pt-4 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl bg-white/[0.06] border border-white/10 px-4 py-3">
-            <div className="flex items-center justify-between text-[11px] text-emerald-100/70">
-              <span>Kebijakan Operasional Aktif</span>
-              <Sliders className="w-3.5 h-3.5 text-emerald-300" />
-            </div>
-            <div className="mt-1 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-              <span className="text-sm font-bold text-white">
-                Skor Antrean ≥ {queueMinScore} · SLA {slaTargetHours} Jam
-              </span>
-            </div>
-            <div className="mt-0.5 text-[11px] text-emerald-200/65">
-              Mode:{" "}
-              {copilotMode === "HYBRID_CITATION"
-                ? "AI Hibrida + Sitasi Verbatim"
-                : "Deterministik Murni"}
-            </div>
+        <div className="bg-white px-5 py-4">
+          <div className="text-sm text-jkn-muted">Integritas jejak audit</div>
+          <div className="mt-1 flex items-center gap-2 text-lg text-jkn-text tabular-nums">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${status?.audit.valid !== false ? "bg-bpjs" : "bg-risk-critical"}`} aria-hidden />
+            <span>{status ? (status.audit.valid ? `Rantai valid, ${status.audit.length} entri` : `Rusak pada #${status.audit.broken_at_seq}`) : "Memverifikasi"}</span>
           </div>
-
-          <div className="rounded-xl bg-white/[0.06] border border-white/10 px-4 py-3">
-            <div className="flex items-center justify-between text-[11px] text-emerald-100/70">
-              <span>Personel &amp; Otorisasi (RBAC)</span>
-              <Users className="w-3.5 h-3.5 text-emerald-300" />
-            </div>
-            <div className="mt-1 text-sm font-bold text-white">
-              {isAdmin ? `${users.filter((u) => u.active).length} Personel Aktif (${users.length} Terdaftar)` : "Hanya Administrator"}
-            </div>
-            <div className="mt-0.5 text-[11px] text-emerald-200/65">
-              Sesi Anda: {user?.name || "Auditor"} ({role ? ROLE_LABEL[role] : "Investigator"})
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-white/[0.06] border border-white/10 px-4 py-3">
-            <div className="flex items-center justify-between text-[11px] text-emerald-100/70">
-              <span>Integritas Jejak Audit SHA-256</span>
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-            </div>
-            <div className="mt-1 flex items-center gap-1.5">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  status?.audit.valid !== false
-                    ? "bg-emerald-400 shadow-[0_0_8px_#34d399]"
-                    : "bg-rose-400"
-                }`}
-              />
-              <span className="text-sm font-bold text-white">
-                {status
-                  ? status.audit.valid
-                    ? `Rantai Valid · ${status.audit.length} Entri`
-                    : `Rusak pada #${status.audit.broken_at_seq}`
-                  : "Memverifikasi..."}
-              </span>
-            </div>
-            <div className="mt-0.5 text-[11px] text-emerald-200/65">
-              Catatan Kriptografis Append-Only
-            </div>
-          </div>
+          <div className="mt-1 text-xs text-jkn-muted">Catatan kriptografis, hanya bisa ditambah</div>
         </div>
       </div>
 
@@ -477,10 +413,10 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-jkn-text">
-                    Kebijakan Operasional &amp; Privasi Audit
+                    Kebijakan
                   </h3>
                   <p className="text-[11px] text-jkn-muted">
-                    Pengaturan interaktif; setiap perubahan otomatis tercatat di Audit Trail
+                    Setiap perubahan tercatat di jejak audit
                   </p>
                 </div>
               </div>
@@ -499,70 +435,16 @@ export default function SettingsPage() {
               </div>
             )}
             <fieldset disabled={!isAdmin} className="space-y-5 min-w-0 border-0 p-0 m-0 disabled:opacity-80">
-            {/* A. Mode Kerja AI Copilot */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-jkn-text">
-                1. Mode Kerja Asisten AI Copilot &amp; Penjelasan Bukti
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setCopilotMode("HYBRID_CITATION")}
-                  className={`text-left rounded-xl p-3 border transition-all ${
-                    copilotMode === "HYBRID_CITATION"
-                      ? "bg-bpjs-soft/70 border-bpjs ring-1 ring-bpjs/30"
-                      : "bg-surface-secondary/50 border-jkn-divider hover:bg-surface-secondary"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-jkn-text flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-bpjs" />
-                      AI Hibrida + Sitasi
-                    </span>
-                    <span
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                        copilotMode === "HYBRID_CITATION"
-                          ? "border-bpjs bg-bpjs text-white"
-                          : "border-jkn-border bg-white"
-                      }`}
-                    >
-                      {copilotMode === "HYBRID_CITATION" && <Check className="w-2.5 h-2.5" />}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-jkn-muted leading-snug">
-                    Menggunakan penalaran LLM dengan validasi kutipan rekam medis verbatim.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setCopilotMode("DETERMINISTIC_ONLY")}
-                  className={`text-left rounded-xl p-3 border transition-all ${
-                    copilotMode === "DETERMINISTIC_ONLY"
-                      ? "bg-bpjs-soft/70 border-bpjs ring-1 ring-bpjs/30"
-                      : "bg-surface-secondary/50 border-jkn-divider hover:bg-surface-secondary"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-jkn-text flex items-center gap-1.5">
-                      <Lock className="w-3.5 h-3.5 text-bpjs-dark" />
-                      Deterministik Murni
-                    </span>
-                    <span
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                        copilotMode === "DETERMINISTIC_ONLY"
-                          ? "border-bpjs bg-bpjs text-white"
-                          : "border-jkn-border bg-white"
-                      }`}
-                    >
-                      {copilotMode === "DETERMINISTIC_ONLY" && <Check className="w-2.5 h-2.5" />}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-jkn-muted leading-snug">
-                    Tanpa panggilan AI eksternal; 100% aturan klinis INA-CBG &amp; vektor lokal.
-                  </p>
-                </button>
+              <span className="block text-sm font-medium text-jkn-text">Mode Copilot</span>
+              <div className="inline-flex rounded-lg bg-frame p-0.5" role="radiogroup" aria-label="Mode Copilot">
+                {([["HYBRID_CITATION", "AI dengan sitasi"], ["DETERMINISTIC_ONLY", "Aturan saja"]] as const).map(([k, label]) => (
+                  <button key={k} type="button" role="radio" aria-checked={copilotMode === k} onClick={() => setCopilotMode(k)} className={`h-8 px-3.5 rounded-md text-sm font-medium transition-colors ${copilotMode === k ? "bg-white text-jkn-text" : "text-jkn-muted hover:text-jkn-text"}`}>
+                    {label}
+                  </button>
+                ))}
               </div>
+              <p className="text-xs text-jkn-muted">{copilotMode === "HYBRID_CITATION" ? "Jawaban ditulis model bahasa; setiap kutipan dicek terhadap data." : "Tanpa model bahasa; jawaban disusun dari aturan dan data."}</p>
             </div>
 
             {/* B. Ambang Skor Antrean & Target SLA */}
@@ -570,7 +452,7 @@ export default function SettingsPage() {
               <div className="rounded-xl bg-surface-secondary/60 border border-jkn-divider p-3.5 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-jkn-text">
-                    2. Skor Minimum Antrean
+                    Skor minimum antrean
                   </label>
                   <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-bpjs text-white">
                     ≥ {queueMinScore} / 100
@@ -586,45 +468,39 @@ export default function SettingsPage() {
                   className="w-full accent-bpjs cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] text-jkn-muted">
-                  <span>50 (Sensitif)</span>
-                  <span>75 (Standar)</span>
-                  <span>95 (Ketat)</span>
+                  <span>50</span>
+                  <span>75</span>
+                  <span>95</span>
                 </div>
               </div>
 
               <div className="rounded-xl bg-surface-secondary/60 border border-jkn-divider p-3.5 space-y-2">
                 <label className="block text-xs font-bold text-jkn-text">
-                  3. Target SLA Penyelesaian Audit
+                  Target SLA
                 </label>
                 <select
                   value={slaTargetHours}
                   onChange={(e) => setSlaTargetHours(Number(e.target.value))}
                   className="w-full px-3 py-2 rounded-xl border border-jkn-border bg-white text-xs font-semibold text-jkn-text focus:outline-none focus:border-bpjs"
                 >
-                  <option value={24}>24 Jam (Prioritas Cepat)</option>
-                  <option value={48}>48 Jam (Standar Nasional JKN)</option>
-                  <option value={72}>72 Jam (Investigasi Kompleks)</option>
-                  <option value={120}>5 Hari Kerja (Komite Medis)</option>
+                  <option value={24}>24 jam</option>
+                  <option value={48}>48 jam</option>
+                  <option value={72}>72 jam</option>
+                  <option value={120}>5 hari kerja</option>
                 </select>
-                <p className="text-[10px] text-jkn-muted">
-                  Digunakan sebagai batas peringatan waktu tunggu pada antrean klaim.
-                </p>
               </div>
             </div>
 
             {/* C. Toggle Kebijakan Privasi UU PDP & Kepatuhan */}
             <div className="space-y-2.5 pt-1">
               <div className="text-xs font-bold text-jkn-text">
-                4. Perlindungan Data Sensitif (UU PDP) &amp; Kepatuhan
+                Privasi dan kepatuhan
               </div>
 
               <label className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-secondary/50 border border-jkn-divider cursor-pointer hover:bg-surface-secondary transition-colors">
                 <div>
                   <div className="text-xs font-semibold text-jkn-text">
-                    Samarkan Email Personel &amp; Identitas Pasien (Masking PII)
-                  </div>
-                  <div className="text-[11px] text-jkn-muted">
-                    Menyembunyikan karakter tengah email dan menjaga anonimisasi HMAC-SHA256
+                    Samarkan email dan identitas pasien
                   </div>
                 </div>
                 <input
@@ -638,10 +514,7 @@ export default function SettingsPage() {
               <label className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-secondary/50 border border-jkn-divider cursor-pointer hover:bg-surface-secondary transition-colors">
                 <div>
                   <div className="text-xs font-semibold text-jkn-text">
-                    Sembunyikan Kredensial Cloud &amp; Ringkas Hash Kriptografis
-                  </div>
-                  <div className="text-[11px] text-jkn-muted">
-                    Mencegah eksposur nama proyek internal dan kunci layanan di layar presentasi
+                    Ringkas hash dan sembunyikan kredensial
                   </div>
                 </div>
                 <input
@@ -655,10 +528,7 @@ export default function SettingsPage() {
               <label className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-secondary/50 border border-jkn-divider cursor-pointer hover:bg-surface-secondary transition-colors">
                 <div>
                   <div className="text-xs font-semibold text-jkn-text">
-                    Wajibkan Alasan Tertulis pada Setiap Keputusan Klaim
-                  </div>
-                  <div className="text-[11px] text-jkn-muted">
-                    Supervisor wajib mencantumkan catatan bukti sebelum menyetujui/menolak klaim
+                    Wajibkan alasan tertulis pada keputusan klaim
                   </div>
                 </div>
                 <input
@@ -683,8 +553,8 @@ export default function SettingsPage() {
                 <Save className="w-3.5 h-3.5" />
                 <span>
                   {savingPolicy
-                    ? "Menyimpan & Menyegel Hash..."
-                    : "Simpan Kebijakan & Catat ke Audit Trail"}
+                    ? "Menyimpan"
+                    : "Simpan kebijakan"}
                 </span>
               </button>
             </div>
@@ -699,10 +569,10 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-jkn-text">
-                    Manajemen Personel &amp; Peran (RBAC)
+                    Personel dan peran
                   </h3>
                   <p className="text-[11px] text-jkn-muted">
-                    Ubah peran otorisasi, status aktif, atau tambahkan personel auditor baru
+                    Ubah peran, status aktif, atau tambah personel
                   </p>
                 </div>
               </div>
@@ -854,27 +724,6 @@ export default function SettingsPage() {
               })}
             </div>
 
-            {/* Compact Role Capabilities Summary */}
-            <div className="rounded-xl bg-surface-secondary/60 border border-jkn-divider p-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-[11px]">
-              <div>
-                <div className="font-bold text-jkn-text">Investigator</div>
-                <div className="text-jkn-muted leading-snug">
-                  Bedah bukti medis, graf relasi, &amp; konsultasi AI Copilot.
-                </div>
-              </div>
-              <div>
-                <div className="font-bold text-jkn-text">Supervisor</div>
-                <div className="text-jkn-muted leading-snug">
-                  Otorisasi keputusan klaim, kalibrasi detektor, &amp; dosier PDF.
-                </div>
-              </div>
-              <div>
-                <div className="font-bold text-jkn-text">Administrator</div>
-                <div className="text-jkn-muted leading-snug">
-                  Manajemen personel RBAC, kebijakan sistem, &amp; verifikasi audit.
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -888,10 +737,10 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-jkn-text">
-                    Jejak Audit Kriptografis (SHA-256)
+                    Jejak audit
                   </h3>
                   <p className="text-[11px] text-jkn-muted">
-                    Bukti hukum &amp; forensik atas setiap keputusan klaim dan perubahan kebijakan
+                    Rantai SHA-256, hanya bisa ditambah
                   </p>
                 </div>
               </div>
@@ -987,71 +836,43 @@ export default function SettingsPage() {
             </div>
 
             <div className="text-[11px] text-jkn-muted">
-              Menampilkan {filteredAudit.length} dari {audit.length} entri terbaru ({auditTotal} total dalam rantai).
+              {filteredAudit.length} dari {auditTotal} entri
             </div>
             {/* Audit Entries Timeline */}
-            <div className="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
+            <ul className="divide-y divide-jkn-divider max-h-[580px] overflow-y-auto pr-1">
               {filteredAudit.map((e) => (
-                <div
-                  key={e.seq}
-                  className="p-3.5 rounded-xl bg-surface-secondary/60 hover:bg-surface-secondary border border-jkn-divider transition-colors text-xs space-y-1.5"
-                >
+                <li key={e.seq} className="py-2.5 text-xs">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-[11px] font-bold text-jkn-muted">
-                        #{e.seq}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[11px] text-jkn-dim tabular-nums shrink-0">#{e.seq}</span>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border shrink-0 ${getActionBadgeStyle(e.action)}`}>{e.action}</span>
+                      <span className="text-jkn-text font-medium truncate">
+                        {e.actor} <span className="text-jkn-muted font-normal">({ROLE_LABEL[e.actor_role as Role] || e.actor_role})</span>
                       </span>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${getActionBadgeStyle(
-                          e.action
-                        )}`}
-                      >
-                        {e.action}
-                      </span>
-                      {e.claim_id && e.claim_id !== "—" && (
-                        <span className="font-mono text-[11px] font-semibold text-bpjs-dark bg-white px-2 py-0.5 rounded border border-jkn-border">
-                          {e.claim_id}
-                        </span>
-                      )}
                     </div>
-                    <span className="text-[11px] text-jkn-dim shrink-0">
-                      {formatRelativeTime(e.timestamp)}
-                    </span>
+                    <span className="text-[11px] text-jkn-dim shrink-0">{formatRelativeTime(e.timestamp)}</span>
                   </div>
-
-                  <div className="text-[11px] text-jkn-text font-medium">
-                    Oleh: <span className="font-bold">{e.actor}</span>{" "}
-                    <span className="text-jkn-muted font-normal">
-                      ({ROLE_LABEL[e.actor_role as Role] || e.actor_role})
-                    </span>
-                  </div>
-
-                  {e.justification && e.justification !== "—" && (
-                    <div className="text-[11px] italic text-jkn-muted bg-white/90 rounded-lg px-2.5 py-1.5 border border-jkn-divider">
-                      &ldquo;{e.justification}&rdquo;
-                    </div>
+                  {((e.claim_id && e.claim_id !== "—") || (e.justification && e.justification !== "—")) && (
+                    <p className="mt-1 text-[11px] text-jkn-muted line-clamp-1" title={e.justification}>
+                      {e.claim_id && e.claim_id !== "—" ? <span className="text-bpjs-dark font-medium">{e.claim_id}</span> : null}
+                      {e.claim_id && e.claim_id !== "—" && e.justification && e.justification !== "—" ? " · " : ""}
+                      {e.justification && e.justification !== "—" ? e.justification : ""}
+                    </p>
                   )}
-
-                  <div className="flex items-center justify-between gap-2 pt-0.5">
-                    <span className="font-mono text-[10px] text-jkn-dim truncate">
-                      sha256: {maskHash(e.hash, revealHash || !privacyRedaction)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(e.hash, `seq-${e.seq}`)}
-                      className="text-[10px] text-bpjs-dark hover:underline shrink-0 font-semibold"
-                    >
-                      {copiedHash === `seq-${e.seq}` ? "Tersalin" : "Salin Hash"}
+                  <div className="mt-0.5 flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-jkn-dim truncate tabular-nums">sha256 {maskHash(e.hash, revealHash || !privacyRedaction)}</span>
+                    <button type="button" onClick={() => copyToClipboard(e.hash, `seq-${e.seq}`)} className="text-[10px] text-bpjs-dark hover:underline shrink-0 font-semibold">
+                      {copiedHash === `seq-${e.seq}` ? "Tersalin" : "Salin hash"}
                     </button>
                   </div>
-                </div>
+                </li>
               ))}
               {filteredAudit.length === 0 && (
                 <div className="py-10 text-center text-xs text-jkn-muted bg-surface-secondary/40 rounded-xl border border-dashed border-jkn-border">
                   Tidak ada entri audit yang sesuai dengan filter.
                 </div>
               )}
-            </div>
+            </ul>
           </div>
         </div>
       </div>

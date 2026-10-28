@@ -17,7 +17,19 @@ export interface PublicStats {
   top_providers: Array<{ name: string; risk_score: number; high_risk_claims: number; total_claims: number; exposure: number; dominant_risk_type: string }>;
   top_claims: Array<{ claim_id: string; risk_score: number; signals: string[]; exposure: number }>;
   audit: { entries: number; valid: boolean };
-  hero: { claim_id?: string; clone_similarity?: number } | null;
+  clone: { claim_id: string; partner: string; similarity: number } | null;
+  spotlight: {
+    claim_id: string;
+    provider: { name: string; city: string };
+    diagnosis: { code: string; description: string };
+    los: number;
+    score: number;
+    amount: number;
+    finding: { risk_type: string; title: string; summary: string };
+    billed: { description: string; code: string; cost: number } | null;
+    evidence: { evidence_id: string; title: string; date: string; excerpt: string } | null;
+    qa: { question: string; answer: Array<{ text: string; cite?: string }> };
+  } | null;
 }
 
 export const RISK_LABEL: Record<string, string> = {

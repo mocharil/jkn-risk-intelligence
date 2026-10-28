@@ -116,9 +116,8 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
         label: n.label,
         shape: getNodeShape(n.type),
         color: getNodeColor(n.type, n.risk_level),
-        font: { color: "#FFFFFF", size: 12, face: "Inter, sans-serif", bold: { color: "#FFFFFF" } },
+        font: { color: ["box", "ellipse"].includes(getNodeShape(n.type)) ? "#FFFFFF" : "#344054", size: 13, face: "Inter, sans-serif" },
         margin: { top: 8, right: 12, bottom: 8, left: 12 },
-        shadow: { enabled: true, color: "rgba(0,0,0,0.15)", size: 6, x: 2, y: 2 },
       }))
     );
 
@@ -210,21 +209,30 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
               {graph ? `${graph.stats.flagged} klaim berisiko tinggi` : "memuat…"}
             </span>
           </h3>
-          <p className="text-xs text-jkn-muted mt-0.5">
-            Relasi dokter DPJP, faskes, klaim anomali, pasien (pseudonim), diagnosis, dan tindakan tanpa jejak dokumen, dibangun dari data analisis.
+          <p className="text-sm text-jkn-text mt-1">
+            {graph
+              ? (() => {
+                  const c = (t: string) => graph.nodes.filter((n) => n.type === t).length;
+                  const clustered = graph.nodes.filter((n) => n.cluster);
+                  const cc = (t: string) => clustered.filter((n) => n.type === t).length;
+                  return clustered.length > 0
+                    ? `Klaster anomali menghubungkan ${cc("CLAIM")} klaim, ${cc("DOCTOR")} dokter, dan ${cc("PROVIDER")} faskes. Seluruh graf memuat ${c("CLAIM")} klaim, ${c("DOCTOR")} dokter, ${c("PROVIDER")} faskes, dan ${c("PATIENT")} pasien (pseudonim).`
+                    : `Graf memuat ${c("CLAIM")} klaim, ${c("DOCTOR")} dokter, ${c("PROVIDER")} faskes, dan ${c("PATIENT")} pasien (pseudonim). Tidak ada klaster anomali.`;
+                })()
+              : "Membangun graf dari data analisis."}
           </p>
         </div>
 
         {/* Legenda: warna dan bentuk sama dengan graf */}
-        <ul className="flex items-center gap-x-3 gap-y-1 text-xs text-jkn-muted bg-surface-secondary px-3 py-1.5 rounded-lg border border-jkn-border flex-wrap" aria-label="Legenda graf">
+        <ul className="flex items-center gap-x-3 gap-y-1 text-xs text-jkn-muted flex-wrap" aria-label="Legenda graf">
           {[
-            ["#00A651", "Faskes (kotak)"],
-            ["#08783E", "Dokter (oval)"],
+            ["#00A651", "Faskes"],
+            ["#08783E", "Dokter"],
             ["#D92D20", "Klaim kritis"],
             ["#1689C8", "Klaim lain"],
-            ["#475467", "Pasien (titik)"],
-            ["#7A5AF8", "Diagnosis (belah ketupat)"],
-            ["#F04438", "Tindakan tanpa jejak (segitiga)"],
+            ["#475467", "Pasien"],
+            ["#7A5AF8", "Diagnosis"],
+            ["#F04438", "Tindakan tanpa jejak"],
           ].map(([c, l]) => (
             <li key={l} className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: c }} aria-hidden />
@@ -292,7 +300,7 @@ export const VisNetworkGraph: React.FC<VisNetworkGraphProps> = ({
       </div>
 
       {/* Network Canvas Container */}
-      <div className="relative w-full h-[420px] bg-gradient-to-b from-[#F2F8F5]/50 to-white rounded-xl border border-jkn-divider overflow-hidden shadow-inner">
+      <div className="relative w-full h-[520px] bg-white rounded-xl border border-jkn-divider overflow-hidden">
         <div
           ref={containerRef}
           role="img"

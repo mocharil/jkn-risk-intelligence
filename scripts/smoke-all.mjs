@@ -5,7 +5,7 @@ const BASE = process.argv[2] || "http://localhost:3000";
 const PASSWORD = process.env.SMOKE_PASSWORD || process.env.DEMO_PASSWORD || "Arsa#2026";
 const USERS = (process.env.SMOKE_USERS || "investigator@arsa.id,supervisor@arsa.id,admin@arsa.id").split(",").filter(Boolean);
 
-const PAGES = [
+const pagesFor = ({ claim, provider }) => [
   "/",
   "/landing",
   "/login",
@@ -13,25 +13,25 @@ const PAGES = [
   "/risk-intelligence",
   "/investigation-queue",
   "/claims",
-  "/investigations/CLM-10293",
+  `/investigations/${claim}`,
   "/reports",
-  "/reports/CLM-10293",
+  `/reports/${claim}`,
   "/providers",
-  "/providers/HOSP-01",
+  `/providers/${provider}`,
   "/copilot",
   "/data-management",
   "/model-performance",
   "/acuan-nasional",
   "/settings",
 ];
-const APIS = [
+const apisFor = ({ claim, provider }) => [
   "/api/dashboard",
   "/api/claims?limit=5",
-  "/api/claims/CLM-10293",
+  `/api/claims/${claim}`,
   "/api/investigations?limit=5",
-  "/api/investigations/CLM-10293",
+  `/api/investigations/${claim}`,
   "/api/providers",
-  "/api/providers/HOSP-01",
+  `/api/providers/${provider}`,
   "/api/graph",
   "/api/reference/national",
   "/api/evaluation",
@@ -40,7 +40,7 @@ const APIS = [
   "/api/public/stats",
   "/api/datasets",
   "/api/users",
-  "/api/reports/CLM-10293/pdf",
+  `/api/reports/${claim}/pdf`,
 ];
 
 let fail = 0;
@@ -52,8 +52,17 @@ async function login(email) {
   return { status: r.status, cookie };
 }
 
+async function targetsFor(cookie) {
+  if (!cookie) return { claim: "CLM-0", provider: "FKL-000" };
+  const get = async (u) => (await (await fetch(BASE + u, { headers: { cookie } })).json()).data?.[0];
+  return { claim: (await get("/api/claims?limit=1"))?.claim_id ?? "CLM-0", provider: (await get("/api/providers?limit=1"))?.provider_id ?? "FKL-000" };
+}
+
 async function run(label, cookie) {
   console.log(`\n== ${label} ==`);
+  const t = await targetsFor(cookie);
+  const PAGES = pagesFor(t);
+  const APIS = apisFor(t);
   for (const p of PAGES) {
     const r = await fetch(BASE + p, { headers: { cookie }, redirect: "manual" });
     log(r.status === 200 || r.status === 307 || r.status === 302, `GET ${p} -> ${r.status}`);

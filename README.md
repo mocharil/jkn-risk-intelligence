@@ -65,3 +65,9 @@ Tanpa provider yang bekerja, semua fitur AI memakai **mode deterministik** yang 
 - Pada data tanpa narasi klinis, ABNORMAL_LOS berpresisi lebih rendah (sampel BPJS sintetis: sekitar 0,5) karena lama rawat riil menyebar lebar; hasilnya perlu dokumen untuk dikonfirmasi.
 
 Status per item dan panduan validasi: `Plan/15_DEVELOPMENT_ROADMAP.md`.
+
+## Prinsip data
+
+1. **Data juri lebih dulu.** Statistik resmi BPJS di `Sample/` menjadi dasar: acuan nasional, jumlah faskes per provinsi (FKRTL), volume klaim per provinsi (angka admisi x peserta), indeks biaya provinsi, pangsa kelas rawat, campuran diagnosis, dan usia-jenis kelamin. Verifikasi independen: `npm run verify:bpjs`.
+2. **Data buatan harus menyerupai keadaan nyata.** Hanya yang tidak ada di Sample yang disintesis (identitas faskes, rincian klaim, narasi, penyimpangan). Prevalensi penyimpangan sekitar 7%, faskes sangat bervariasi, ada kasus tipis dan kasus sah yang tampak janggal, sebagian klaim tanpa dokumen. Hasil deteksi sengaja tidak sempurna.
+3. **Tanpa data tulis-tangan.** Tidak ada klaim, faskes, atau skenario bernama. Semua parameter ada di `lib/data/synthetic-config.ts` dengan basis (`Sample` atau `asumsi`) dan alasannya. Contoh di landing page dihitung dari hasil analisis.

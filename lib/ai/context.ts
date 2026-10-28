@@ -33,7 +33,7 @@ const TYPE_ALIASES: Record<RiskType, string[]> = {
   INFLATED_BILLS: ["inflated", "digelembungkan", "mark-up", "markup", "harga acuan", "penggelembungan"],
 };
 
-/** Klaim yang disebut pada pertanyaan: CLM-10293 (juga "CLM 10293"), ID klaim apa pun yang ada di data (mis. nomor klaim BPJS), atau ID kasus INV-2026-010293. */
+/** Klaim yang disebut pada pertanyaan: ID klaim berformat CLM-12345 (juga "CLM 12345"), ID klaim apa pun yang ada di data (mis. nomor klaim BPJS), atau ID kasus INV-2026-010293. */
 function findClaims(store: DataStore, question: string, claimId?: string): CanonicalClaim[] {
   const found = new Map<string, CanonicalClaim>();
   const byId = new Map(store.claims.map((c) => [c.claim_id.toLowerCase(), c]));

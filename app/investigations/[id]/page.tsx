@@ -1,5 +1,6 @@
 "use client";
 
+import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -10,7 +11,7 @@ import { Investigation, InvestigationStatus } from "@/types/investigation";
 import { CanonicalClaim } from "@/types/claim";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
 import { formatDate, formatRelativeTime } from "@/lib/formatting/date";
-import { FacilityMark, PersonAvatar } from "@/components/ui/Avatar";
+import { FacilityPhoto, PersonAvatar } from "@/components/ui/Avatar";
 import { useSession } from "@/lib/auth/client";
 import { AuditEntry } from "@/lib/audit/chain";
 import { NetworkGraphView } from "@/components/network/NetworkGraphView";
@@ -39,6 +40,8 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
+
+const RING_COLOR: Record<string, string> = { CRITICAL: "#B91C1C", HIGH: "#EA580C", MEDIUM: "#CA8A04", LOW: "#059669" };
 
 export default function InvestigationWorkspacePage() {
   const params = useParams();
@@ -238,50 +241,95 @@ export default function InvestigationWorkspacePage() {
 
   return (
     <DashboardShell>
-      {/* Top Breadcrumb & Status Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-jkn-border pb-3.5">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/investigation-queue"
-            aria-label="Kembali ke antrean investigasi"
-            className="p-2 rounded-lg bg-surface-secondary border border-jkn-border text-jkn-dim hover:text-jkn-text transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-jkn-dim tabular-nums">{investigation.investigation_id}</span>
-              <span className="text-xs text-jkn-dim">/</span>
-              <h1 className="text-lg font-mono font-bold text-jkn-text tracking-tight tabular-nums">{claim.claim_id}</h1>
-              <RiskPill score={investigation.risk_score} level={investigation.priority} size="sm" />
+      {/* Kepala kasus: skor sebagai cincin, faskes sebagai judul, lalu empat angka kunci */}
+      <div className="rounded-2xl border border-jkn-border/90 bg-surface shadow-card overflow-hidden">
+        <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <Link
+              href="/investigation-queue"
+              aria-label="Kembali ke antrean investigasi"
+              className="p-2 rounded-lg border border-jkn-border text-jkn-dim hover:text-jkn-text hover:bg-surface-secondary transition-colors shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <div className="relative w-16 h-16 shrink-0" title={`Skor risiko ${investigation.risk_score}`}>
+              <svg viewBox="0 0 64 64" className="w-16 h-16" role="img" aria-label={`Skor risiko ${investigation.risk_score}`}>
+                <circle cx="32" cy="32" r="26" fill="none" stroke="#E4ECE8" strokeWidth="6" />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="26"
+                  fill="none"
+                  stroke={RING_COLOR[investigation.priority] || "#059669"}
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(investigation.risk_score / 100) * 2 * Math.PI * 26} ${2 * Math.PI * 26}`}
+                  transform="rotate(-90 32 32)"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-xl font-semibold text-jkn-text tabular-nums">{investigation.risk_score}</span>
             </div>
-            <p className="text-xs text-jkn-muted mt-0.5 tabular-nums">
-              {claim.patient.name} (<span className="font-mono">{claim.patient.patient_id}</span>) · {claim.provider.name} · <span className="font-mono font-semibold text-jkn-text">{formatRupiah(claim.claim_amount)}</span>
-            </p>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold text-jkn-text leading-tight truncate">{claim.provider.name}</h1>
+              <p className="mt-1 text-sm text-jkn-muted truncate">
+                <span className="font-mono">{claim.claim_id}</span>
+                {" · "}
+                {claim.provider.city}
+                {" · "}
+                {claim.patient.age > 0 ? `${claim.patient.age} thn, ${claim.patient.gender}` : "usia tidak tercatat"}
+                {claim.diagnoses[0] ? ` · ${claim.diagnoses[0].code} ${claim.diagnoses[0].description}` : ""}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {(investigation.primary_risk_signals ?? []).map((sig) => (
+                  <RiskPill key={sig} type={sig} size="sm" />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="shrink-0 text-left md:text-right">
+            <span className="inline-block font-semibold text-bpjs-dark bg-bpjs-soft px-2.5 py-1 rounded-md border border-bpjs-border text-xs">
+              {(
+    {
+      NEW: "Kasus baru",
+      UNDER_INVESTIGATION: "Sedang diinvestigasi",
+      CONFIRMED_RISK: "Risiko terkonfirmasi",
+      FALSE_POSITIVE: "Positif palsu (layak bayar)",
+      NEED_EVIDENCE: "Menunggu bukti tambahan",
+      ESCALATED: "Dieskalasi ke komite medis",
+    } as Record<string, string>
+  )[investigation.status] || investigation.status}
+            </span>
+            <div className="mt-1 text-xs text-jkn-muted">
+              {investigation.assigned_to && investigation.assigned_to.user_id !== "UNASSIGNED" ? investigation.assigned_to.name : "Belum ditugaskan"}
+              {" · "}
+              <span className="font-mono">{investigation.investigation_id}</span>
+            </div>
           </div>
         </div>
 
-        {/* Current Case Status Badge */}
-        <div className="flex items-center gap-2">
-          <div className="text-right text-xs">
-            <span className="text-[10px] text-jkn-dim block mb-0.5">
-              Status Kasus{investigation.assigned_to && investigation.assigned_to.user_id !== "UNASSIGNED" ? ` · ${investigation.assigned_to.name}` : " · Belum Ditugaskan"}
-            </span>
-            <span className="inline-block font-semibold text-bpjs-dark bg-bpjs-soft px-2.5 py-0.5 rounded-md border border-bpjs-border text-xs">
-              {investigation.status === "NEW"
-                ? "Kasus Baru"
-                : investigation.status === "UNDER_INVESTIGATION"
-                ? "Sedang Diinvestigasi"
-                : investigation.status === "CONFIRMED_RISK"
-                ? "Risiko Terkonfirmasi"
-                : investigation.status === "FALSE_POSITIVE"
-                ? "Positif Palsu (Layak Bayar)"
-                : investigation.status === "NEED_EVIDENCE"
-                ? "Menunggu Bukti Tambahan"
-                : investigation.status === "ESCALATED"
-                ? "Dieskalasi ke Komite Medis"
-                : investigation.status}
-            </span>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-jkn-divider border-t border-jkn-divider tabular-nums">
+          <div className="bg-surface px-5 py-3.5">
+            <div className="text-xs text-jkn-muted">Tagihan faskes</div>
+            <div className="mt-0.5 text-lg font-mono font-semibold text-jkn-text">{formatRupiah(claim.claim_amount, true)}</div>
+            <div className="text-xs text-jkn-dim">{formatRupiah(claim.claim_amount)}</div>
+          </div>
+          <div className="bg-surface px-5 py-3.5">
+            <div className="text-xs text-jkn-muted">Median peer setara</div>
+            <div className="mt-0.5 text-lg font-mono font-semibold text-bpjs-dark">{approvedTariff > 0 ? formatRupiah(approvedTariff, true) : "-"}</div>
+            <div className="text-xs text-jkn-dim">diagnosis dan kelas yang sama</div>
+          </div>
+          <div className="bg-surface px-5 py-3.5">
+            <div className="text-xs text-jkn-muted">Potensi eksposur</div>
+            <div className={`mt-0.5 text-lg font-mono font-semibold ${tariffDiff > 0 ? "text-risk-critical" : "text-jkn-muted"}`}>{tariffDiff > 0 ? formatRupiah(tariffDiff, true) : "Tanpa selisih tarif"}</div>
+            <div className="text-xs text-jkn-dim">{tariffRatioPct > 0 ? `+${tariffRatioPct}% di atas median peer` : "temuan berasal dari pola"}</div>
+          </div>
+          <div className="bg-surface px-5 py-3.5">
+            <div className="text-xs text-jkn-muted">Terhadap rerata nasional BPJS</div>
+            <div className="mt-0.5 text-lg font-mono font-semibold text-jkn-text">
+              {claim.national?.cost_ratio ? `${claim.national.cost_ratio.toLocaleString("id-ID", { maximumFractionDigits: 1 })}x` : "-"}
+            </div>
+            <div className="text-xs text-jkn-dim">{claim.national?.class_label ? `${claim.national.class_label}, ${claim.national.year}` : "tidak ada acuan"}</div>
           </div>
         </div>
       </div>
@@ -317,282 +365,198 @@ export default function InvestigationWorkspacePage() {
           {/* TAB 1: OVERVIEW */}
           {activeTab === "OVERVIEW" && (
             <div className="space-y-4 animate-in fade-in duration-100">
-              {/* Patient & Service Details Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="bg-surface rounded-xl border border-jkn-border p-3.5 shadow-subtle space-y-1">
+              {/* Peserta, faskes, dan episode perawatan dalam satu kartu */}
+              <div className="bg-surface rounded-xl border border-jkn-border shadow-subtle grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-jkn-divider">
+                <div className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-jkn-dim">
                     <User className="w-3.5 h-3.5 text-bpjs" />
-                    <span>Profil Peserta (Anonim)</span>
+                    <span>Peserta (anonim)</span>
                   </div>
-                  <div className="text-xs font-bold text-jkn-text">{claim.patient.name}</div>
-                  <div className="text-[11px] text-jkn-muted font-mono tabular-nums">Kartu: {claim.patient.bpjs_card_number}</div>
-                  <div className="text-[11px] text-jkn-dim tabular-nums">{claim.patient.age > 0 ? `${claim.patient.age} thn` : "usia tidak tercatat"} · {claim.patient.gender === "L" ? "Laki-laki" : claim.patient.gender === "P" ? "Perempuan" : "jenis kelamin tidak tercatat"}</div>
+                  <div className="text-sm font-semibold text-jkn-text">{claim.patient.name}</div>
+                  <div className="text-xs text-jkn-muted font-mono tabular-nums">Kartu {claim.patient.bpjs_card_number}</div>
+                  <div className="text-xs text-jkn-dim tabular-nums">{claim.patient.age > 0 ? `${claim.patient.age} thn` : "usia tidak tercatat"} · {claim.patient.gender === "L" ? "Laki-laki" : claim.patient.gender === "P" ? "Perempuan" : "jenis kelamin tidak tercatat"}</div>
                 </div>
-
-                <div className="bg-surface rounded-xl border border-jkn-border p-3.5 shadow-subtle space-y-2">
+                <div className="p-4 space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-jkn-dim">
                     <Building2 className="w-3.5 h-3.5 text-bpjs" />
-                    <span>Faskes Penagih & DPJP</span>
+                    <span>Faskes penagih dan DPJP</span>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <FacilityMark size={32} />
+                    <FacilityPhoto id={claim.provider.provider_id} level={investigation.priority} size={40} />
                     <div className="min-w-0">
-                      <Link
-                        href={`/providers/${claim.provider.provider_id}`}
-                        className="text-xs font-bold text-jkn-text hover:text-bpjs truncate block"
-                      >
+                      <Link href={`/providers/${claim.provider.provider_id}`} className="text-sm font-semibold text-jkn-text hover:text-bpjs truncate block">
                         {claim.provider.name}
                       </Link>
-                      <div className="text-[11px] text-jkn-muted truncate">{claim.provider.city}</div>
+                      <div className="text-xs text-jkn-muted truncate">{claim.provider.city}</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 pt-1 border-t border-jkn-divider/70">
+                  <div className="flex items-center gap-2">
                     <PersonAvatar name={claim.service.doctor_name} size={24} />
-                    <span className="text-[11px] font-medium text-jkn-text truncate">
-                      {claim.service.doctor_name}
-                    </span>
+                    <span className="text-xs font-medium text-jkn-text truncate">{claim.service.doctor_name}</span>
                   </div>
                 </div>
-
-                <div className="bg-surface rounded-xl border border-jkn-border p-3.5 shadow-subtle space-y-1">
+                <div className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-jkn-dim">
                     <Calendar className="w-3.5 h-3.5 text-bpjs" />
-                    <span>Episode Perawatan</span>
+                    <span>Episode perawatan</span>
                   </div>
-                  <div className="text-xs font-bold text-jkn-text tabular-nums">Lama rawat: {claim.service.length_of_stay} hari</div>
-                  <div className="text-[11px] text-jkn-muted tabular-nums">Masuk: {formatDate(claim.service.admission_date)}</div>
-                  <div className="text-[11px] text-jkn-dim tabular-nums">Keluar: {formatDate(claim.service.discharge_date)}</div>
+                  <div className="text-sm font-semibold text-jkn-text tabular-nums">{claim.service.length_of_stay} hari rawat</div>
+                  <div className="text-xs text-jkn-muted tabular-nums">Masuk {formatDate(claim.service.admission_date)}</div>
+                  <div className="text-xs text-jkn-dim tabular-nums">Keluar {formatDate(claim.service.discharge_date)}</div>
                 </div>
               </div>
 
-              {/* Visual Anatomy of Risk Score & Medical Evidence Verification */}
-              <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xs font-bold text-jkn-text">Visualisasi Anatomi Skor Risiko & Bukti Rekam Medis</h3>
-                    <p className="text-[11px] text-jkn-muted">Komposisi sinyal detektor aktif terhadap kelengkapan dokumen pendukung klaim</p>
-                  </div>
-                  <span className="text-[11px] font-mono font-bold tabular-nums px-2.5 py-0.5 rounded-md bg-surface-secondary border border-jkn-border text-jkn-text">
-                    Skor Gabungan: {investigation.risk_score}/100
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 items-stretch">
-                  {/* Left: Multi-detector bar breakdown */}
-                  <div className="space-y-2.5 p-3 rounded-lg bg-surface-secondary/60 border border-jkn-divider">
-                    <div className="text-xs font-semibold text-jkn-dim">Kontribusi Sinyal per Detektor</div>
-                    {claim.risk_findings.length === 0 ? (
-                      <div className="text-xs text-jkn-muted">Tidak ada sinyal anomali.</div>
-                    ) : (
-                      claim.risk_findings.map((f, i) => (
-                        <div key={i} className="space-y-1">
-                          <div className="flex items-center justify-between text-[11px] gap-2">
-                            <span className="font-semibold text-jkn-text truncate">{f.title}</span>
-                            <span className="font-mono text-[10px] text-jkn-muted tabular-nums shrink-0">
-                              Skor <b className="text-risk-critical">{f.risk_score}</b> · Keyakinan <b>{(f.confidence * 100).toFixed(0)}%</b>
-                            </span>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full bg-white border border-jkn-divider overflow-hidden flex">
-                            <div
-                              className={`h-full rounded-full ${f.risk_score >= 85 ? "bg-risk-critical" : f.risk_score >= 70 ? "bg-risk-high" : "bg-risk-medium"}`}
-                              style={{ width: `${Math.min(100, f.risk_score)}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  {/* Right: Stacked Document Verification Status + Interactive Document List */}
-                  <div className="space-y-2.5 p-3 rounded-lg bg-surface-secondary/60 border border-jkn-divider flex flex-col justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs font-semibold text-jkn-dim">
-                        <span>Kesesuaian Dokumen Medis ({claim.medical_evidence.length} Dokumen)</span>
-                        <button onClick={() => setActiveTab("EVIDENCE")} className="text-bpjs hover:underline font-semibold normal-case">
-                          Lihat bukti →
-                        </button>
-                      </div>
-                      <div className="w-full h-2.5 rounded-full bg-white border border-jkn-divider overflow-hidden flex">
-                        {contradictsCount > 0 && (
-                          <div
-                            className="h-full bg-risk-critical transition-all"
-                            style={{ width: `${(contradictsCount / totalEvidence) * 100}%` }}
-                            title={`Tidak mendukung klaim: ${contradictsCount}`}
-                          />
-                        )}
-                        {reviewCount > 0 && (
-                          <div
-                            className="h-full bg-risk-medium transition-all"
-                            style={{ width: `${(reviewCount / totalEvidence) * 100}%` }}
-                            title={`Perlu review: ${reviewCount}`}
-                          />
-                        )}
-                        {supportsCount > 0 && (
-                          <div
-                            className="h-full bg-bpjs transition-all"
-                            style={{ width: `${(supportsCount / totalEvidence) * 100}%` }}
-                            title={`Mendukung klaim: ${supportsCount}`}
-                          />
-                        )}
-                      </div>
-
-                      {/* Document breakdown list filling the vertical space */}
-                      <div className="divide-y divide-jkn-divider border border-jkn-divider rounded-md bg-white overflow-hidden">
-                        {claim.medical_evidence.slice(0, 4).map((doc) => (
-                          <button
-                            key={doc.evidence_id}
-                            onClick={() => {
-                              setActiveTab("EVIDENCE");
-                              setHighlightedEvidenceId(doc.evidence_id);
-                            }}
-                            className="w-full px-2.5 py-1.5 text-left text-[11px] flex items-center justify-between gap-2 hover:bg-surface-secondary transition-colors"
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                  doc.status === "CONTRADICTS_CLAIM"
-                                    ? "bg-risk-critical"
-                                    : doc.status === "NEEDS_REVIEW"
-                                    ? "bg-risk-medium"
-                                    : "bg-bpjs"
-                                }`}
-                              />
-                              <span className="font-mono text-[10px] text-jkn-dim shrink-0">{doc.evidence_id}</span>
-                              <span className="text-jkn-text font-medium truncate">{doc.title}</span>
+              {/* Sinyal detektor (cincin) dan kesesuaian dokumen (donat) */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="md:col-span-3 bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle">
+                  <h3 className="text-sm font-semibold text-jkn-text">Sinyal detektor</h3>
+                  <p className="text-xs text-jkn-muted">Skor dan keyakinan tiap detektor yang menandai klaim ini</p>
+                  {claim.risk_findings.length === 0 ? (
+                    <p className="mt-3 text-xs text-jkn-muted">Tidak ada sinyal anomali.</p>
+                  ) : (
+                    <ul className="mt-3 grid grid-cols-2 gap-3">
+                      {claim.risk_findings.map((f, i) => {
+                        const c = 2 * Math.PI * 20;
+                        const col = f.risk_score >= 85 ? "#B91C1C" : f.risk_score >= 70 ? "#EA580C" : "#CA8A04";
+                        return (
+                          <li key={i} className="flex items-center gap-3 rounded-xl border border-jkn-divider p-3">
+                            <div className="relative w-12 h-12 shrink-0">
+                              <svg viewBox="0 0 48 48" className="w-12 h-12" role="img" aria-label={`Skor ${f.risk_score}`}>
+                                <circle cx="24" cy="24" r="20" fill="none" stroke="#E4ECE8" strokeWidth="5" />
+                                <circle cx="24" cy="24" r="20" fill="none" stroke={col} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(f.risk_score / 100) * c} ${c}`} transform="rotate(-90 24 24)" />
+                              </svg>
+                              <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums text-jkn-text">{f.risk_score}</span>
                             </div>
-                            <span
-                              className={`text-[10px] font-semibold shrink-0 ${
-                                doc.status === "CONTRADICTS_CLAIM"
-                                  ? "text-risk-critical"
-                                  : doc.status === "NEEDS_REVIEW"
-                                  ? "text-risk-medium"
-                                  : "text-bpjs-dark"
-                              }`}
-                            >
-                              {doc.status === "CONTRADICTS_CLAIM" ? "Kontradiktif" : doc.status === "NEEDS_REVIEW" ? "Review" : "Sesuai"}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 text-[10px]">
-                      <div className="p-1.5 rounded-md bg-risk-critical-bg border border-risk-critical-border text-center">
-                        <div className="font-mono font-bold text-risk-critical text-xs tabular-nums">{contradictsCount}</div>
-                        <div className="text-risk-critical font-medium">Kontradiktif</div>
-                      </div>
-                      <div className="p-1.5 rounded-md bg-risk-medium-bg border border-risk-medium-border text-center">
-                        <div className="font-mono font-bold text-risk-medium text-xs tabular-nums">{reviewCount}</div>
-                        <div className="text-risk-medium font-medium">Perlu Review</div>
-                      </div>
-                      <div className="p-1.5 rounded-md bg-bpjs-soft border border-bpjs-border text-center">
-                        <div className="font-mono font-bold text-bpjs-dark text-xs tabular-nums">{supportsCount}</div>
-                        <div className="text-bpjs-dark font-medium">Mendukung</div>
-                      </div>
-                    </div>
-                  </div>
+                            <div className="min-w-0">
+                              <RiskPill type={f.risk_type} size="sm" />
+                              <div className="mt-1 text-xs text-jkn-muted tabular-nums">keyakinan {(f.confidence * 100).toFixed(0)}%</div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
-              </div>
 
-              {/* Tariff Comparison Table + Visual Bullet Bar */}
-              <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h3 className="text-xs font-bold text-jkn-text">Rincian Keuangan & Deviasi terhadap Median Peer</h3>
-                  <div className="flex items-center gap-2">
-                    {tariffRatioPct > 0 && (
-                      <span className="text-[10px] font-mono font-bold tabular-nums px-2 py-0.5 rounded-md bg-risk-critical-bg text-risk-critical border border-risk-critical-border">
-                        +{tariffRatioPct}% di atas median peer
+                <div className="md:col-span-2 bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle flex flex-col">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-jkn-text">Kesesuaian dokumen</h3>
+                    <button onClick={() => setActiveTab("EVIDENCE")} className="text-xs font-semibold text-bpjs hover:underline">
+                      Buka papan bukti
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center gap-4 flex-1">
+                    <div className="relative w-24 h-24 shrink-0">
+                      <svg viewBox="0 0 36 36" className="w-24 h-24 -rotate-90" role="img" aria-label="Komposisi status dokumen">
+                        <circle cx="18" cy="18" r="14" fill="none" stroke="#E4ECE8" strokeWidth="5" />
+                        {(() => {
+                          const segs = [
+                            { n: contradictsCount, color: "#B91C1C" },
+                            { n: reviewCount, color: "#CA8A04" },
+                            { n: supportsCount, color: "#007A3A" },
+                          ];
+                          const c = 2 * Math.PI * 14;
+                          let off = 0;
+                          return segs.map((sg, i) => {
+                            const len = (sg.n / totalEvidence) * c;
+                            const el = sg.n > 0 ? <circle key={i} cx="18" cy="18" r="14" fill="none" stroke={sg.color} strokeWidth="5" strokeDasharray={`${Math.max(0, len - 0.6)} ${c}`} strokeDashoffset={-off} /> : null;
+                            off += len;
+                            return el;
+                          });
+                        })()}
+                      </svg>
+                      <span className="absolute inset-0 flex flex-col items-center justify-center tabular-nums">
+                        <span className="text-xl font-semibold text-jkn-text leading-none">{claim.medical_evidence.length}</span>
+                        <span className="text-[10px] text-jkn-muted">dokumen</span>
                       </span>
-                    )}
-                    <span className="text-xs font-mono font-bold text-risk-critical tabular-nums">
-                      Selisih: +{formatRupiah(tariffDiff)}
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3 p-3 rounded-lg bg-surface-secondary/70 border border-jkn-divider text-xs">
-                  <div>
-                    <span className="text-[10px] text-jkn-dim font-medium block">Nilai Tagihan Faskes</span>
-                    <span className="text-sm font-mono font-bold text-jkn-text tabular-nums">{formatRupiah(claim.claim_amount)}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-jkn-dim font-medium block">Median peer (diagnosis dan kelas setara)</span>
-                    <span className="text-sm font-mono font-bold text-bpjs-dark tabular-nums">{formatRupiah(approvedTariff)}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-jkn-dim font-medium block">Potensi Eksposur</span>
-                    <span className="text-sm font-mono font-bold text-risk-critical tabular-nums">{formatRupiah(tariffDiff)}</span>
-                  </div>
-                </div>
-
-                {/* Visual Bullet Comparison Bar */}
-                <div className="space-y-2 pt-0.5">
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] text-jkn-muted">
-                      <span className="font-medium text-jkn-text">Tagihan Klaim Ini ({claim.diagnoses[0]?.code || claim.service.treatment_class})</span>
-                      <span className="font-mono font-bold text-risk-critical tabular-nums">{formatRupiah(claim.claim_amount)}</span>
                     </div>
-                    <div className="w-full h-2 rounded-full bg-surface-secondary overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-risk-critical"
-                        style={{ width: `${Math.min(100, (claim.claim_amount / maxTariffScale) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] text-jkn-muted">
-                      <span className="font-medium text-bpjs-dark">Acuan Tarif Median Peer Setara</span>
-                      <span className="font-mono font-bold text-bpjs-dark tabular-nums">{formatRupiah(approvedTariff)}</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-surface-secondary overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-bpjs"
-                        style={{ width: `${Math.min(100, (approvedTariff / maxTariffScale) * 100)}%` }}
-                      />
-                    </div>
+                    <ul className="space-y-1.5 text-sm">
+                      <li className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-risk-critical" aria-hidden /><span className="text-jkn-muted">Kontradiktif</span><span className="ml-auto font-semibold tabular-nums">{contradictsCount}</span></li>
+                      <li className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-risk-medium" aria-hidden /><span className="text-jkn-muted">Perlu review</span><span className="ml-auto font-semibold tabular-nums">{reviewCount}</span></li>
+                      <li className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-bpjs" aria-hidden /><span className="text-jkn-muted">Mendukung</span><span className="ml-auto font-semibold tabular-nums">{supportsCount}</span></li>
+                    </ul>
                   </div>
                 </div>
               </div>
 
-              {/* Posisi terhadap statistik resmi BPJS */}
-              {claim.national && claim.national.cost_ref > 0 && (
-                <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <h3 className="text-sm font-bold text-jkn-text">Dibanding statistik resmi BPJS {claim.national.year}</h3>
+              {/* Posisi tagihan pada satu sumbu: median peer, rerata nasional, rerata provinsi */}
+              <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-sm font-semibold text-jkn-text">Posisi tagihan terhadap pembanding</h3>
+                    <p className="text-xs text-jkn-muted">Satu sumbu rupiah. Pembanding utama adalah median peer; rerata BPJS hanya konteks kewajaran.</p>
+                  </div>
+                  {claim.national && claim.national.cost_ref > 0 && (
                     <Link href="/acuan-nasional" className="text-xs font-semibold text-bpjs hover:underline">
                       Lihat acuan nasional
                     </Link>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs tabular-nums">
-                    <div className="p-3 rounded-lg bg-surface-secondary/70 border border-jkn-divider">
-                      <span className="text-jkn-dim block">Rerata {claim.national.class_label.toLowerCase()} {claim.national.level === "INAP" ? "per admisi" : "per kunjungan"}</span>
-                      <span className="text-sm font-mono font-bold text-jkn-text block mt-1">{formatRupiah(claim.national.cost_ref)}</span>
-                      <span className={`font-mono font-semibold ${(claim.national.cost_ratio ?? 0) >= 2 ? "text-risk-critical" : (claim.national.cost_ratio ?? 0) >= 1.35 ? "text-risk-high" : "text-jkn-muted"}`}>
-                        klaim ini {claim.national.cost_ratio?.toLocaleString("id-ID", { maximumFractionDigits: 1 }) ?? "-"}x
-                      </span>
-                    </div>
-                    {claim.national.province_cost ? (
-                      <div className="p-3 rounded-lg bg-surface-secondary/70 border border-jkn-divider">
-                        <span className="text-jkn-dim block">Rerata {claim.national.province_name}</span>
-                        <span className="text-sm font-mono font-bold text-jkn-text block mt-1">{formatRupiah(claim.national.province_cost)}</span>
-                        <span className="font-mono font-semibold text-jkn-muted">klaim ini {(claim.national.province_ratio || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 })}x</span>
-                      </div>
-                    ) : null}
-                    {claim.national.los_ref ? (
-                      <div className="p-3 rounded-lg bg-surface-secondary/70 border border-jkn-divider">
-                        <span className="text-jkn-dim block">Lama rawat rerata kelas</span>
-                        <span className="text-sm font-mono font-bold text-jkn-text block mt-1">{claim.national.los_ref.toLocaleString("id-ID")} hari</span>
-                        <span className={`font-mono font-semibold ${(claim.national.los_ratio || 0) >= 2 ? "text-risk-critical" : "text-jkn-muted"}`}>klaim ini {claim.service.length_of_stay} hari</span>
-                      </div>
-                    ) : null}
-                  </div>
-                  <p className="text-xs text-jkn-muted leading-relaxed">
-                    {claim.national.dx
-                      ? `Diagnosis ${claim.national.dx.code} berada di peringkat ${claim.national.dx.rank} nasional dengan ${claim.national.dx.admissions.toLocaleString("id-ID")} ${claim.national.level === "INAP" ? "admisi rawat inap" : "kunjungan rawat jalan"} pada ${claim.national.year}.`
-                      : `Diagnosis ini tidak termasuk 100 diagnosis ${claim.national.level === "INAP" ? "rawat inap" : "rawat jalan"} terbanyak nasional ${claim.national.year}.`}{" "}
-                    Rerata nasional mencakup seluruh jenis kasus, jadi dipakai sebagai konteks kewajaran. Pembanding utama tetap median peer pada diagnosis yang sama.
-                  </p>
+                  )}
                 </div>
-              )}
+                {(() => {
+                  const marks = [
+                    { key: "claim", label: "Tagihan ini", value: claim.claim_amount, color: "#B91C1C", big: true },
+                    approvedTariff > 0 ? { key: "peer", label: "Median peer", value: approvedTariff, color: "#007A3A", big: false } : null,
+                    claim.national && claim.national.cost_ref > 0 ? { key: "nat", label: `Rerata ${claim.national.class_label.toLowerCase()} BPJS`, value: claim.national.cost_ref, color: "#0E7490", big: false } : null,
+                    claim.national?.province_cost ? { key: "prov", label: `Rerata ${claim.national.province_name}`, value: claim.national.province_cost, color: "#64748B", big: false } : null,
+                  ].filter(Boolean) as Array<{ key: string; label: string; value: number; color: string; big: boolean }>;
+                  const maxV = Math.max(...marks.map((m) => m.value), 1) * 1.08;
+                  const sorted = [...marks].sort((a, b) => a.value - b.value);
+                  return (
+                    <div className="relative mt-5 mb-1 h-28 tabular-nums">
+                      <div className="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-surface-secondary" />
+                      {/* rentang antara median peer dan tagihan = selisih */}
+                      {approvedTariff > 0 && claim.claim_amount > approvedTariff && (
+                        <div
+                          className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-risk-critical/30"
+                          style={{ left: `${(approvedTariff / maxV) * 100}%`, width: `${((claim.claim_amount - approvedTariff) / maxV) * 100}%` }}
+                          title={`Selisih ${formatRupiah(claim.claim_amount - approvedTariff)}`}
+                        />
+                      )}
+                      {sorted.map((m, i) => {
+                        const pos = (m.value / maxV) * 100;
+                        const above = i % 2 === 0;
+                        const shift = pos > 82 ? "-100%" : pos < 14 ? "0%" : "-50%";
+                        return (
+                          <div key={m.key} className="absolute top-1/2" style={{ left: `${pos}%` }}>
+                            <span
+                              className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow"
+                              style={{ width: m.big ? 16 : 12, height: m.big ? 16 : 12, backgroundColor: m.color }}
+                              aria-hidden
+                            />
+                            <div
+                              className={`absolute whitespace-nowrap ${above ? "bottom-4" : "top-4"} ${pos > 82 ? "text-right" : pos < 14 ? "text-left" : "text-center"}`}
+                              style={{ transform: `translateX(${shift})` }}
+                            >
+                              <div className="text-[11px] text-jkn-muted">{m.label}</div>
+                              <div className="text-xs font-semibold" style={{ color: m.color }}>{formatRupiah(m.value, true)}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs tabular-nums">
+                  {claim.national && claim.national.cost_ref > 0 && (
+                    <div className="rounded-lg bg-surface-secondary/60 px-3 py-2">
+                      <span className="text-jkn-muted">Terhadap rerata {claim.national.class_label.toLowerCase()} {claim.national.year}</span>
+                      <b className={`ml-1.5 ${(claim.national.cost_ratio ?? 0) >= 2 ? "text-risk-critical" : "text-jkn-text"}`}>{claim.national.cost_ratio?.toLocaleString("id-ID", { maximumFractionDigits: 1 }) ?? "-"}x</b>
+                    </div>
+                  )}
+                  {claim.national?.province_cost ? (
+                    <div className="rounded-lg bg-surface-secondary/60 px-3 py-2">
+                      <span className="text-jkn-muted">Terhadap rerata {claim.national.province_name}</span>
+                      <b className="ml-1.5 text-jkn-text">{(claim.national.province_ratio || 0).toLocaleString("id-ID", { maximumFractionDigits: 1 })}x</b>
+                    </div>
+                  ) : null}
+                  {claim.national?.los_ref ? (
+                    <div className="rounded-lg bg-surface-secondary/60 px-3 py-2">
+                      <span className="text-jkn-muted">Lama rawat {claim.service.length_of_stay} hari vs rerata</span>
+                      <b className={`ml-1.5 ${(claim.national.los_ratio || 0) >= 2 ? "text-risk-critical" : "text-jkn-text"}`}>{claim.national.los_ref.toLocaleString("id-ID")} hari</b>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
 
               {/* Detected Risk Findings Cards */}
               <div className="space-y-3">
@@ -604,7 +568,7 @@ export default function InvestigationWorkspacePage() {
                   </button>
                 </div>
                 {explainInfo && explainInfo.mode === "deterministic" && explainInfo.reason && (
-                  <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">LLM tidak dipakai: {explainInfo.reason}. Penjelasan disusun deterministik dari bukti yang sama.</div>
+                  <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Penjelasan AI sedang tidak tersedia; penjelasan disusun dari bukti yang sama dengan aturan.</div>
                 )}
                 {claim.risk_findings.length === 0 && <div className="text-xs text-jkn-muted p-4 rounded-xl bg-surface-secondary border border-jkn-border">Tidak ada temuan dari detektor untuk klaim ini.</div>}
                 {claim.risk_findings.map((finding, idx) => (
@@ -669,17 +633,23 @@ export default function InvestigationWorkspacePage() {
                       </div>
                     )}
 
-                    {finding.recommended_actions.length > 0 && (
-                      <div className="p-2.5 rounded-lg bg-bpjs-soft/40 border border-bpjs-border/60 text-[11px] text-jkn-text space-y-1">
-                        <span className="font-bold text-bpjs-dark block">Tindakan yang Disarankan:</span>
-                        <ul className="list-disc list-inside space-y-0.5 text-jkn-muted">
-                          {finding.recommended_actions.map((act, i) => (
-                            <li key={i}>{act}</li>
-                          ))}
-                        </ul>
-                      </div>
+                    {(finding.recommended_actions.length > 0 || finding.limitations.length > 0) && (
+                      <details className="group rounded-lg border border-bpjs-border/60 bg-bpjs-soft/30">
+                        <summary className="cursor-pointer list-none px-3 py-2 text-xs font-semibold text-bpjs-dark flex items-center justify-between">
+                          <span>Tindakan yang disarankan ({finding.recommended_actions.length})</span>
+                          <span className="text-jkn-muted group-open:hidden">Buka</span>
+                          <span className="text-jkn-muted hidden group-open:inline">Tutup</span>
+                        </summary>
+                        <div className="px-3 pb-3 text-xs text-jkn-text space-y-1.5">
+                          <ul className="list-disc list-inside space-y-0.5 text-jkn-muted">
+                            {finding.recommended_actions.map((act, i) => (
+                              <li key={i}>{act}</li>
+                            ))}
+                          </ul>
+                          {finding.limitations.length > 0 && <p className="text-[11px] text-jkn-dim">Keterbatasan: {finding.limitations.join(" ")}</p>}
+                        </div>
+                      </details>
                     )}
-                    {finding.limitations.length > 0 && <div className="text-[10px] text-jkn-dim">Keterbatasan: {finding.limitations.join(" ")}</div>}
                   </div>
                 ))}
               </div>
@@ -794,8 +764,8 @@ export default function InvestigationWorkspacePage() {
                         <AlertTriangle className="w-3.5 h-3.5" />
                         <span>{finding.title}</span>
                       </div>
-                      <p className={`text-xs mt-1 leading-relaxed ${isSevere ? "text-risk-critical/90" : "text-amber-900"}`}>
-                        {finding.summary}
+                      <p className={`text-[11px] mt-0.5 ${isSevere ? "text-risk-critical/80" : "text-amber-900"}`}>
+                        Skor {finding.risk_score}, keyakinan {(finding.confidence * 100).toFixed(0)}%
                       </p>
                     </div>
                   );
@@ -820,69 +790,62 @@ export default function InvestigationWorkspacePage() {
 
           {/* TAB 4: SIMILAR CLAIMS */}
           {activeTab === "SIMILAR" && (
-            <div className="space-y-3 animate-in fade-in duration-100">
-              <div className="p-3 rounded-xl bg-surface-secondary border border-jkn-border text-xs text-jkn-muted">
-                Kemiripan semantik narasi medis (embedding vektor, cosine similarity) dipadukan gerbang deterministik tumpang-tindih frasa. Kemiripan tinggi bukan bukti kecurangan; verifikasi manusia tetap diperlukan.
-              </div>
-
-              {claim.similar_claims.length === 0 && <div className="text-xs text-jkn-muted p-4 rounded-xl bg-surface-secondary border border-jkn-border">Tidak ada klaim dengan kemiripan di atas ambang pencarian (0,80).</div>}
-              {claim.similar_claims.map((sim) => (
-                <div
-                  key={sim.claim_id}
-                  className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Copy className="w-4 h-4 text-intel" />
-                      <Link href={`/investigations/${sim.claim_id}`} className="text-xs font-mono font-bold text-jkn-text hover:text-bpjs hover:underline">
-                        {sim.claim_id}
-                      </Link>
-                      <span className="text-xs text-jkn-muted">· {sim.provider_name}</span>
+            <div className="space-y-4 animate-in fade-in duration-100">
+              {claim.similar_claims.length === 0 ? (
+                <div className="text-xs text-jkn-muted p-4 rounded-xl bg-surface-secondary border border-jkn-border">Tidak ada klaim dengan kemiripan di atas ambang pencarian (0,80).</div>
+              ) : (
+                <>
+                  <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle">
+                    <h3 className="text-sm font-semibold text-jkn-text">Peta kemiripan narasi</h3>
+                    <p className="text-xs text-jkn-muted">
+                      Tiap titik adalah klaim serupa. Makin ke kanan makin mirip secara makna, makin ke atas makin banyak frasa identik. Kemiripan tinggi bukan bukti kecurangan.
+                    </p>
+                    <div className="h-52 mt-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ScatterChart margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
+                          <CartesianGrid stroke="#E4ECE8" />
+                          <XAxis type="number" dataKey="x" name="Kemiripan makna" unit="%" domain={[80, 100]} stroke="#61756D" fontSize={12} tickLine={false} />
+                          <YAxis type="number" dataKey="y" name="Frasa identik" unit="%" domain={[0, 100]} stroke="#61756D" fontSize={12} tickLine={false} />
+                          <Tooltip
+                            cursor={{ strokeDasharray: "3 3" }}
+                            contentStyle={{ backgroundColor: "#FFFFFF", borderRadius: 8, border: "1px solid #D5E0DA", fontSize: 12 }}
+                            formatter={(v: number, n: string) => [`${v}%`, n]}
+                            labelFormatter={() => ""}
+                          />
+                          <Scatter
+                            data={claim.similar_claims.map((sm) => ({ x: Number((sm.similarity_score * 100).toFixed(1)), y: Math.round((sm.lexical_overlap ?? 0) * 100), id: sm.claim_id }))}
+                            fill="#007A3A"
+                          />
+                        </ScatterChart>
+                      </ResponsiveContainer>
                     </div>
-                    <span className="text-xs font-mono font-bold text-intel-deep bg-intel-light px-2.5 py-0.5 rounded-md border border-intel-border tabular-nums">
-                      {(sim.similarity_score * 100).toFixed(1)}% mirip{sim.lexical_overlap !== undefined ? ` · ${(sim.lexical_overlap * 100).toFixed(0)}% frasa sama` : ""}
-                    </span>
                   </div>
 
-                  {/* Dual Similarity Progress Meters */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-2.5 rounded-lg bg-surface-secondary/50 border border-jkn-divider text-[11px]">
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-jkn-muted">Kemiripan Semantik (Cosine Vektor)</span>
-                        <span className="font-mono font-bold text-intel-deep tabular-nums">{(sim.similarity_score * 100).toFixed(1)}%</span>
-                      </div>
-                      <div className="w-full h-1.5 rounded-full bg-white border border-jkn-divider overflow-hidden">
-                        <div className="h-full bg-intel rounded-full" style={{ width: `${Math.min(100, sim.similarity_score * 100)}%` }} />
-                      </div>
-                    </div>
-                    {sim.lexical_overlap !== undefined && (
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-jkn-muted">Tumpang Tindih Leksikal (Frasa Identik)</span>
-                          <span className="font-mono font-bold text-risk-medium tabular-nums">{(sim.lexical_overlap * 100).toFixed(0)}%</span>
+                  <ul className="bg-surface rounded-xl border border-jkn-border shadow-subtle divide-y divide-jkn-divider">
+                    {claim.similar_claims.map((sim) => (
+                      <li key={sim.claim_id} className="px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1.5" title={(sim.similarity_reasons || []).join(" ")}>
+                        <div className="min-w-0 flex-1 basis-52">
+                          <Link href={`/investigations/${sim.claim_id}`} className="text-sm font-semibold text-jkn-text hover:text-bpjs font-mono">
+                            {sim.claim_id}
+                          </Link>
+                          <div className="text-xs text-jkn-muted truncate">{sim.provider_name}</div>
                         </div>
-                        <div className="w-full h-1.5 rounded-full bg-white border border-jkn-divider overflow-hidden">
-                          <div className="h-full bg-risk-medium rounded-full" style={{ width: `${Math.min(100, sim.lexical_overlap * 100)}%` }} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-surface-secondary/70 border border-jkn-divider text-xs space-y-1">
-                    <div className="font-bold text-jkn-text">Faktor kemiripan:</div>
-                    <ul className="list-disc list-inside text-jkn-muted space-y-0.5 text-[11px]">
-                      {sim.similarity_reasons.map((r, i) => (
-                        <li key={i}>{r}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs pt-1 tabular-nums">
-                    <span className="text-jkn-dim">Nilai klaim pembanding: <span className="font-mono font-semibold text-jkn-text">{formatRupiah(sim.claim_amount)}</span></span>
-                    <RiskPill score={sim.risk_score} size="sm" />
-                  </div>
-                </div>
-              ))}
+                        <span className="text-xs tabular-nums px-2 py-0.5 rounded-md bg-intel-light text-intel-deep border border-intel-border font-semibold">
+                          {(sim.similarity_score * 100).toFixed(1)}% mirip
+                        </span>
+                        {sim.lexical_overlap !== undefined && (
+                          <span className="text-xs tabular-nums px-2 py-0.5 rounded-md bg-risk-medium-bg text-risk-medium border border-risk-medium-border font-semibold">
+                            {(sim.lexical_overlap * 100).toFixed(0)}% frasa sama
+                          </span>
+                        )}
+                        <span className="text-xs text-jkn-muted tabular-nums w-24 text-right">{formatRupiah(sim.claim_amount, true)}</span>
+                        <RiskPill score={sim.risk_score} size="sm" />
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[11px] text-jkn-dim px-1">Cosine vektor dipadukan gerbang deterministik tumpang-tindih frasa. Arahkan kursor ke baris untuk melihat faktor kemiripannya.</p>
+                </>
+              )}
             </div>
           )}
 
@@ -994,31 +957,6 @@ export default function InvestigationWorkspacePage() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Interactive Evidence Chips */}
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-jkn-dim block">
-              Dokumen Klaim (Klik untuk Membuka)
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {claim.medical_evidence.map((doc) => (
-                <button
-                  key={doc.evidence_id}
-                  onClick={() => {
-                    setActiveTab("EVIDENCE");
-                    setHighlightedEvidenceId(doc.evidence_id);
-                  }}
-                  className={`px-2 py-1 rounded-md text-[10px] font-mono font-semibold border transition-all ${
-                    highlightedEvidenceId === doc.evidence_id
-                      ? "bg-bpjs text-white border-bpjs shadow-subtle"
-                      : "bg-surface-secondary text-jkn-text border-jkn-border hover:border-bpjs hover:bg-bpjs-soft"
-                  }`}
-                >
-                  {doc.evidence_id} · {doc.document_type.replace(/_/g, " ")}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Quick Prompts */}

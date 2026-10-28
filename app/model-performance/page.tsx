@@ -7,7 +7,8 @@ import { RiskPill } from "@/components/ui/RiskPill";
 import { useSession } from "@/lib/auth/client";
 import type { EvaluationReport } from "@/lib/eval/evaluate";
 import Link from "next/link";
-import { AlertTriangle, Info, Lock, RefreshCw, Sliders } from "lucide-react";
+import { Lock, RefreshCw, Sliders } from "lucide-react";
+import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, LabelList, ReferenceLine } from "recharts";
 
 interface Payload {
   data: EvaluationReport;
@@ -120,7 +121,7 @@ export default function ModelPerformancePage() {
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "Gagal menjalankan analisis ulang");
       setMsg(
-        `Evaluasi ulang selesai: ${j.data.claims_analyzed} klaim dianalisis, ${j.data.findings_total} temuan, model embedding ${j.data.embedding_model} (${j.data.duration_ms} ms).`
+        `Evaluasi ulang selesai: ${j.data.claims_analyzed} klaim dianalisis, ${j.data.findings_total} temuan (${j.data.duration_ms} ms).`
       );
       await loadAll();
     } catch (e) {
@@ -141,357 +142,290 @@ export default function ModelPerformancePage() {
   const useBpjs = source === "bpjs" && bpjsAvailable;
   const r = useBpjs ? (p.bpjs_sample as EvaluationReport) : p.data;
 
+  const TYPE_NAME: Record<string, string> = {
+    UPCODING: "Upcoding",
+    CLONING: "Cloning",
+    PHANTOM_BILLING: "Phantom billing",
+    ABNORMAL_LOS: "LOS anomali",
+    UNBUNDLING: "Unbundling",
+    INFLATED_BILLS: "Inflasi tagihan",
+    REPEAT_BILLING: "Tagihan berulang",
+    READMISSION: "Rawat ulang dini",
+  };
+  const f1Tone = (v: number) => (v >= 0.85 ? "#059669" : v >= 0.6 ? "#CA8A04" : "#B91C1C");
+  const circ = 2 * Math.PI * 52;
+  const scatter = r.per_detector.map((m) => ({ x: Math.round(m.recall * 100), y: Math.round(m.precision * 100), z: Math.max(m.positives, 3), small: m.positives < 10, name: TYPE_NAME[m.risk_type] || m.risk_type, f1: m.f1 }));
+  const ev = r.evidence_completeness;
+
   return (
     <DashboardShell>
-      {/* Page Title Header + Direct Rerun Calibration Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-jkn-border pb-4">
-        <div>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-lg sm:text-xl font-bold text-jkn-text tracking-tight">
-              Evaluasi &amp; Kalibrasi Detektor
-            </h1>
-            <span className="px-2 py-0.5 rounded bg-bpjs-soft text-bpjs-dark text-[11px] font-semibold border border-bpjs-border">
-              {r.evaluated_claims.toLocaleString("id-ID")} Klaim Berlabel
-            </span>
-          </div>
-          <p className="text-xs text-jkn-muted mt-1">
-            Pengukuran langsung Precision, Recall, F1-Score, kelengkapan sitasi bukti, serta parameter ambang batas {p.data.per_detector.length} detektor aktif.
+      {/* Judul dan aksi */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold text-jkn-text">Evaluasi &amp; kalibrasi</h1>
+          <p className="mt-1 text-sm text-jkn-muted tabular-nums">
+            {r.evaluated_claims.toLocaleString("id-ID")} klaim berlabel, {p.data.per_detector.length} detektor aktif.
           </p>
         </div>
-
-        {/* Rerun Pipeline Controls (Consolidated from Settings) */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {can("analysis.run") ? (
             <>
-              <button
-                onClick={() => rerunAnalysis(true)}
-                disabled={!!busy}
-                className="h-9 px-3 rounded-lg border border-jkn-border bg-white text-xs font-semibold text-jkn-text hover:bg-surface-secondary disabled:opacity-50 transition-colors"
-              >
-                {busy === "local" ? "Menghitung..." : "Uji Embedding Lokal"}
+              <button onClick={() => rerunAnalysis(true)} disabled={!!busy} className="h-8 px-3 rounded-md border border-jkn-border text-sm font-medium text-jkn-text hover:bg-frame disabled:opacity-50 transition-colors">
+                {busy === "local" ? "Menghitung" : "Uji embedding lokal"}
               </button>
-              <button
-                onClick={() => rerunAnalysis(false)}
-                disabled={!!busy}
-                className="h-9 inline-flex items-center gap-1.5 px-3.5 rounded-lg bg-bpjs text-white text-xs font-semibold hover:bg-bpjs-deep disabled:opacity-50 transition-colors shadow-subtle"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${busy === "ai" ? "animate-spin" : ""}`} />
-                <span>{busy === "ai" ? "Menganalisis Ulang..." : "Jalankan Ulang Pipeline Detektor"}</span>
+              <button onClick={() => rerunAnalysis(false)} disabled={!!busy} className="h-8 inline-flex items-center gap-1.5 px-3.5 rounded-md bg-[#1d1f20] text-white text-sm font-medium hover:bg-black disabled:opacity-50 transition-colors">
+                <RefreshCw className={`w-3.5 h-3.5 ${busy === "ai" ? "animate-spin" : ""}`} aria-hidden />
+                <span>{busy === "ai" ? "Menganalisis ulang" : "Jalankan ulang detektor"}</span>
               </button>
             </>
           ) : (
-            <div className="text-[11px] text-jkn-muted flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-secondary border border-jkn-border">
-              <Lock className="w-3.5 h-3.5" />
-              <span>Anda tidak memiliki izin menjalankan ulang detektor</span>
-            </div>
+            <span className="inline-flex items-center gap-1.5 text-xs text-jkn-muted px-3 py-1.5 rounded-md border border-jkn-border">
+              <Lock className="w-3.5 h-3.5" aria-hidden /> Tanpa izin menjalankan ulang detektor
+            </span>
           )}
         </div>
       </div>
 
       {msg && (
-        <div
-          role="status"
-          className="text-xs rounded-xl px-4 py-2.5 border bg-bpjs-soft border-bpjs-border text-bpjs-dark font-medium"
-        >
+        <div role="status" className="text-sm rounded-lg px-4 py-2.5 bg-bpjs-soft border border-bpjs-border text-bpjs-dark">
           {msg}
         </div>
       )}
 
-      {/* Pemilih dataset evaluasi */}
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-jkn-muted">Data berlabel yang diukur:</span>
-        <div className="inline-flex rounded-xl bg-surface-secondary p-1 border border-jkn-divider">
+      {/* Sumber data dan catatan metodologi (dilipat) */}
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <div className="inline-flex rounded-lg bg-frame p-0.5">
           {([
-            ["seed", "Dataset sintetis bawaan"],
-            ["bpjs", "Sampel BPJS (tanpa resume medis)"],
+            ["seed", "Dataset bawaan"],
+            ["bpjs", "Sampel BPJS"],
           ] as const).map(([key, label]) => (
             <button
               key={key}
               type="button"
               onClick={() => setSource(key)}
               disabled={key === "bpjs" && !bpjsAvailable}
-              title={key === "bpjs" && !bpjsAvailable ? "Muat Data Sampel BPJS di Manajemen Dataset terlebih dahulu" : undefined}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-40 ${
-                (key === "bpjs") === useBpjs ? "bg-white text-bpjs-dark shadow-2xs border border-jkn-border" : "text-jkn-muted hover:text-jkn-text"
-              }`}
+              title={key === "bpjs" && !bpjsAvailable ? "Muat Data Sampel BPJS di Dataset terlebih dahulu" : undefined}
+              className={`h-8 px-3 rounded-md font-medium transition-colors disabled:opacity-40 ${(key === "bpjs") === useBpjs ? "bg-white text-jkn-text" : "text-jkn-muted hover:text-jkn-text"}`}
             >
               {label}
             </button>
           ))}
         </div>
         {!bpjsAvailable && (
-          <Link href="/data-management" className="font-semibold text-bpjs-dark hover:underline">
-            Muat Data Sampel BPJS untuk mengukur detektor pada data berbentuk BPJS
+          <Link href="/data-management" className="text-sm font-medium text-bpjs hover:underline">
+            Muat sampel BPJS
           </Link>
         )}
       </div>
 
-      {/* Methodological Disclaimer Banner */}
-      <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs text-amber-900">
-        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
-        <span className="leading-relaxed">
-          <strong className="font-semibold">Catatan Metodologi Evaluasi:</strong>{" "}
-          {useBpjs
-            ? "Metrik dihitung pada Data Sampel BPJS sintetis (bentuk data FKRTL, kalibrasi statistik BPJS 2018) dengan anomali yang disisipkan dan berlabel. Data ini tidak punya resume medis, sehingga detektor kloning dan klaim fiktif memang tidak berlaku. Ini bukan akurasi pada klaim riil."
-            : p.disclaimer}
-        </span>
+      {/* Batas klaim: selalu terlihat, tidak dilipat */}
+      <div role="note" className="rounded-xl border border-risk-medium-border bg-risk-medium-bg px-4 py-3 text-sm text-risk-medium">
+        <p className="font-medium">
+          {useBpjs ? "Diukur pada data sampel BPJS sintetis berlabel; belum divalidasi pada klaim riil." : "Diukur pada data sintetis berlabel buatan kami; belum divalidasi pada klaim riil."}
+        </p>
+        <details className="mt-1 text-xs leading-relaxed">
+          <summary className="cursor-pointer list-none underline underline-offset-2">Baca batasannya</summary>
+          <p className="mt-1.5">
+            {useBpjs
+              ? "Data ini tidak punya resume medis, sehingga detektor kloning dan klaim fiktif tidak berlaku. Anomali disisipkan oleh generator kami, jadi angka ini mengukur kemampuan menemukan anomali yang kami tanam, bukan akurasi pada klaim sebenarnya."
+              : p.disclaimer}{" "}
+            Detektor dengan kurang dari 10 kasus berlabel hanya indikatif. Hasil sempurna pada detektor itu tidak boleh dibaca sebagai bukti.
+          </p>
+        </details>
       </div>
 
-      {/* Unified Summary Telemetry Strip */}
-      <div className="bg-surface rounded-xl border border-jkn-border shadow-subtle grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-jkn-divider tabular-nums">
-        {[
-          [
-            "Skor F1 Makro (Lintas Detektor)",
-            pct(r.macro.f1),
-            "Rerata F1 detektor yang punya kasus berlabel",
-          ],
-          [
-            "Precision Mikro",
-            pct(r.micro.precision),
-            "Proporsi temuan valid terhadap total sinyal",
-          ],
-          [
-            "Recall Mikro",
-            pct(r.micro.recall),
-            "Cakupan anomali aktual yang tertangkap",
-          ],
-          [
-            "Rasio Positif Palsu (Klaim Normal)",
-            pct(r.claim_level.false_positive_rate),
-            "Klaim normal yang ikut ditandai",
-          ],
-        ].map(([k, v, sub]) => (
-          <div key={k} className="p-4 sm:p-5 flex flex-col justify-between">
-            <span className="text-xs font-bold text-jkn-muted">
-              {k}
+      {/* Ringkasan: F1 makro sebagai cincin, tiga metrik pendukung */}
+      <div className="rounded-2xl border border-jkn-border/80 bg-surface grid grid-cols-1 md:grid-cols-[220px_1fr] tabular-nums overflow-hidden">
+        <div className="p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-jkn-divider">
+          <div className="relative w-32 h-32">
+            <svg viewBox="0 0 120 120" className="w-32 h-32" role="img" aria-label={`Skor F1 makro ${pct(r.macro.f1)}`}>
+              <circle cx="60" cy="60" r="52" fill="none" stroke="#E4ECE8" strokeWidth="9" />
+              <circle cx="60" cy="60" r="52" fill="none" stroke={f1Tone(r.macro.f1)} strokeWidth="9" strokeLinecap="round" strokeDasharray={`${r.macro.f1 * circ} ${circ}`} transform="rotate(-90 60 60)" />
+            </svg>
+            <span className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-semibold text-jkn-text leading-none">{(r.macro.f1 * 100).toFixed(1)}</span>
+              <span className="text-xs text-jkn-muted mt-1">F1 makro</span>
             </span>
-            <div className="mt-2">
-              <div className="text-2xl font-mono font-bold text-jkn-text tracking-tight">
-                {v}
+          </div>
+          <p className="mt-3 text-xs text-jkn-muted text-center">Rerata F1 pada data sintetis berlabel</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-jkn-divider">
+          {[
+            { k: "Precision mikro", v: r.micro.precision, hint: "temuan yang benar dari semua sinyal", tone: "#007A3A" },
+            { k: "Recall mikro", v: r.micro.recall, hint: "anomali nyata yang tertangkap", tone: "#0E7490" },
+            { k: "Positif palsu", v: r.claim_level.false_positive_rate, hint: "klaim normal yang ikut ditandai", tone: "#B91C1C", low: true },
+          ].map((m) => (
+            <div key={m.k} className="p-6 flex flex-col justify-center">
+              <span className="text-sm text-jkn-muted">{m.k}</span>
+              <span className="mt-1 text-3xl font-semibold text-jkn-text">{pct(m.v)}</span>
+              <div className="mt-3 h-1.5 rounded-full bg-frame overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${Math.min(100, m.v * 100)}%`, backgroundColor: m.tone }} />
               </div>
-              <div className="text-[11px] text-jkn-muted mt-1">{sub}</div>
+              <span className="mt-2 text-xs text-jkn-muted">{m.hint}</span>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Per-Detector Confusion Matrix & Precision/Recall Table */}
-      <div className="bg-surface rounded-xl border border-jkn-border shadow-subtle overflow-hidden tabular-nums">
-        <div className="px-5 py-3.5 border-b border-jkn-divider flex items-center justify-between">
-          <h2 className="text-sm font-bold text-jkn-text">
-            Matriks Evaluasi Per Detektor (Confusion Matrix &amp; Skor F1)
-          </h2>
-          <span className="text-[11px] font-mono text-jkn-muted">
-            Satu sinyal detektor = satu penandaan
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-surface-secondary border-b border-jkn-border text-jkn-muted font-bold text-[11px]">
-                <th className="py-2.5 px-4">Detektor</th>
-                <th className="py-2.5 px-3 text-right">Positif Aktual</th>
-                <th className="py-2.5 px-3 text-right">TP</th>
-                <th className="py-2.5 px-3 text-right">FP</th>
-                <th className="py-2.5 px-3 text-right">FN</th>
-                <th className="py-2.5 px-4 w-44">Precision</th>
-                <th className="py-2.5 px-4 w-44">Recall</th>
-                <th className="py-2.5 px-4 text-right">Skor F1</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-jkn-divider">
-              {r.per_detector.map((m) => (
-                <tr key={m.risk_type} className="hover:bg-surface-subtle transition-colors">
-                  <td className="py-2.5 px-4">
-                    <RiskPill type={m.risk_type} size="sm" />
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-jkn-text">
-                    {m.positives}
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-semibold text-bpjs-dark">
-                    {m.tp}
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-risk-critical">
-                    {m.fp}
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-amber-700">
-                    {m.fn}
-                  </td>
-                  <td className="py-2.5 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="w-12 font-mono font-semibold text-jkn-text">
-                        {pct(m.precision)}
-                      </span>
-                      <Bar value={m.precision} tone="bg-bpjs" />
-                    </div>
-                  </td>
-                  <td className="py-2.5 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="w-12 font-mono font-semibold text-jkn-text">
-                        {pct(m.recall)}
-                      </span>
-                      <Bar value={m.recall} tone="bg-intel" />
-                    </div>
-                  </td>
-                  <td className="py-2.5 px-4 text-right font-mono font-bold text-jkn-text">
-                    {m.f1.toFixed(3)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          ))}
         </div>
       </div>
 
-      {/* Detector Thresholds & Pipeline Telemetry Panel (Consolidated from Settings) */}
-      {sys && (
-        <div className="bg-surface rounded-xl border border-jkn-border shadow-subtle overflow-hidden tabular-nums">
-          <div className="px-5 py-3.5 border-b border-jkn-divider flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-bpjs" />
-              <h2 className="text-sm font-bold text-jkn-text">
-                Parameter Ambang Batas Detektor (Kalibrasi Aktif)
-              </h2>
-            </div>
-            {sys.last_analysis && (
-              <span className="text-[11px] font-mono text-jkn-muted">
-                Eksekusi terakhir: {sys.last_analysis.claims_analyzed.toLocaleString("id-ID")} klaim ·{" "}
-                {sys.last_analysis.findings_total.toLocaleString("id-ID")} sinyal ·{" "}
-                {sys.last_analysis.duration_ms} ms
-              </span>
-            )}
+      {/* Per detektor: daftar dan peta precision-recall */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] gap-6 tabular-nums">
+        <section className="rounded-2xl border border-jkn-border/80 bg-surface" aria-labelledby="h-det">
+          <div className="px-6 pt-5 pb-3">
+            <h2 id="h-det" className="text-lg font-semibold text-jkn-text">Kinerja per detektor</h2>
+            <p className="text-sm text-jkn-muted mt-0.5">TP, FP, FN dihitung per penandaan; satu sinyal detektor satu penandaan.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-jkn-divider">
-            {Object.entries(sys.thresholds).map(([key, val]) => {
-              const meta = THRESHOLD_LABEL[key] || {
-                label: key,
-                desc: "Parameter konfigurasi detektor aktif.",
-              };
+          <div className="grid grid-cols-[minmax(0,1.5fr)_44px_minmax(0,1fr)_minmax(0,1fr)_76px] gap-3 px-6 pb-2 text-[11px] text-jkn-dim border-b border-jkn-divider">
+            <span>Detektor</span>
+            <span className="text-right">F1</span>
+            <span>Precision</span>
+            <span>Recall</span>
+            <span className="text-right">TP / FP / FN</span>
+          </div>
+          <ul>
+            {[...r.per_detector].sort((a, b) => b.f1 - a.f1).map((m) => (
+              <li key={m.risk_type} className="grid grid-cols-[minmax(0,1.5fr)_44px_minmax(0,1fr)_minmax(0,1fr)_76px] gap-3 px-6 py-3 items-center hover:bg-frame/50 transition-colors">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-jkn-text truncate">{TYPE_NAME[m.risk_type] || m.risk_type}</div>
+                  <div className="text-[11px] text-jkn-muted">
+                    {m.positives} kasus berlabel
+                    {m.positives < 10 && (
+                      <span className="ml-1.5 whitespace-nowrap text-[11px] font-medium px-1.5 py-0.5 rounded bg-risk-medium-bg text-risk-medium border border-risk-medium-border" title="Kurang dari 10 kasus berlabel; angka hanya indikatif">
+                        sampel kecil
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className="text-sm font-semibold text-right" style={{ color: m.positives < 10 ? "#94A3B8" : f1Tone(m.f1) }} title={m.positives < 10 ? "Indikatif: sampel kecil" : undefined}>{m.f1.toFixed(2)}</span>
+                <div>
+                  <div className="text-xs text-jkn-text mb-1">{pct(m.precision)}</div>
+                  <div className="h-1.5 rounded-full bg-frame overflow-hidden"><div className="h-full rounded-full bg-bpjs" style={{ width: `${m.precision * 100}%` }} /></div>
+                </div>
+                <div>
+                  <div className="text-xs text-jkn-text mb-1">{pct(m.recall)}</div>
+                  <div className="h-1.5 rounded-full bg-frame overflow-hidden"><div className="h-full rounded-full bg-intel" style={{ width: `${m.recall * 100}%` }} /></div>
+                </div>
+                <span className="text-xs text-right text-jkn-muted">
+                  <span className="text-bpjs-dark font-medium">{m.tp}</span> / <span className={m.fp > 0 ? "text-risk-critical font-medium" : ""}>{m.fp}</span> / <span className={m.fn > 0 ? "text-risk-medium font-medium" : ""}>{m.fn}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="rounded-2xl border border-jkn-border/80 bg-surface p-6 flex flex-col" aria-labelledby="h-pr">
+          <h2 id="h-pr" className="text-lg font-semibold text-jkn-text">Peta precision dan recall</h2>
+          <p className="text-sm text-jkn-muted mt-0.5">Makin ke kanan atas makin baik. Ukuran titik menurut jumlah kasus berlabel; titik abu-abu putus-putus berarti sampel kecil (indikatif).</p>
+          <div className="flex-1 min-h-[320px] mt-3">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 12, right: 28, bottom: 16, left: 0 }}>
+                <CartesianGrid stroke="#E4ECE8" />
+                <XAxis type="number" dataKey="x" name="Recall" unit="%" domain={[0, 112]} ticks={[0, 25, 50, 75, 100]} stroke="#61756D" fontSize={12} tickLine={false} label={{ value: "Recall", position: "insideBottom", offset: -8, fontSize: 12, fill: "#61756D" }} />
+                <YAxis type="number" dataKey="y" name="Precision" unit="%" domain={[0, 112]} ticks={[0, 25, 50, 75, 100]} stroke="#61756D" fontSize={12} tickLine={false} />
+                <ZAxis type="number" dataKey="z" range={[60, 360]} />
+                <ReferenceLine x={80} stroke="#CBD5E1" strokeDasharray="4 4" />
+                <ReferenceLine y={80} stroke="#CBD5E1" strokeDasharray="4 4" />
+                <Tooltip
+                  cursor={{ strokeDasharray: "3 3" }}
+                  contentStyle={{ backgroundColor: "#FFFFFF", borderRadius: 8, border: "1px solid #D5E0DA", fontSize: 12 }}
+                  formatter={(v: number, n: string) => [`${v}%`, n]}
+                  labelFormatter={() => ""}
+                />
+                <Scatter data={scatter} fill="#007A3A" fillOpacity={0.75} shape={(props: { cx?: number; cy?: number; payload?: { z: number; small: boolean } }) => <circle cx={props.cx} cy={props.cy} r={props.payload ? 4 + Math.min(8, props.payload.z / 4) : 5} fill={props.payload?.small ? "#94A3B8" : "#007A3A"} fillOpacity={props.payload?.small ? 0.55 : 0.8} stroke={props.payload?.small ? "#64748B" : "none"} strokeDasharray={props.payload?.small ? "2 2" : undefined} />}>
+                  <LabelList dataKey="name" position="top" fontSize={11} fill="#475B53" />
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      </div>
+
+      {/* Pembanding, sitasi, waktu penanganan */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 tabular-nums">
+        <section className="rounded-2xl border border-jkn-border/80 bg-surface p-6">
+          <h2 className="text-base font-semibold text-jkn-text">Dibanding ambang tunggal</h2>
+          <p className="text-xs text-jkn-muted mt-0.5">F1 tingkat klaim, {r.per_detector.length} detektor ARSA melawan {r.baseline.name}.</p>
+          <div className="mt-4 space-y-3">
+            {[
+              ["ARSA", r.uplift.claim_f1_arsa, "#007A3A"],
+              ["Ambang tunggal", r.uplift.claim_f1_baseline, "#94A3B8"],
+            ].map(([k, v, c]) => (
+              <div key={k as string}>
+                <div className="flex justify-between text-sm mb-1"><span className="text-jkn-muted">{k as string}</span><span className="font-semibold text-jkn-text">{(v as number).toFixed(3)}</span></div>
+                <div className="h-2 rounded-full bg-frame overflow-hidden"><div className="h-full rounded-full" style={{ width: `${(v as number) * 100}%`, backgroundColor: c as string }} /></div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-sm text-jkn-text">
+            <span className="text-lg font-semibold text-bpjs-dark">{r.uplift.relative_pct >= 0 ? "+" : ""}{r.uplift.relative_pct}%</span> <span className="text-jkn-muted">peningkatan relatif</span>
+          </p>
+          <p className="mt-1 text-xs text-jkn-dim">Baseline: precision {pct(r.baseline.precision)}, recall {pct(r.baseline.recall)}, {r.baseline.flagged} klaim ditandai.</p>
+        </section>
+
+        <section className="rounded-2xl border border-jkn-border/80 bg-surface p-6">
+          <h2 className="text-base font-semibold text-jkn-text">Kelengkapan sitasi bukti</h2>
+          <p className="text-xs text-jkn-muted mt-0.5">Temuan yang menautkan minimal satu bukti valid.</p>
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            {[
+              ["Bukti valid", ev.pct, "#007A3A"],
+              ["Dokumen medis", ev.document_pct, "#0E7490"],
+            ].map(([k, v, c]) => {
+              const cc = 2 * Math.PI * 30;
               return (
-                <div key={key} className="p-4 flex flex-col justify-between border-b border-jkn-divider">
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-xs font-bold text-jkn-text leading-snug">
-                        {meta.label}
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-bpjs-soft text-bpjs-dark border border-bpjs-border font-mono text-xs font-bold shrink-0">
-                        {val}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-jkn-muted leading-relaxed mt-1.5">
-                      {meta.desc}
-                    </p>
+                <div key={k as string} className="flex flex-col items-center">
+                  <div className="relative w-20 h-20">
+                    <svg viewBox="0 0 72 72" className="w-20 h-20" role="img" aria-label={`${k}: ${(v as number).toFixed(1)}%`}>
+                      <circle cx="36" cy="36" r="30" fill="none" stroke="#E4ECE8" strokeWidth="6" />
+                      <circle cx="36" cy="36" r="30" fill="none" stroke={c as string} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${((v as number) / 100) * cc} ${cc}`} transform="rotate(-90 36 36)" />
+                    </svg>
+                    <span className="absolute inset-0 grid place-items-center text-sm font-semibold text-jkn-text">{(v as number).toFixed(0)}%</span>
                   </div>
-                  <div className="mt-2.5 pt-2 border-t border-jkn-divider/60 flex items-center justify-between text-[10px] font-mono text-jkn-dim">
-                    <span>Kunci parameter</span>
-                    <span>{key}</span>
-                  </div>
+                  <span className="mt-1.5 text-xs text-jkn-muted">{k as string}</span>
                 </div>
               );
             })}
           </div>
-          <div className="px-5 py-2.5 bg-surface-secondary/50 border-t border-jkn-divider text-[11px] text-jkn-muted flex flex-wrap items-center justify-between gap-2">
-            <span>
-              Parameter dikunci secara deterministik agar hasil audit dapat direproduksi; ubah nilai melalui variabel lingkungan (<code className="font-mono text-jkn-text">CLONE_SIM_THRESHOLD</code>, <code className="font-mono text-jkn-text">CLONE_LEXICAL_THRESHOLD</code>) lalu klik <strong>Jalankan Ulang Pipeline Detektor</strong>.
-            </span>
-          </div>
-        </div>
-      )}
+          <p className="mt-4 text-xs text-jkn-dim text-center">{ev.with_valid_citation} dari {ev.findings} temuan terverifikasi</p>
+        </section>
 
-      {/* Unified 3-Column Benchmark & Audit Verification Ledger */}
-      <div className="bg-surface rounded-xl border border-jkn-border shadow-subtle grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-jkn-divider tabular-nums">
-        {/* Column 1: Detection vs Baseline */}
-        <div className="p-5 space-y-3">
-          <h3 className="text-sm font-bold text-jkn-text">
-            1. Komparasi terhadap Ambang Tunggal
-          </h3>
-          <p className="text-[11px] text-jkn-muted leading-relaxed">
-            Perbandingan F1 tingkat klaim antara kombinasi {r.per_detector.length} detektor ARSA dengan penyaringan ambang tunggal ({r.baseline.name}).
-          </p>
-          <div className="divide-y divide-jkn-divider border-t border-b border-jkn-divider text-xs">
-            <div className="py-2 flex justify-between">
-              <span className="text-jkn-muted">Skor F1 Tingkat Klaim — ARSA</span>
-              <strong className="font-mono text-jkn-text">{r.uplift.claim_f1_arsa.toFixed(3)}</strong>
-            </div>
-            <div className="py-2 flex justify-between">
-              <span className="text-jkn-muted">Skor F1 Tingkat Klaim — Baseline</span>
-              <strong className="font-mono text-jkn-text">{r.uplift.claim_f1_baseline.toFixed(3)}</strong>
-            </div>
-            <div className="py-2 flex justify-between">
-              <span className="text-jkn-muted">Peningkatan Relatif</span>
-              <strong className="font-mono text-bpjs-dark">
-                {r.uplift.relative_pct >= 0 ? "+" : ""}
-                {r.uplift.relative_pct}%
-              </strong>
+        <section className="rounded-2xl border border-jkn-border/80 bg-surface p-6 flex flex-col">
+          <h2 className="text-base font-semibold text-jkn-text">Waktu penyelesaian</h2>
+          <p className="text-xs text-jkn-muted mt-0.5">Dari berkas dibuka sampai keputusan akhir pada rantai audit.</p>
+          <div className="mt-4 flex-1 flex flex-col justify-center">
+            <div className="text-3xl font-semibold text-jkn-text">{p.handling_time.median_hours === null ? "-" : `${p.handling_time.median_hours} jam`}</div>
+            <div className="text-sm text-jkn-muted mt-1">
+              {p.handling_time.median_hours === null ? "Belum ada kasus yang diselesaikan" : `median dari ${p.handling_time.cases_measured} kasus selesai`}
             </div>
           </div>
-          <div className="text-[11px] text-jkn-dim">
-            Baseline: precision {pct(r.baseline.precision)}, recall {pct(r.baseline.recall)} ({r.baseline.flagged} klaim ditandai).
-          </div>
-        </div>
-
-        {/* Column 2: Evidence Completeness */}
-        <div className="p-5 space-y-3">
-          <h3 className="text-sm font-bold text-jkn-text">
-            2. Kelengkapan Sitasi Bukti
-          </h3>
-          <p className="text-[11px] text-jkn-muted leading-relaxed">
-            Proporsi temuan detektor yang berhasil menautkan minimal satu ID bukti valid (dokumen klinis, rincian tagihan, atau klaim pembanding).
-          </p>
-          <div className="space-y-3 pt-1 text-xs">
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-jkn-muted">Temuan dengan sitasi bukti valid</span>
-                <strong className="font-mono text-jkn-text">{r.evidence_completeness.pct}%</strong>
-              </div>
-              <Bar value={r.evidence_completeness.pct / 100} tone="bg-bpjs" />
-            </div>
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-jkn-muted">Temuan bersitasi dokumen rekam medis</span>
-                <strong className="font-mono text-jkn-text">
-                  {r.evidence_completeness.document_pct}%
-                </strong>
-              </div>
-              <Bar value={r.evidence_completeness.document_pct / 100} tone="bg-intel" />
-            </div>
-            <div className="text-[11px] text-jkn-dim pt-1">
-              Terverifikasi pada {r.evidence_completeness.with_valid_citation} dari{" "}
-              {r.evidence_completeness.findings} total temuan.
-            </div>
-          </div>
-        </div>
-
-        {/* Column 3: Investigation Turnaround Instrumentation */}
-        <div className="p-5 space-y-3">
-          <h3 className="text-sm font-bold text-jkn-text">
-            3. Instrumentasi Waktu Penyelesaian
-          </h3>
-          <p className="text-[11px] text-jkn-muted leading-relaxed">
-            Durasi aktual dari pembukaan berkas hingga penetapan keputusan akhir yang tercatat pada rantai audit (append-only log).
-          </p>
-          <div className="divide-y divide-jkn-divider border-t border-b border-jkn-divider text-xs">
-            <div className="py-2 flex justify-between">
-              <span className="text-jkn-muted">Kasus Selesai Terukur</span>
-              <strong className="font-mono text-jkn-text">{p.handling_time.cases_measured} berkas</strong>
-            </div>
-            <div className="py-2 flex justify-between">
-              <span className="text-jkn-muted">Median Waktu Penanganan</span>
-              <strong className="font-mono text-jkn-text">
-                {p.handling_time.median_hours === null
-                  ? "Belum ada sampel selesai"
-                  : `${p.handling_time.median_hours} jam`}
-              </strong>
-            </div>
-          </div>
-          <div className="flex items-start gap-1.5 text-[11px] text-jkn-dim">
-            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-            <span>
-              Model embedding aktif: <code className="font-mono">{p.embedding_model || "-"}</code>
-            </span>
-          </div>
-        </div>
+        </section>
       </div>
+
+      {/* Parameter ambang aktif: dilipat */}
+      {sys && (
+        <details className="group rounded-2xl border border-jkn-border/80 bg-surface tabular-nums">
+          <summary className="cursor-pointer list-none px-6 py-4 flex items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-2 text-base font-semibold text-jkn-text">
+              <Sliders className="w-4 h-4 text-bpjs" aria-hidden /> Parameter ambang aktif ({Object.keys(sys.thresholds).length})
+            </span>
+            <span className="text-xs text-jkn-muted">
+              {sys.last_analysis ? `Terakhir ${sys.last_analysis.claims_analyzed.toLocaleString("id-ID")} klaim, ${sys.last_analysis.findings_total.toLocaleString("id-ID")} sinyal, ${sys.last_analysis.duration_ms} ms` : ""}
+              <span className="ml-3 text-bpjs font-medium group-open:hidden">Tampilkan</span>
+              <span className="ml-3 text-bpjs font-medium hidden group-open:inline">Sembunyikan</span>
+            </span>
+          </summary>
+          <div className="border-t border-jkn-divider grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-1 px-6 py-4">
+            {Object.entries(sys.thresholds).map(([key, val]) => {
+              const meta = THRESHOLD_LABEL[key] || { label: key, desc: "Parameter konfigurasi detektor aktif." };
+              return (
+                <div key={key} className="flex items-start justify-between gap-3 py-2 border-b border-jkn-divider/60" title={meta.desc}>
+                  <span className="text-sm text-jkn-text leading-snug">{meta.label}</span>
+                  <span className="text-sm font-semibold text-bpjs-dark shrink-0">{val}</span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="px-6 pb-4 text-xs text-jkn-muted">Parameter dikunci agar hasil audit dapat direproduksi. Arahkan kursor ke baris untuk melihat penjelasannya; ubah lewat variabel lingkungan lalu jalankan ulang detektor.</p>
+        </details>
+      )}
     </DashboardShell>
   );
 }

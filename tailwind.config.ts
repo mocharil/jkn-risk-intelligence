@@ -10,6 +10,8 @@ const config: Config = {
     extend: {
       colors: {
         background: "#F4F7F5",
+        // Bingkai ringan: satu langkah tone hijau-abu dari warna BPJS; dipakai untuk latar kontrol dan hover.
+        frame: "#EDF2EF",
         surface: {
           DEFAULT: "#FFFFFF",
           secondary: "#EEF3F0",

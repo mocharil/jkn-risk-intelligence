@@ -15,12 +15,13 @@ const call = async (p, init = {}) => {
 const post = async (p, b) => (await call(p, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) })).json();
 
 await post("/api/auth/login", { email: "supervisor@arsa.id", password: "Arsa#2026" });
+const TOP = (await (await call("/api/claims?limit=1")).json()).data[0].claim_id;
 const st = await (await call("/api/system/status?refresh=1")).json();
 console.log("AI:", st.ai.provider, st.ai.model, "| available:", st.ai.available, st.ai.reason || "");
 check("provider tersedia", st.ai.available);
 
 console.log("\n[Copilot]");
-const c1 = await post("/api/copilot", { question: "Mengapa klaim CLM-10293 dianggap kritis? Jelaskan singkat." });
+const c1 = await post("/api/copilot", { question: `Mengapa klaim ${TOP} dianggap kritis? Jelaskan singkat.` });
 console.log("  jawaban:", c1.answer.slice(0, 300).replace(/\n/g, " "), "...");
 check("mode llm", c1.mode === "llm", c1.fallback_reason);
 check("sitasi valid >= 2", c1.grounding.valid_citations >= 2, JSON.stringify(c1.grounding));
@@ -36,7 +37,7 @@ check("streaming: banyak potongan + final", deltas >= 2 && fin.type === "final")
 check("streaming: final llm bersitasi", fin.response.mode === "llm" && fin.response.grounding.valid_citations >= 1, fin.response.fallback_reason);
 
 console.log("\n[Penjelasan temuan]");
-const ex = await (await call("/api/claims/CLM-10293/explain?force=1", { method: "POST" })).json();
+const ex = await (await call(`/api/claims/${TOP}/explain?force=1`, { method: "POST" })).json();
 const f0 = ex.data.risk_findings[0];
 console.log("  ", f0.risk_type + ":", (f0.ai_explanation?.text || "").slice(0, 220));
 check("penjelasan oleh LLM", ex.explanation_mode === "llm", ex.fallback_reason);

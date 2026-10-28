@@ -21,7 +21,7 @@ const ds = generateSyntheticDataset();
 (store as { claims: CanonicalClaim[] }).claims = ds.claims;
 analyzeLocal(store);
 
-const anomalous = ds.claims.filter((c) => ds.labels[c.claim_id]?.length > 0 && c.claim_id !== "CLM-10293");
+const anomalous = ds.claims.filter((c) => ds.labels[c.claim_id]?.length > 0);
 const normal = ds.claims.filter((c) => ds.labels[c.claim_id]?.length === 0);
 const pool = (n: number, offset: number) => [...anomalous.slice(offset, offset + Math.round(n * 0.45)), ...normal.slice(offset, offset + Math.round(n * 0.55))];
 

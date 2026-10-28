@@ -1,6 +1,6 @@
 import { CanonicalClaim } from "@/types/claim";
 import { referenceFor } from "./reference";
-import { classCostFactor } from "../data/bpjs-national";
+import { classCostFactor, provinceCostIndex } from "../data/bpjs-national";
 
 export interface Benchmark {
   code: string;
@@ -23,6 +23,11 @@ export function classFactorOf(treatmentClass?: string): number {
   return CLASS_FACTOR[k] ?? 1;
 }
 
+/** Indeks biaya provinsi terhadap nasional (BPJS RITL 2018, Sample/66); provinsi tak dikenal = 1. */
+export function provinceFactorOf(provinceCode?: string): number {
+  return provinceCode ? provinceCostIndex(provinceCode) || 1 : 1;
+}
+
 /** Rawat jalan memiliki biaya & lama rawat yang berbeda jauh; dibandingkan hanya dengan sesama rawat jalan. */
 function bucketOf(treatmentClass?: string): "RJ" | "RI" {
   return treatmentClass === "RAWAT_JALAN" ? "RJ" : "RI";
@@ -30,7 +35,7 @@ function bucketOf(treatmentClass?: string): "RJ" | "RI" {
 
 export interface Benchmarks {
   /** Tarif ekspektasi disesuaikan kelas rawat: median peer yang dinormalisasi kelas, dikalikan faktor kelas klaim ini. */
-  get(code: string, treatmentClass?: string): Benchmark;
+  get(code: string, treatmentClass?: string, provinceCode?: string): Benchmark;
   peerCount(code: string, treatmentClass?: string): number;
 }
 
@@ -84,8 +89,8 @@ export function computeBenchmarks(claims: CanonicalClaim[]): Benchmarks {
   const cache = new Map<string, Benchmark>();
   return {
     peerCount: (code, treatmentClass) => groups.get(`${code}|${bucketOf(treatmentClass)}`)?.length || 0,
-    get(code: string, treatmentClass?: string): Benchmark {
-      const factor = classFactorOf(treatmentClass);
+    get(code: string, treatmentClass?: string, provinceCode?: string): Benchmark {
+      const factor = classFactorOf(treatmentClass) * provinceFactorOf(provinceCode);
       const key = `${code}|${factor}`;
       const hit = cache.get(key);
       if (hit) return hit;
@@ -98,11 +103,11 @@ export function computeBenchmarks(claims: CanonicalClaim[]): Benchmarks {
           code,
           expected_severity: Math.min(3, Math.max(1, mode(sevs))) as 1 | 2 | 3,
           expected_los: median(peers.map((p) => p.service.length_of_stay)) || ref.expected_los,
-          expected_tariff: (median(peers.map((p) => p.claim_amount / classFactorOf(p.service.treatment_class))) || ref.expected_tariff) * factor,
+          expected_tariff: (median(peers.map((p) => p.claim_amount / (classFactorOf(p.service.treatment_class) * provinceFactorOf(p.provider.province_code)))) || ref.expected_tariff) * factor,
           sample_size: peers.length,
           source: "peer",
           los_log_sigma: robustLogSigma(peers.map((p) => p.service.length_of_stay), 0.2),
-          amount_log_sigma: robustLogSigma(peers.map((p) => p.claim_amount / classFactorOf(p.service.treatment_class)), 0.1),
+          amount_log_sigma: robustLogSigma(peers.map((p) => p.claim_amount / (classFactorOf(p.service.treatment_class) * provinceFactorOf(p.provider.province_code))), 0.1),
         };
       } else {
         b = { code, expected_severity: ref.expected_severity, expected_los: ref.expected_los, expected_tariff: ref.expected_tariff * factor, sample_size: peers.length, source: "reference" };

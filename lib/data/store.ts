@@ -227,7 +227,12 @@ function build(opts: { keepUsers?: UserRecord[]; keepAudit?: AuditEntry[]; ignor
       store.claims.push(c);
       store.ingestedClaimIds.add(c.claim_id);
     });
-    store.datasets = [...persisted.datasets];
+    // Proses normalisasi yang terputus (server dimuat ulang di tengah jalan) tidak boleh tertahan selamanya pada NORMALIZING.
+    store.datasets = persisted.datasets.map((d) =>
+      d.status === "NORMALIZING"
+        ? { ...d, status: "ERROR" as const, error_message: "Proses terputus karena server dimuat ulang sebelum selesai. Unggah ulang berkas untuk memprosesnya lagi." }
+        : d
+    );
     if (!staleOverrides) {
       store.claims.forEach((c) => {
         const st = persisted.claim_status[c.claim_id];

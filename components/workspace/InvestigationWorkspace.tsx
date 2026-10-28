@@ -8,6 +8,7 @@ import { RiskPill } from "@/components/ui/RiskPill";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Investigation } from "@/types/investigation";
+import type { RiskType } from "@/types/risk";
 import { CanonicalClaim, NationalContext } from "@/types/claim";
 import { INDONESIA_PROVINCES } from "@/lib/data/indonesia-provinces";
 import { formatRupiah } from "@/lib/formatting/currency";
@@ -26,6 +27,8 @@ import {
   Download,
   X,
 } from "lucide-react";
+
+const RING_COLOR: Record<string, string> = { CRITICAL: "#B91C1C", HIGH: "#EA580C", MEDIUM: "#CA8A04", LOW: "#059669" };
 
 const STATUS_STYLE: Record<string, { label: string; className: string }> = {
   NEW: {
@@ -150,6 +153,12 @@ export function InvestigationQueueInner({
 
   // Investigation Queue state
   const [investigations, setInvestigations] = useState<Investigation[]>([]);
+  const [overview, setOverview] = useState<{
+    open: number;
+    exposure: number;
+    aged: number;
+    byType: Array<{ risk_type: string; claim_count: number; potential_exposure: number }>;
+  } | null>(null);
   const [total, setTotal] = useState(0);
   const [counts, setCounts] = useState<{ all: number; critical: number; high: number; medium: number }>({
     all: 0,
@@ -158,6 +167,30 @@ export function InvestigationQueueInner({
     medium: 0,
   });
   const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      fetch("/api/dashboard")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (cancelled || !d) return;
+          const age: Array<{ key: string; count: number }> = d.queue_age || [];
+          setOverview({
+            open: d.workflow?.open ?? 0,
+            exposure: d.kpis?.potential_exposure ?? 0,
+            aged: age.filter((a) => a.key === "d60" || a.key === "d90").reduce((acc, a) => acc + a.count, 0),
+            byType: (d.kpis?.risk_by_type || []).filter((t: { claim_count: number }) => t.claim_count > 0),
+          });
+        })
+        .catch(() => {});
+    load();
+    window.addEventListener("arsa:store-updated", load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("arsa:store-updated", load);
+    };
+  }, []);
+
   const [loadError, setLoadError] = useState<string | null>(null);
   const [claimsError, setClaimsError] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string>(() => searchParams.get("priority") || "ALL");
@@ -478,6 +511,59 @@ export function InvestigationQueueInner({
         </div>
       </div>
 
+      {/* Ringkasan antrean: angka kunci dan pintasan filter menurut sinyal detektor */}
+      {workspaceMode === "QUEUE" && overview && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div className="lg:col-span-6 rounded-2xl border border-jkn-border/90 bg-surface shadow-card overflow-hidden grid grid-cols-3 gap-px bg-jkn-divider tabular-nums">
+            {[
+              { label: "Kasus terbuka", value: overview.open.toLocaleString("id-ID"), hint: "belum diputuskan" },
+              { label: "Eksposur terflag", value: formatRupiah(overview.exposure, true), hint: "selisih tarif" },
+              { label: "Berumur lebih dari 30 hari", value: overview.aged.toLocaleString("id-ID"), hint: "perlu didahulukan", warn: overview.aged > 0 },
+            ].map((k) => (
+              <div key={k.label} className="bg-surface px-4 py-3.5 flex flex-col justify-center">
+                <div className="text-xs text-jkn-muted leading-tight">{k.label}</div>
+                <div className={`mt-1 font-mono text-lg font-bold whitespace-nowrap ${k.warn ? "text-risk-critical" : "text-jkn-text"}`}>{k.value}</div>
+                <div className="text-[11px] text-jkn-dim mt-0.5">{k.hint}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="lg:col-span-6 rounded-2xl border border-jkn-border/90 bg-surface shadow-card px-4 py-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-jkn-text">Sinyal dalam antrean</h2>
+              {riskTypeFilter !== "ALL" && (
+                <button onClick={() => setRiskTypeFilter("ALL")} className="text-xs font-semibold text-bpjs hover:underline">
+                  Hapus filter
+                </button>
+              )}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {[...overview.byType]
+                .sort((a, b) => b.claim_count - a.claim_count)
+                .map((t) => {
+                  const active = riskTypeFilter === t.risk_type;
+                  return (
+                    <button
+                      key={t.risk_type}
+                      onClick={() => {
+                        setRiskTypeFilter(active ? "ALL" : t.risk_type);
+                        setPage(1);
+                      }}
+                      aria-pressed={active}
+                      className={`inline-flex items-center gap-2 rounded-full border pl-1 pr-3 py-1 transition-colors ${
+                        active ? "border-bpjs bg-bpjs-soft" : "border-jkn-border hover:border-bpjs/50"
+                      }`}
+                    >
+                      <RiskPill type={t.risk_type as RiskType} size="sm" />
+                      <span className="font-mono text-xs font-bold text-jkn-text tabular-nums">{t.claim_count}</span>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Unified Control Bar */}
       <div className="bg-surface rounded-2xl border border-jkn-border/90 shadow-card overflow-hidden">
         {workspaceMode === "QUEUE" && (
@@ -688,179 +774,104 @@ export function InvestigationQueueInner({
         ) : (
           <>
             {viewMode === "TABLE" ? (
-              /* High-Density Forensic Triage Table with Direct PDF Dossier Export */
-              <div className="bg-surface rounded-2xl border border-jkn-border/90 overflow-hidden shadow-card overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-surface-subtle border-b border-jkn-border text-jkn-muted font-semibold text-xs">
-                    <tr>
-                      <th className="py-3 px-3.5 w-32">Skor dan kasus</th>
-                      <th className="py-3 px-3 w-48">Klaim dan diagnosis</th>
-                      <th className="py-3 px-3 w-44">Faskes</th>
-                      <th className="py-3 px-3">Temuan utama</th>
-                      <th className="py-3 px-3 text-right w-44">Tagihan dan eksposur</th>
-                      <th className="py-3 px-3.5 text-right w-44">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-jkn-divider">
-                    {investigations.map((inv) => {
-                      const topFinding = inv.claim.risk_findings?.[0];
-                      const topEvidenceId = topFinding?.evidence?.[0]?.evidence_id;
-                      const primaryDiagnosis = inv.claim.diagnoses?.[0];
-                      const visibleSignals = (inv.primary_risk_signals ?? []).slice(0, 3);
-                      const hiddenSignalCount = Math.max(0, (inv.primary_risk_signals ?? []).length - 3);
-                      const exposurePct =
-                        inv.claim.claim_amount > 0
-                          ? Math.min(100, Math.round((inv.potential_exposure / inv.claim.claim_amount) * 100))
-                          : 0;
-                      const statusMeta = STATUS_STYLE[inv.status] || {
-                        label: inv.status,
-                        className: "bg-surface-secondary text-jkn-muted border-jkn-divider",
-                      };
-                      const providerTypeLabel =
-                        PROVIDER_TYPE_LABEL[inv.claim.provider.type] || inv.claim.provider.type;
-                      const treatmentClassLabel =
-                        TREATMENT_CLASS_LABEL[inv.claim.service?.treatment_class] ||
-                        inv.claim.service?.treatment_class ||
-                        "Rawat Inap";
-                      const losDays = inv.claim.service?.length_of_stay ?? 1;
+              /* Daftar kasus: satu baris per kasus, skor sebagai cincin, eksposur sebagai angka utama */
+              <ul className="bg-surface rounded-2xl border border-jkn-border/90 overflow-hidden shadow-card divide-y divide-jkn-divider">
+                {investigations.map((inv) => {
+                  const topFinding = inv.claim.risk_findings?.[0];
+                  const primaryDiagnosis = inv.claim.diagnoses?.[0];
+                  const signals = (inv.primary_risk_signals ?? []).slice(0, 2);
+                  const extraSignals = Math.max(0, (inv.primary_risk_signals ?? []).length - 2);
+                  const statusMeta = STATUS_STYLE[inv.status] || {
+                    label: inv.status,
+                    className: "bg-surface-secondary text-jkn-muted border-jkn-divider",
+                  };
+                  const ringColor = RING_COLOR[inv.priority] || "#059669";
+                  const circ = 2 * Math.PI * 22;
+                  const patient = inv.claim.patient;
 
-                      return (
-                        <tr
-                          key={inv.investigation_id}
-                          className="group hover:bg-surface-secondary/70 transition-colors align-top"
-                        >
-                          {/* 1. Skor & ID Berkas */}
-                          <td className="py-3.5 px-3.5 whitespace-nowrap">
-                            <RiskPill score={inv.risk_score} level={inv.priority} size="sm" />
-                            <div className="font-mono text-[11px] font-bold text-jkn-text tabular-nums mt-1.5">
-                              {inv.investigation_id}
-                            </div>
-                            <div className="text-xs text-jkn-dim tabular-nums mt-0.5">
-                              {formatRelativeTime(inv.created_at)}
-                            </div>
-                          </td>
+                  return (
+                    <li key={inv.investigation_id} className="group px-5 py-4 grid grid-cols-[56px_minmax(0,1fr)] md:grid-cols-[56px_minmax(0,1fr)_190px_150px] gap-x-4 gap-y-3 items-center hover:bg-surface-secondary/50 transition-colors">
+                      {/* Skor sebagai cincin */}
+                      <div className="relative w-14 h-14 shrink-0" title={`Skor risiko ${inv.risk_score}, ${inv.priority}`}>
+                        <svg viewBox="0 0 56 56" className="w-14 h-14" role="img" aria-label={`Skor risiko ${inv.risk_score}`}>
+                          <circle cx="28" cy="28" r="22" fill="none" stroke="#E4ECE8" strokeWidth="5" />
+                          <circle
+                            cx="28"
+                            cy="28"
+                            r="22"
+                            fill="none"
+                            stroke={ringColor}
+                            strokeWidth="5"
+                            strokeLinecap="round"
+                            strokeDasharray={`${(inv.risk_score / 100) * circ} ${circ}`}
+                            transform="rotate(-90 28 28)"
+                          />
+                        </svg>
+                        <span className="absolute inset-0 flex items-center justify-center text-base font-semibold text-jkn-text tabular-nums">{inv.risk_score}</span>
+                      </div>
 
-                          {/* 2. Klaim, Peserta & Diagnosis */}
-                          <td className="py-3.5 px-3">
-                            <div className="flex items-center gap-1.5 whitespace-nowrap">
-                              <span className="font-mono font-bold text-jkn-text tabular-nums">{inv.claim_id}</span>
-                              {primaryDiagnosis?.severity && (
-                                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-surface-secondary border border-jkn-divider text-jkn-muted">
-                                  Sev Lv.{primaryDiagnosis.severity}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs font-semibold text-jkn-text mt-1 line-clamp-1">
-                              {inv.claim.patient.name}{" "}
-                              <span className="font-normal text-jkn-muted text-xs">
-                                {inv.claim.patient.age > 0 ? `(${inv.claim.patient.age} thn, ${inv.claim.patient.gender})` : "(usia tidak tercatat)"}
-                              </span>
-                            </div>
-                            {primaryDiagnosis && (
-                              <div
-                                className="text-[11px] text-jkn-muted mt-1 line-clamp-1"
-                                title={`${primaryDiagnosis.code} — ${primaryDiagnosis.description}`}
-                              >
-                                <span className="font-mono font-bold text-bpjs-dark">{primaryDiagnosis.code}</span>{" "}
-                                {primaryDiagnosis.description}
-                              </div>
-                            )}
-                          </td>
+                      {/* Faskes, klaim, temuan */}
+                      <div className="min-w-0">
+                        <Link href={`/investigations/${inv.investigation_id}`} className="block">
+                          <span className="text-[15px] font-semibold text-jkn-text group-hover:text-bpjs transition-colors line-clamp-1">{inv.claim.provider.name}</span>
+                        </Link>
+                        <p className="mt-0.5 text-xs text-jkn-muted line-clamp-1">
+                          <span className="font-mono">{inv.claim_id}</span>
+                          {" · "}
+                          {inv.claim.provider.city}
+                          {" · "}
+                          {patient.age > 0 ? `${patient.age} thn, ${patient.gender}` : "usia tidak tercatat"}
+                          {primaryDiagnosis ? ` · ${primaryDiagnosis.description}` : ""}
+                        </p>
+                        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                          {signals.map((sig) => (
+                            <RiskPill key={sig} type={sig} size="sm" />
+                          ))}
+                          {extraSignals > 0 && <span className="text-xs text-jkn-muted">+{extraSignals}</span>}
+                          <span className="text-xs text-jkn-dim line-clamp-1 min-w-0 flex-1 basis-40">{topFinding?.title ?? inv.ai_priority_rationale}</span>
+                        </div>
+                      </div>
 
-                          {/* 3. Fasilitas Kesehatan */}
-                          <td className="py-3.5 px-3">
-                            <div className="font-semibold text-jkn-text leading-snug line-clamp-1">{inv.claim.provider.name}</div>
-                            <div className="text-[11px] text-jkn-muted mt-0.5 line-clamp-1">
-                              {providerTypeLabel} · {inv.claim.provider.city}
-                            </div>
-                            <div className="text-xs text-jkn-dim font-mono tabular-nums mt-1 whitespace-nowrap">
-                              {treatmentClassLabel}
-                              {inv.claim.service?.treatment_class === "RAWAT_JALAN" ? "" : `, ${losDays} hari`}
-                            </div>
-                          </td>
+                      {/* Eksposur sebagai angka utama */}
+                      <div className="col-span-2 md:col-span-1 md:text-right">
+                        {inv.potential_exposure > 0 ? (
+                          <div className="font-mono text-lg font-semibold text-risk-critical tabular-nums leading-tight">{formatRupiah(inv.potential_exposure, true)}</div>
+                        ) : (
+                          <div className="text-sm font-medium text-jkn-muted leading-tight" title="Temuan berasal dari pola (mis. narasi mirip), bukan dari selisih tarif">
+                            Tanpa selisih tarif
+                          </div>
+                        )}
+                        <div className="text-xs text-jkn-muted mt-0.5 tabular-nums">
+                          tagihan {formatRupiah(inv.claim.claim_amount, true)}
+                        </div>
+                        <NationalChip n={inv.claim.national} className="text-xs block mt-0.5" />
+                      </div>
 
-                          {/* 4. Kontradiksi Klinis & Sinyal Detektor */}
-                          <td className="py-3.5 px-3">
-                            {topFinding ? (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="text-xs font-semibold text-jkn-text line-clamp-1">
-                                    {topFinding.title}
-                                  </span>
-                                  {topEvidenceId && (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-surface-secondary text-bpjs-dark border border-jkn-border shrink-0">
-                                      <FileText className="w-2.5 h-2.5" />
-                                      {topEvidenceId}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-[11px] text-jkn-muted leading-relaxed line-clamp-1">
-                                  {topFinding.summary}
-                                </p>
-                              </div>
-                            ) : (
-                              <p className="text-[11px] text-jkn-muted leading-relaxed line-clamp-1">
-                                {inv.ai_priority_rationale}
-                              </p>
-                            )}
-
-                            <div className="flex items-center flex-wrap gap-1.5 mt-2">
-                              {visibleSignals.map((sig) => (
-                                <RiskPill key={sig} type={sig} size="sm" />
-                              ))}
-                              {hiddenSignalCount > 0 && (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-surface-secondary text-jkn-muted border border-jkn-divider">
-                                  +{hiddenSignalCount} sinyal
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* 5. Tagihan vs Eksposur */}
-                          <td className="py-3.5 px-3.5 text-right whitespace-nowrap">
-                            <div className="text-xs text-jkn-dim">Potensi eksposur</div>
-                            <div className="font-mono text-sm font-bold text-risk-critical tabular-nums mt-0.5">
-                              {formatRupiah(inv.potential_exposure)}
-                            </div>
-                            <div className="text-xs text-jkn-muted font-mono tabular-nums mt-1">
-                              dari {formatRupiah(inv.claim.claim_amount)} ({exposurePct}%)
-                            </div>
-                            <NationalChip n={inv.claim.national} className="text-xs block mt-0.5" />
-                          </td>
-
-                          {/* 6. Status, Dosier PDF & Aksi */}
-                          <td className="py-3.5 px-3.5 text-right whitespace-nowrap">
-                            <div>
-                              <span
-                                className={`inline-block text-[10px] px-2 py-0.5 rounded-md font-semibold border ${statusMeta.className}`}
-                              >
-                                {statusMeta.label}
-                              </span>
-                            </div>
-                            <div className="mt-2 inline-flex items-center justify-end gap-1.5">
-                              <Link
-                                href={`/reports/${inv.investigation_id}`}
-                                title="Buka dosier audit; unduh PDF dari halaman itu"
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-jkn-border bg-surface-subtle text-xs font-semibold text-jkn-muted hover:text-jkn-text hover:bg-surface-secondary transition-colors"
-                              >
-                                <Printer className="w-3.5 h-3.5" />
-                                <span>Dosier</span>
-                              </Link>
-                              <Link
-                                href={`/investigations/${inv.investigation_id}`}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#071A12] text-white text-xs font-semibold hover:bg-[#0D2B1E] shadow-2xs transition-all"
-                              >
-                                <span>Periksa</span>
-                                <ChevronRight className="w-3.5 h-3.5 text-[#34D399]" />
-                              </Link>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      {/* Status dan aksi */}
+                      <div className="col-span-2 md:col-span-1 flex md:flex-col items-center md:items-end justify-between md:justify-center gap-2">
+                        <span className={`inline-block text-[11px] px-2 py-0.5 rounded-md font-semibold border whitespace-nowrap ${statusMeta.className}`}>{statusMeta.label}</span>
+                        <div className="inline-flex items-center gap-1.5">
+                          <Link
+                            href={`/reports/${inv.investigation_id}`}
+                            title="Buka dosier audit; unduh PDF dari halaman itu"
+                            aria-label={`Dosier ${inv.claim_id}`}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-jkn-border text-jkn-muted hover:text-jkn-text hover:bg-surface-secondary transition-colors"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </Link>
+                          <Link
+                            href={`/investigations/${inv.investigation_id}`}
+                            className="inline-flex items-center gap-1 h-8 px-3 rounded-lg bg-[#071A12] text-white text-xs font-semibold hover:bg-[#0D2B1E] transition-colors"
+                          >
+                            <span>Periksa</span>
+                            <ChevronRight className="w-3.5 h-3.5 text-[#34D399]" />
+                          </Link>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             ) : (
               /* Clean Forensic Dossier Card Grid */
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

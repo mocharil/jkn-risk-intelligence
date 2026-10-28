@@ -8,18 +8,26 @@ import { SEED_VERSION } from "@/lib/data/synthetic-seed";
 const g = globalThis as unknown as { __arsaStore?: unknown };
 let dir = "";
 
-function snapshot(seedVersion?: string) {
+function snapshot(ids: { claim: string; inv: string }, seedVersion?: string) {
   const assigned = { user_id: "USR-002", name: "Supervisor Uji", avatar: "SU", role: "SUPERVISOR" };
   return {
     version: 1,
     ...(seedVersion ? { seed_version: seedVersion } : {}),
     datasets: [],
     ingested_claims: [],
-    investigation_overrides: { "INV-2026-010293": { status: "CONFIRMED_RISK", notes: [], decision: undefined, assigned_to: assigned, updated_at: "2026-10-01T00:00:00Z" } },
-    claim_status: { "CLM-10293": "CONFIRMED_RISK" },
+    investigation_overrides: { [ids.inv]: { status: "CONFIRMED_RISK", notes: [], decision: undefined, assigned_to: assigned, updated_at: "2026-10-01T00:00:00Z" } },
+    claim_status: { [ids.claim]: "CONFIRMED_RISK" },
     audit_log: [],
     users: [],
   };
+}
+
+/** ID klaim/kasus pertama pada dataset bawaan (deterministik): dibaca dari store kosong, bukan ditulis tangan. */
+async function probeIds() {
+  const store = await boot();
+  const inv = store.investigations[0];
+  delete g.__arsaStore;
+  return { claim: inv.claim_id, inv: inv.investigation_id };
 }
 
 async function boot() {
@@ -41,19 +49,21 @@ describe("versi dataset bawaan pada snapshot", () => {
   });
 
   it("snapshot tanpa/berbeda versi: status kasus lama tidak diterapkan, dicatat di audit", async () => {
-    fs.writeFileSync(path.join(dir, "arsa-state.json"), JSON.stringify(snapshot()));
+    const ids = await probeIds();
+    fs.writeFileSync(path.join(dir, "arsa-state.json"), JSON.stringify(snapshot(ids)));
     const store = await boot();
-    const claim = store.claims.find((c) => c.claim_id === "CLM-10293")!;
+    const claim = store.claims.find((c) => c.claim_id === ids.claim)!;
     expect(claim.status).not.toBe("CONFIRMED_RISK");
-    expect(store.investigations.find((i) => i.claim_id === "CLM-10293")!.status).toBe("NEW");
+    expect(store.investigations.find((i) => i.claim_id === ids.claim)!.status).toBe("NEW");
     expect(store.auditLog.some((e) => e.action === "SEED_REFRESHED")).toBe(true);
   });
 
   it("snapshot berversi sama: status kasus pengguna dipulihkan", async () => {
-    fs.writeFileSync(path.join(dir, "arsa-state.json"), JSON.stringify(snapshot(SEED_VERSION)));
+    const ids = await probeIds();
+    fs.writeFileSync(path.join(dir, "arsa-state.json"), JSON.stringify(snapshot(ids, SEED_VERSION)));
     const store = await boot();
-    expect(store.claims.find((c) => c.claim_id === "CLM-10293")!.status).toBe("CONFIRMED_RISK");
-    expect(store.investigations.find((i) => i.claim_id === "CLM-10293")!.status).toBe("CONFIRMED_RISK");
+    expect(store.claims.find((c) => c.claim_id === ids.claim)!.status).toBe("CONFIRMED_RISK");
+    expect(store.investigations.find((i) => i.claim_id === ids.claim)!.status).toBe("CONFIRMED_RISK");
     expect(store.auditLog.some((e) => e.action === "SEED_REFRESHED")).toBe(false);
   });
 });

@@ -9,6 +9,7 @@ const login = await fetch(`${BASE}/api/auth/login`, { method: "POST", headers: {
 const cookie = (login.headers.get("set-cookie") || "").split(";")[0];
 if (!cookie) { console.error("login gagal"); process.exit(1); }
 
+const topClaim = (await (await fetch(`${BASE}/api/claims?limit=1`, { headers: { cookie } })).json()).data?.[0]?.claim_id;
 const targets = [
   ["GET /api/dashboard", "/api/dashboard"],
   ["GET /api/claims?limit=10", "/api/claims?limit=10"],
@@ -16,7 +17,7 @@ const targets = [
   ["GET /api/investigations?limit=9", "/api/investigations?limit=9"],
   ["GET /api/providers", "/api/providers"],
   ["GET /api/graph", "/api/graph"],
-  ["GET /api/claims/CLM-10293", "/api/claims/CLM-10293"],
+  ["GET /api/claims/:id (klaim teratas)", `/api/claims/${topClaim}`],
   ["GET /api/system/status", "/api/system/status"],
   ["GET /api/evaluation", "/api/evaluation"],
 ];
