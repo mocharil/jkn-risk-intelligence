@@ -27,11 +27,26 @@ export function initialsOf(name: string): string {
   return ((parts[0][0] || "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
+const DOCTOR_PHOTOS = [1, 2, 3, 4, 5, 6].map((n) => `/avatars/dr-${n}.jpg`);
+
 /**
- * Penanda inisial untuk orang. Sengaja bukan foto: aplikasi tidak memiliki foto dokter, dan foto stok pada profil yang
- * memuat skor risiko akan menempelkan wajah orang asing pada klaim/dokter yang diperiksa.
+ * Foto ilustrasi dokter (stok, dipilih tetap dari nama) hanya untuk nama berawalan "dr."/"drg.";
+ * bukan foto dokter sebenarnya. Selain itu, inisial berwarna.
  */
 export function PersonAvatar({ name, size = 32 }: { name: string; size?: number }) {
+  if (/^\s*drg?[.\s]/i.test(name)) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={DOCTOR_PHOTOS[hash(name) % DOCTOR_PHOTOS.length]}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   return (
     <span
       aria-hidden="true"
