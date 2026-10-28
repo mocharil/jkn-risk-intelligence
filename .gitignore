@@ -64,3 +64,4 @@ gemini_sa.json
 !/public/landing/arsa-hero-hospital.png
 !/public/landing/arsa-footer-hospital.png
 .taste-skill/
+out/
