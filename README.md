@@ -23,6 +23,21 @@
 
 </div>
 
+## Sekilas
+
+| 8 | 3 | 5.729 | 137 | 0 |
+|:-:|:-:|:-:|:-:|:-:|
+| detektor risiko | peran pengguna | pemeriksaan data acuan BPJS | tes otomatis lulus | data peserta riil dipakai |
+
+<div align="center">
+<img src="docs/screenshots/demo-graf-keputusan.gif" alt="Cuplikan: graf relasi, klaster anomali, dan keputusan verifikator" width="85%" />
+<br/><sub>Cuplikan alur: graf relasi, klaster anomali (satu dokter, satu faskes, enam klaim berisiko tinggi), lalu keputusan manusia dengan alasan tertulis.</sub>
+</div>
+
+## Daftar isi
+
+[Masalah](#masalah-yang-kami-selesaikan) · [Alur demo 3 menit](#alur-demo-3-menit) · [Fitur](#fitur-unggulan) · [Detektor](#8-detektor-risiko) · [Cara kerja](#cara-kerja) · [Teknologi](#teknologi) · [Kejujuran metodologi](#data-dan-kejujuran-metodologi) · [Menjalankan](#menjalankan-di-komputer-anda) · [Pengujian](#pengujian)
+
 ---
 
 ## Masalah yang kami selesaikan
@@ -37,6 +52,21 @@ Sistem pendeteksi klaim yang ada menghasilkan banyak peringatan **tanpa konteks*
 | Pengklasifikasi kotak hitam (skor 0–100 tanpa alasan) | **Mesin hibrida**: 8 detektor deterministik + kemiripan semantik + sitasi verbatim |
 | Chatbot AI bebas yang bisa berhalusinasi | **Copilot bersitasi**: kalimat tanpa sumber yang sah ditolak oleh validator |
 | Alat yang mengambil alih keputusan | **Manusia memutuskan**: 3 peran, alasan tertulis wajib, rantai audit SHA-256 |
+
+## Alur demo 3 menit
+
+Masuk sebagai `supervisor@arsa.id` (kata sandi `Arsa#2026`), lalu ikuti urutan ini:
+
+| # | Buka | Yang terlihat |
+|:-:|---|---|
+| 1 | **Command Center** | Eksposur finansial, peta panas provinsi, faskes dan provinsi paling menonjol |
+| 2 | **Pemeriksaan Klaim** | Antrean prioritas; saring menurut jenis temuan, misalnya Upcoding |
+| 3 | **Kasus teratas** | Skor per detektor, tagihan vs median peer vs rerata BPJS, papan bukti yang membantah klaim |
+| 4 | **Tab Graf Relasi** | Klik *Fokus klaster anomali*, lalu klik node dokter untuk melihat rinciannya |
+| 5 | **Konfirmasi Risiko** | Alasan tertulis wajib; keputusan masuk **Catatan dan Audit Trail** (rantai SHA-256) |
+| 6 | **AI Copilot** | Tanyakan *Bandingkan risiko DKI Jakarta dan Jawa Timur*; peta ikut tampil di jawaban |
+| 7 | **Manajemen Dataset** | Unggah CSV, periksa pemetaan kolom, jalankan 8 detektor, lihat baris yang ditolak |
+| 8 | **Evaluasi dan Kalibrasi** | Angka kinerja beserta banner batasannya |
 
 ## Fitur unggulan
 
@@ -60,7 +90,34 @@ Antrean prioritas dengan skor berbentuk cincin, filter jenis temuan, dan satu ba
 <td align="center"><sub>Antrean prioritas</sub></td>
 <td align="center"><sub>Detail kasus: sinyal, dokumen, posisi tagihan</sub></td>
 </tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/09-papan-bukti.jpg" alt="Papan bukti" /></td>
+<td width="50%"><img src="docs/screenshots/12-klaim-serupa.jpg" alt="Klaim serupa" /></td>
+</tr>
+<tr>
+<td align="center"><sub>Papan bukti: kutipan rekam medis yang membantah tagihan</sub></td>
+<td align="center"><sub>Klaim serupa: peta kemiripan narasi</sub></td>
+</tr>
 </table>
+
+### Graf relasi: pola yang tidak terlihat dari satu klaim
+Hubungan faskes, dokter, klaim, pasien, dan diagnosis digambar sebagai graf. Klaster anomali menyorot satu dokter di satu faskes yang terkait enam klaim berisiko tinggi, sesuatu yang tidak tampak bila klaim dibuka satu per satu. Pasien tampil sebagai pseudonim.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/10-graf-kasus.jpg" alt="Graf relasi pada satu kasus" /></td>
+<td width="50%"><img src="docs/screenshots/11-graf-jaringan.jpg" alt="Graf jaringan seluruh entitas" /></td>
+</tr>
+<tr>
+<td align="center"><sub>Graf pada satu kasus, dengan klaster anomali</sub></td>
+<td align="center"><sub>Jaringan seluruh entitas</sub></td>
+</tr>
+</table>
+
+### Keputusan manusia dan rantai audit
+Verifikator menetapkan status (mulai investigasi, minta bukti, positif palsu, konfirmasi risiko) dengan **alasan tertulis wajib**. Setiap keputusan menjadi entri rantai hash SHA-256 yang hanya dapat ditambah.
+
+<img src="docs/screenshots/13-audit-trail.jpg" alt="Catatan dan audit trail" width="100%" />
 
 ### 3. Copilot bersitasi, dengan peta dan grafik di dalam jawaban
 Tanya jawab dalam bahasa Indonesia. Setiap pernyataan wajib mengutip sumber (`[1]`, `[2]`); jawaban yang tidak lolos validasi otomatis **diganti jawaban berbasis aturan**. Untuk perbandingan wilayah, **peta provinsi dan cincin skor langsung tampil** di jawaban. Visual dihitung server dari data aplikasi, bukan dari teks model, sehingga tidak bisa "dikarang".
