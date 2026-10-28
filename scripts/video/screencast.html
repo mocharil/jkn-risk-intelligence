@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<title>Arsa AI Screencast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f4f7f5; --side: #071a12; --bpjs: #007a3a; --bpjs-deep: #00632f; --bpjs-dark: #064e2b; --bpjs-soft: #f0f8f3; --bpjs-light: #e3f3ea; --bpjs-border: #c2dfce;
+    --ink: #11241d; --muted: #475b53; --dim: #61756d; --border: #d5e0da; --divider: #e4ece8; --sec: #eef3f0; --subtle: #f6f9f7;
+    --crit: #b91c1c; --crit-bg: #fef2f2; --crit-bd: #fecaca; --high: #c2410c; --high-bg: #fff7ed; --high-bd: #fed7aa; --med: #b45309; --med-bg: #fffbeb; --med-bd: #fde68a;
+    --intel: #0e7490; --intel-light: #e6f4f8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0b291c; }
+  body { font-family: "Plus Jakarta Sans", system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; letter-spacing: -0.006em; }
+  .mono { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
+  .tab { font-variant-numeric: tabular-nums; }
+
+  /* Panggung aplikasi (dikenai kamera) */
+  #viewport { position: absolute; inset: 0; overflow: hidden; }
+  #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: var(--bg); }
+
+  /* Sidebar */
+  #side { position: absolute; left: 0; top: 0; bottom: 0; width: 256px; background: var(--side); color: #fff; }
+  #side .brand { height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  #side .brand .logo { width: 36px; height: 36px; border-radius: 12px; background: #fff; display: grid; place-items: center; overflow: hidden; }
+  #side .brand .logo img { width: 30px; height: 30px; object-fit: contain; }
+  #side .brand b { font-size: 14px; }
+  #side .brand .tag { font-size: 9px; padding: 2px 6px; border-radius: 6px; background: rgba(0,168,89,.2); color: #6ee7b7; border: 1px solid rgba(0,168,89,.35); font-family: "JetBrains Mono"; font-weight: 600; margin-left: 6px; }
+  #side .brand small { display: block; font-size: 11px; color: rgba(209,250,229,.55); }
+  #side nav { padding: 16px 12px; }
+  #side h4 { font-size: 10px; font-weight: 700; color: rgba(209,250,229,.4); letter-spacing: .14em; padding: 0 10px; margin: 18px 0 6px; }
+  #side h4:first-child { margin-top: 0; }
+  .navi { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 12px; border-radius: 12px; font-size: 12px; font-weight: 500; color: rgba(236,253,245,.7); border: 1px solid transparent; position: relative; margin-bottom: 4px; }
+  .navi span.l { display: flex; align-items: center; gap: 10px; }
+  .navi svg { width: 16px; height: 16px; stroke: rgba(209,250,229,.5); fill: none; stroke-width: 1.8; }
+  .navi.active { background: rgba(0,168,89,.18); color: #fff; font-weight: 600; border-color: rgba(0,168,89,.4); }
+  .navi.active svg { stroke: #34d399; }
+  .navi.active::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: #34d399; }
+  .navi .bdg { font-size: 10px; padding: 2px 6px; border-radius: 6px; font-family: "JetBrains Mono"; font-weight: 700; }
+  #side .foot { position: absolute; left: 12px; right: 12px; bottom: 16px; }
+  #side .foot .st { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); font-size: 11px; font-weight: 600; }
+  #side .foot .st i { width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 8px #34d399; }
+  #side .foot .st small { display: block; font-size: 10px; color: rgba(209,250,229,.45); font-weight: 500; }
+
+  /* Header */
+  #head { position: absolute; left: 256px; right: 0; top: 0; height: 64px; background: rgba(255,255,255,.92); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 12px; }
+  #head .crumb { font-size: 12px; color: var(--dim); display: flex; gap: 6px; padding-right: 12px; border-right: 1px solid var(--divider); }
+  #head .crumb b { color: var(--ink); }
+  #head .search { width: 448px; height: 36px; border-radius: 12px; border: 1px solid var(--border); background: var(--subtle); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 12px; color: var(--muted); }
+  #head .search kbd { font-family: "JetBrains Mono"; font-size: 10px; border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; background: #fff; color: var(--dim); }
+  #head .user { margin-left: auto; display: flex; align-items: center; gap: 10px; padding: 4px 10px 4px 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--subtle); }
+  #head .user .av { width: 28px; height: 28px; border-radius: 8px; background: var(--side); color: #6ee7b7; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+  #head .user b { font-size: 12px; display: block; } #head .user small { font-size: 10px; color: var(--bpjs); font-weight: 600; }
+
+  /* Halaman */
+  #main { position: absolute; left: 256px; right: 0; top: 64px; bottom: 0; overflow: hidden; }
+  .page { position: absolute; inset: 0; opacity: 0; }
+  .wrap { position: absolute; left: 50%; transform: translateX(-50%); width: 1280px; top: 24px; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 1px 2px rgba(17,36,29,.04); }
+  .h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+  .h2 { font-size: 16px; font-weight: 700; }
+  .muted { color: var(--muted); } .dim { color: var(--dim); }
+  .btn { height: 36px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--border); background: #fff; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+  .btn.dark { background: #071a12; color: #fff; border-color: #071a12; }
+  .btn.red { background: var(--crit); color: #fff; border-color: var(--crit); }
+  .btn.green { background: var(--bpjs); color: #fff; border-color: var(--bpjs); }
+  .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--sec); color: var(--ink); white-space: nowrap; }
+  .lvl { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 2px 8px 2px 3px; border-radius: 8px; border: 1px solid; }
+  .lvl b { color: #fff; border-radius: 5px; padding: 1px 5px; font-family: "JetBrains Mono"; }
+  .ring { position: relative; display: inline-grid; place-items: center; }
+  .ring span { position: absolute; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tabs { display: flex; gap: 6px; }
+  .tabs .t { height: 32px; padding: 0 12px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--muted); border: 1px solid transparent; display: flex; align-items: center; }
+  .tabs .t.on { background: var(--bpjs-soft); color: var(--bpjs-dark); border-color: var(--bpjs-border); font-weight: 700; }
+  .grid { display: grid; gap: 20px; }
+
+  /* Overlay UI (tidak ikut kamera) */
+  #cursor { position: absolute; left: 0; top: 0; width: 34px; height: 34px; z-index: 60; pointer-events: none; transform-origin: 4px 3px; }
+  .ripple { position: absolute; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 3px solid rgba(0,122,58,.85); background: rgba(52,211,153,.18); z-index: 59; opacity: 0; pointer-events: none; }
+  #subs { position: absolute; left: 0; right: 0; bottom: 64px; text-align: center; z-index: 70; pointer-events: none; }
+  #subs span { display: inline-block; max-width: 1400px; font-size: 38px; font-weight: 600; line-height: 1.32; color: #fff; background: rgba(6,20,13,.78); padding: 10px 26px; border-radius: 14px; letter-spacing: -0.005em; }
+  #chapter { position: absolute; left: 40px; bottom: 150px; z-index: 65; display: flex; align-items: center; gap: 12px; background: rgba(7,26,18,.9); color: #fff; padding: 12px 22px 12px 14px; border-radius: 999px; font-size: 22px; font-weight: 700; opacity: 0; }
+  #chapter i { width: 30px; height: 30px; border-radius: 50%; background: #34d399; color: #062b1b; font-style: normal; display: grid; place-items: center; font-size: 15px; font-weight: 800; }
+  #progress { position: absolute; left: 0; bottom: 0; height: 6px; background: #34d399; z-index: 80; }
+  #title { position: absolute; inset: 0; z-index: 90; background: #0b291c; color: #fff; opacity: 0; overflow: hidden; }
+  #title .dots { position: absolute; inset: -80px; background-image: radial-gradient(rgba(255,255,255,.07) 1.5px, transparent 1.6px); background-size: 40px 40px; }
+  .abs { position: absolute; }
+  .center { left: 0; right: 0; text-align: center; }
+</style>
+</head>
+<body>
+<div id="viewport"><div id="stage">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside id="side">
+    <div class="brand"><div class="logo"><img src="assets/arsa_logo.png" /></div><div><b>ARSA JKN</b><span class="tag">BPJS</span><small>Audit &amp; Intelijen Klaim</small></div></div>
+    <nav>
+      <h4>OPERASIONAL &amp; AUDIT</h4>
+      <div class="navi" id="nav-cc"><span class="l"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Command Center</span></div>
+      <div class="navi" id="nav-queue"><span class="l"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4M12 16h.01"/></svg>Pemeriksaan Klaim</span><span class="bdg" style="background:#b91c1c;color:#fff">65</span></div>
+      <div class="navi"><span class="l"><svg viewBox="0 0 24 24"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>Profil Faskes</span></div>
+      <h4>INTELIJEN &amp; DETEKTOR</h4>
+      <div class="navi"><span class="l"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 8v4M12 12l-5 5M12 12l5 5"/></svg>Peta Risiko &amp; Graf</span></div>
+      <div class="navi" id="nav-copilot"><span class="l"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M12 8V4M8 4h8M9 14h.01M15 14h.01"/></svg>AI Copilot</span><span class="bdg" style="background:rgba(16,185,129,.2);color:#6ee7b7;border:1px solid rgba(52,211,153,.3)">AI</span></div>
+      <div class="navi" id="nav-eval"><span class="l"><svg viewBox="0 0 24 24"><path d="m12 14 4-4M3.34 19a10 10 0 1 1 17.32 0"/></svg>Evaluasi &amp; Kalibrasi</span></div>
+      <h4>DATA &amp; TATA KELOLA</h4>
+      <div class="navi"><span class="l"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 16V9M12 16V5M17 16v-4"/></svg>Acuan Nasional BPJS</span></div>
+      <div class="navi" id="nav-data"><span class="l"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>Manajemen Dataset</span></div>
+      <div class="navi"><span class="l"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Pengaturan &amp; Audit</span></div>
+    </nav>
+    <div class="foot"><div class="st"><i></i><div>Asisten AI aktif<small>8 Detektor Forensik JKN</small></div></div></div>
+  </aside>
+
+  <!-- ============ HEADER ============ -->
+  <header id="head">
+    <div class="crumb"><span id="crumbA">Operasional</span><span>›</span><b id="crumbB">Command Center</b></div>
+    <div class="search"><span>⌕&nbsp; Cari klaim, faskes, atau ICD-10...</span><kbd>Ctrl K</kbd></div>
+    <div class="user"><div class="av">SF</div><div><b>Salfarisa Fitria</b><small>Supervisor</small></div></div>
+  </header>
+
+  <main id="main">
+
+  <!-- ============ COMMAND CENTER ============ -->
+  <section class="page" id="pg-cc"><div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end">
+      <div><div class="h1">Pusat komando risiko klaim JKN</div>
+        <div style="margin-top:8px;font-size:12px;display:flex;gap:12px;align-items:center" class="muted"><span>1.503 klaim, diajukan 9 Jul 2026 sampai 30 Sep 2026</span><span class="pill" style="background:var(--med-bg);color:var(--med);border-color:var(--med-bd)">Dataset sintetis berlabel</span><span>Analisis terakhir 4 jam lalu</span></div></div>
+      <div style="display:flex;gap:10px"><span class="btn">↻ Segarkan</span><span class="btn">Semua klaim</span><span class="btn dark" id="cc-queue">Antrean prioritas (65) <b style="color:#34d399">→</b></span></div>
+    </div>
+    <div class="card" style="margin-top:20px;display:grid;grid-template-columns:4fr 3fr 3fr 2fr;overflow:hidden" id="cc-kpis">
+      <div style="background:#071a12;color:#fff;padding:20px" id="cc-exp"><div style="font-size:14px;color:rgba(209,250,229,.8)">Potensi eksposur finansial</div><div class="mono" style="font-size:30px;font-weight:700;margin-top:12px">Rp 350,8 Jt</div><div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:rgba(209,250,229,.75)">Selisih tarif klaim terflag terhadap tarif acuan peer<br/><b class="mono" style="color:#a7f3d0">+23,9%</b> eksposur klaim baru, 7 hari terakhir vs 7 hari sebelumnya</div></div>
+      <div style="padding:20px;border-left:1px solid var(--divider)" id="cc-high"><div class="muted" style="font-size:14px">Klaim berisiko tinggi</div><div style="margin-top:12px"><span class="mono" style="font-size:30px;font-weight:700;color:var(--crit)">65</span> <span class="mono muted" style="font-size:14px">dari 1.503 (4,3%)</span></div><div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--divider);font-size:12px" class="muted"><b class="mono" style="color:var(--bpjs-dark)">-22,2%</b> 7 hari terakhir vs 7 hari sebelumnya</div></div>
+      <div style="padding:20px;border-left:1px solid var(--divider)"><div class="muted" style="font-size:14px">Klaim diajukan</div><div class="mono" style="font-size:30px;font-weight:700;margin-top:12px">1.503</div><div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--divider);font-size:12px" class="muted"><b class="mono" style="color:var(--ink)">+30%</b> 7 hari terakhir vs 7 hari sebelumnya</div></div>
+      <div style="padding:20px;border-left:1px solid var(--divider)"><div class="muted" style="font-size:14px">Faskes berisiko</div><div style="margin-top:12px"><span class="mono" style="font-size:30px;font-weight:700">3</span> <span class="mono muted" style="font-size:14px">dari 73</span></div><div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--divider);font-size:12px" class="muted"><b class="mono" style="color:var(--bpjs-dark)">-28,6%</b> 7 hari terakhir</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:8fr 4fr;gap:20px;margin-top:20px">
+      <div class="card" style="padding:20px;position:relative" id="cc-mapcard">
+        <div style="display:flex;justify-content:space-between"><div><div class="h2">Sebaran risiko klaim per provinsi</div><div class="muted" style="font-size:12px;margin-top:2px">Warna menurut skor risiko provinsi; ukuran menurut jumlah klaim berisiko tinggi.</div></div><div style="font-size:14px" class="muted">Lapisan <span class="btn" style="height:34px;margin-left:6px">Tingkat risiko ▾</span></div></div>
+        <div style="display:flex;gap:6px;margin-top:12px;font-size:12px"><span class="muted" style="margin-right:4px">➤ Wilayah</span><span class="pill" style="background:var(--bpjs);color:#fff;border-color:var(--bpjs)">Nasional</span><span class="pill">Jawa</span><span class="pill">Sumatera</span><span class="pill">Kalimantan</span><span class="pill">Sulawesi</span><span class="pill">Bali dan timur</span></div>
+        <div style="margin-top:10px;font-size:12px" class="muted"><span class="pill" style="background:#fff">Skor 0 <i style="display:inline-block;width:80px;height:9px;border-radius:9px;background:linear-gradient(90deg,#dcfce7,#14532d);margin:0 6px;border:1px solid var(--border)"></i> Skor 73 · <span style="color:#9ca3af">●</span> tanpa data</span></div>
+        <div style="margin-top:12px;border:1px solid var(--divider);border-radius:10px;overflow:hidden;background:#fff;position:relative;height:430px">
+          <svg id="ccmap" width="792" height="430"></svg>
+          <div id="maptip" class="abs" style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.15);opacity:0;min-width:180px"></div>
+        </div>
+      </div>
+      <div class="card" style="padding:20px">
+        <div style="display:flex;justify-content:space-between"><div class="h2">Ringkasan temuan</div><span class="pill" style="background:var(--intel-light);color:#155e75;border-color:#bae0ec">Ditulis AI</span></div>
+        <p style="font-size:13px;line-height:1.6;margin-top:8px">Arsa menganalisis 1.503 klaim dan menandai 65 klaim berisiko tinggi dengan potensi eksposur Rp 350.758.145. Pola dominan: UPCODING.</p>
+        <div style="color:var(--bpjs);font-size:12px;font-weight:600;margin-top:6px">Baca rincian dari AI</div>
+        <div style="display:flex;justify-content:space-between;margin-top:18px"><b style="font-size:14px">Faskes sorotan</b><span style="font-size:12px;color:var(--bpjs);font-weight:600">Semua faskes</span></div>
+        <div id="cc-spot" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:18px"><b style="font-size:14px">Provinsi terpanas</b><span style="font-size:12px;color:var(--bpjs);font-weight:600">Peta lengkap</span></div>
+        <div id="cc-hot" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px"></div>
+      </div>
+    </div>
+  </div></section>
+
+  <!-- ============ ANTREAN ============ -->
+  <section class="page" id="pg-queue"><div class="wrap">
+    <div style="display:flex;align-items:center;gap:10px"><div class="h1">Pemeriksaan klaim</div><span class="pill mono" style="background:var(--bpjs-soft);color:var(--bpjs-dark);border-color:var(--bpjs-border);border-radius:999px" id="q-count">65 kasus</span></div>
+    <div class="muted" style="font-size:12px;margin-top:4px">Antrean kasus untuk diperiksa, dosier PDF untuk audit, dan sensus seluruh klaim. Biaya setiap klaim dibandingkan dengan rerata nasional BPJS untuk kelas rawat yang sama.</div>
+    <div style="display:grid;grid-template-columns:6fr 6fr;gap:20px;margin-top:18px">
+      <div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);overflow:hidden" id="q-kpi">
+        <div style="padding:14px 16px"><div class="muted" style="font-size:12px">Kasus terbuka</div><div class="mono" style="font-size:22px;font-weight:700;margin-top:4px">65</div><div class="dim" style="font-size:11px">belum diputuskan</div></div>
+        <div style="padding:14px 16px;border-left:1px solid var(--divider)"><div class="muted" style="font-size:12px">Eksposur terflag</div><div class="mono" style="font-size:22px;font-weight:700;margin-top:4px">Rp 350,8 Jt</div><div class="dim" style="font-size:11px">selisih tarif</div></div>
+        <div style="padding:14px 16px;border-left:1px solid var(--divider)"><div class="muted" style="font-size:12px">Berumur lebih dari 30 hari</div><div class="mono" style="font-size:22px;font-weight:700;margin-top:4px;color:var(--crit)">36</div><div class="dim" style="font-size:11px">perlu didahulukan</div></div>
+      </div>
+      <div class="card" style="padding:12px 16px"><b style="font-size:14px">Sinyal dalam antrean</b><div id="q-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div></div>
+    </div>
+    <div class="card" style="margin-top:18px;padding:0 16px;display:flex;align-items:center;gap:6px;height:48px;font-size:12px">
+      <span style="font-weight:700;border-bottom:2px solid #071a12;padding:14px 12px">Semua kasus <span class="mono pill">65</span></span><span class="muted" style="padding:14px 12px">● Kritis <span class="mono">33</span></span><span class="muted" style="padding:14px 12px">● Tinggi <span class="mono">32</span></span>
+      <span id="q-filter" class="pill" style="margin-left:auto;opacity:0;background:var(--bpjs-soft);color:var(--bpjs-dark);border-color:var(--bpjs-border)">Filter: Upcoding ✕</span>
+    </div>
+    <div class="card" id="q-list" style="margin-top:14px;overflow:hidden;position:relative;height:560px"></div>
+  </div></section>
+
+  <!-- ============ DETAIL KASUS ============ -->
+  <section class="page" id="pg-case"><div class="wrap" style="width:1240px">
+    <div class="card" style="overflow:hidden" id="cs-head">
+      <div style="padding:18px 20px;display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:16px"><span class="btn" style="width:40px;padding:0;justify-content:center">←</span>
+          <div class="ring" id="cs-ring"><svg width="64" height="64"><circle cx="32" cy="32" r="26" fill="none" stroke="#e4ece8" stroke-width="6"/><circle cx="32" cy="32" r="26" fill="none" stroke="#b91c1c" stroke-width="6" stroke-linecap="round" stroke-dasharray="161.7 163.4" transform="rotate(-90 32 32)"/></svg><span style="font-size:22px">99</span></div>
+          <div><div style="font-size:24px;font-weight:700">RSUD Jakarta Selatan</div><div class="muted" style="font-size:14px;margin-top:2px"><span class="mono">CLM-10459</span> · Jakarta Selatan · 10 thn, L · A01.0 Demam tifoid</div><div style="display:flex;gap:6px;margin-top:6px"><span class="pill">∿ Upcoding</span><span class="pill">≋ Unbundling</span></div></div></div>
+        <div style="text-align:right"><span class="pill" id="cs-status" style="background:var(--bpjs-soft);color:var(--bpjs-dark);border-color:var(--bpjs-border);font-size:12px;padding:4px 10px">Kasus baru</span><div class="dim" style="font-size:12px;margin-top:6px">Belum ditugaskan · <span class="mono">INV-2026-010459</span></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--divider)" id="cs-kpis">
+        <div style="padding:14px 20px" id="cs-bill"><div class="muted" style="font-size:12px">Tagihan faskes</div><div class="mono" style="font-size:20px;font-weight:700;margin-top:2px">Rp 16,3 Jt</div><div class="dim" style="font-size:12px">Rp 16.285.033</div></div>
+        <div style="padding:14px 20px;border-left:1px solid var(--divider)" id="cs-peer"><div class="muted" style="font-size:12px">Median peer setara</div><div class="mono" style="font-size:20px;font-weight:700;margin-top:2px;color:var(--bpjs-dark)">Rp 5,7 Jt</div><div class="dim" style="font-size:12px">diagnosis dan kelas yang sama</div></div>
+        <div style="padding:14px 20px;border-left:1px solid var(--divider)"><div class="muted" style="font-size:12px">Potensi eksposur</div><div class="mono" style="font-size:20px;font-weight:700;margin-top:2px;color:var(--crit)">Rp 10,6 Jt</div><div class="dim" style="font-size:12px">+184% di atas median peer</div></div>
+        <div style="padding:14px 20px;border-left:1px solid var(--divider)" id="cs-nat"><div class="muted" style="font-size:12px">Terhadap rerata nasional BPJS</div><div class="mono" style="font-size:20px;font-weight:700;margin-top:2px">3,5x</div><div class="dim" style="font-size:12px">Kelas 2, 2018</div></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:860px 1fr;gap:20px;margin-top:16px">
+      <div style="position:relative;height:640px">
+        <div class="tabs" style="border-bottom:1px solid var(--border);padding-bottom:8px"><span class="t" id="tb-ring">Ringkasan Klaim</span><span class="t" id="tb-bukti">Papan Bukti (3)</span><span class="t">Kronologi</span><span class="t">Klaim Serupa (5)</span><span class="t" id="tb-graf">Graf Relasi</span><span class="t" id="tb-notes">Catatan &amp; Audit Trail (<span id="tb-notes-n">1</span>)</span></div>
+        <!-- Ringkasan -->
+        <div class="abs" id="ct-ring" style="left:0;right:0;top:52px">
+          <div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);font-size:13px">
+            <div style="padding:16px"><div class="dim" style="font-size:12px;font-weight:600">👤 Peserta (anonim)</div><b style="display:block;margin-top:6px">R. W.</b><div class="mono dim" style="font-size:12px">Kartu ••••••••1036</div><div class="dim" style="font-size:12px">10 thn · Laki-laki</div></div>
+            <div style="padding:16px;border-left:1px solid var(--divider)"><div class="dim" style="font-size:12px;font-weight:600">🏥 Faskes penagih dan DPJP</div><b style="display:block;margin-top:6px">RSUD Jakarta Selatan</b><div class="dim" style="font-size:12px">Jakarta Selatan</div><div style="font-size:12px;margin-top:6px">dr. Dewi Santoso, Sp.OT</div></div>
+            <div style="padding:16px;border-left:1px solid var(--divider)"><div class="dim" style="font-size:12px;font-weight:600">📅 Episode perawatan</div><b style="display:block;margin-top:6px">4 hari rawat</b><div class="dim" style="font-size:12px">Masuk 17 Sep 2026</div><div class="dim" style="font-size:12px">Keluar 21 Sep 2026</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-top:16px">
+            <div class="card" style="padding:16px" id="cs-det"><b style="font-size:14px">Sinyal detektor</b><div class="dim" style="font-size:12px">Skor dan keyakinan tiap detektor yang menandai klaim ini</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+                <div style="display:flex;gap:12px;align-items:center;border:1px solid var(--divider);border-radius:12px;padding:12px"><div class="ring"><svg width="48" height="48"><circle cx="24" cy="24" r="20" fill="none" stroke="#e4ece8" stroke-width="5"/><circle cx="24" cy="24" r="20" fill="none" stroke="#b91c1c" stroke-width="5" stroke-linecap="round" stroke-dasharray="123.2 125.7" transform="rotate(-90 24 24)"/></svg><span style="font-size:14px">98</span></div><div><span class="pill">∿ Upcoding</span><div class="muted" style="font-size:12px;margin-top:4px">keyakinan 95%</div></div></div>
+                <div style="display:flex;gap:12px;align-items:center;border:1px solid var(--divider);border-radius:12px;padding:12px"><div class="ring"><svg width="48" height="48"><circle cx="24" cy="24" r="20" fill="none" stroke="#e4ece8" stroke-width="5"/><circle cx="24" cy="24" r="20" fill="none" stroke="#ea580c" stroke-width="5" stroke-linecap="round" stroke-dasharray="98 125.7" transform="rotate(-90 24 24)"/></svg><span style="font-size:14px">78</span></div><div><span class="pill">≋ Unbundling</span><div class="muted" style="font-size:12px;margin-top:4px">keyakinan 74%</div></div></div>
+              </div></div>
+            <div class="card" style="padding:16px"><b style="font-size:14px">Kesesuaian dokumen</b><div style="display:flex;gap:16px;align-items:center;margin-top:10px"><div class="ring"><svg width="96" height="96"><circle cx="48" cy="48" r="38" fill="none" stroke="#b91c1c" stroke-width="12"/></svg><span style="font-size:22px">3</span></div><div style="font-size:14px;line-height:1.9"><span style="color:#b91c1c">●</span> Kontradiktif <b>3</b><br/><span style="color:#b45309">●</span> Perlu review <b>0</b><br/><span style="color:#007a3a">●</span> Mendukung <b>0</b></div></div></div>
+          </div>
+          <div class="card" style="padding:16px;margin-top:16px" id="cs-axis"><b style="font-size:14px">Posisi tagihan terhadap pembanding</b><div class="dim" style="font-size:12px">Satu sumbu rupiah. Pembanding utama adalah median peer; rerata BPJS hanya konteks kewajaran.</div><svg width="820" height="96" id="axis"></svg></div>
+        </div>
+        <!-- Papan bukti -->
+        <div class="abs" id="ct-bukti" style="left:0;right:0;top:52px;opacity:0">
+          <div class="card" style="padding:10px 14px;font-size:12px;display:flex;justify-content:space-between;background:var(--sec)"><span class="muted">Dokumen rekam medis teranonimkan. Status ditentukan dari bagaimana dokumen dipakai oleh temuan.</span><b class="mono" style="color:var(--bpjs)">3 dokumen</b></div>
+          <div id="docs"></div>
+        </div>
+        <!-- Graf -->
+        <div class="abs" id="ct-graf" style="left:0;right:0;top:52px;opacity:0">
+          <div class="card" style="padding:16px;position:relative">
+            <div style="display:flex;justify-content:space-between;gap:16px"><div><div style="font-size:16px;font-weight:700">Graf Relasi Entitas · CLUSTER-DR-0241 <span class="pill" style="background:var(--crit-bg);color:var(--crit);border-color:var(--crit-bd);font-size:12px">6 klaim berisiko tinggi</span></div><div style="font-size:13px;margin-top:6px;max-width:470px">Klaster anomali menghubungkan 6 klaim, 1 dokter, dan 1 faskes. Seluruh graf memuat 11 klaim, 6 dokter, 6 faskes, dan 11 pasien (pseudonim).</div></div>
+              <div id="g-legend" style="font-size:12px;display:grid;grid-template-columns:repeat(3,auto);gap:4px 14px;height:fit-content"></div></div>
+            <div style="display:flex;justify-content:space-between;margin-top:12px"><div style="display:flex;gap:6px"><span class="pill" id="g-all" style="background:var(--bpjs);color:#fff;border-color:var(--bpjs);font-size:12px;padding:5px 10px">Semua entitas (38)</span><span class="pill" id="g-focus" style="font-size:12px;padding:5px 10px">Fokus klaster anomali</span></div><span class="dim" style="font-size:14px">⊕ ⊖ ↻</span></div>
+            <div style="margin-top:10px;border:1px solid var(--divider);border-radius:12px;position:relative;height:420px;overflow:hidden;background:#fff"><svg id="g-svg" width="826" height="420"></svg>
+              <div id="g-drawer" class="abs" style="right:12px;bottom:12px;width:300px;background:#fff;border:1px solid var(--bpjs-border);border-radius:12px;padding:14px;box-shadow:0 12px 32px rgba(0,0,0,.18);opacity:0;font-size:12px">
+                <div style="display:flex;gap:10px;align-items:center;padding-bottom:8px;border-bottom:1px solid var(--divider)"><span style="width:30px;height:30px;border-radius:8px;background:var(--bpjs-soft);display:grid;place-items:center">🩺</span><div><b style="font-size:12px">dr. Dewi Santoso, Sp.OT</b><div class="dim" style="font-size:10px">Spesialis Bedah Ortopedi · RSUD Jakarta Selatan</div></div></div>
+                <div style="display:flex;justify-content:space-between;margin-top:10px"><span class="muted">Jenis entitas:</span><b>Dokter</b></div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px;align-items:center"><span class="muted">Skor risiko:</span><span class="lvl" style="color:var(--crit);border-color:var(--crit-bd);background:var(--crit-bg)"><b style="background:var(--crit)">90</b>KRITIS</span></div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px"><span class="muted">Klaster:</span><b style="color:var(--crit)">CLUSTER-DR-0241</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Catatan & audit -->
+        <div class="abs" id="ct-notes" style="left:0;right:0;top:52px;opacity:0">
+          <div class="card" style="padding:16px"><div style="display:flex;justify-content:space-between"><b style="font-size:13px">🔒 Audit Trail Append-Only (Hash Chain SHA-256)</b><span class="pill" style="background:var(--bpjs-soft);color:var(--bpjs-dark);border-color:var(--bpjs-border)">✓ Rantai Valid (<span id="au-n">118</span> Entri)</span></div>
+            <div class="mono dim" style="font-size:11px;margin-top:6px">head: 7c41d9a2e85f0b3c6d19ae4772f05b8813c9d64e0f2a7b5d3e81c6f4a90d2e57</div>
+            <div id="au-new" style="margin-top:12px;padding:12px;border-radius:10px;background:var(--bpjs-soft);border:1px solid var(--bpjs-border);font-size:12px">
+              <div style="display:flex;justify-content:space-between"><b class="mono">#118 · STATUS_CHANGED_TO_CONFIRMED_RISK</b><span class="dim">baru saja</span></div>
+              <div class="muted">Salfarisa Fitria (SUPERVISOR) · NEW → CONFIRMED_RISK</div>
+              <div class="muted" style="font-style:italic">"Severity 3 tidak didukung DOC-10459-01 dan DOC-10459-02: pasien stabil. Tagihan 184% di atas median peer."</div>
+              <div class="mono dim" style="font-size:10px;margin-top:2px">sha256: 7c41d9a2e85f0b3c6d19ae4772f05b8813c9d64e0f2a7b5d3e81c6f4a90d2e57</div>
+            </div>
+            <div style="margin-top:8px;padding:12px;border-radius:10px;background:var(--sec);border:1px solid var(--divider);font-size:12px">
+              <div style="display:flex;justify-content:space-between"><b class="mono">#57 · CASE_CREATED</b><span class="dim">7 hari lalu</span></div>
+              <div class="muted">Arsa Risk Engine (SYSTEM) · — → NEW</div>
+              <div class="mono dim" style="font-size:10px;margin-top:2px">sha256: 3a9f20c7d41e86b05f2c9e1a74d38b6c0e5f17a2d9c48b3e6a0f15d2c7b49e81</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:16px;height:430px"><div style="display:flex;gap:10px;align-items:center;padding-bottom:10px;border-bottom:1px solid var(--divider)"><span style="width:30px;height:30px;border-radius:8px;background:var(--bpjs);color:#fff;display:grid;place-items:center">✦</span><div><b style="font-size:13px">Arsa Copilot</b><div class="dim" style="font-size:10px">Penalaran bersitasi atas klaim ini</div></div></div>
+        <div style="margin-top:12px;background:var(--sec);border-radius:10px;padding:12px;font-size:11px" class="muted">Klik pertanyaan di bawah atau tulis pertanyaan sendiri. Jawaban hanya berasal dari data klaim ini dan setiap pernyataan harus bersitasi.</div>
+        <div style="font-size:12px;font-weight:600;margin-top:14px" class="dim">Pertanyaan yang Disarankan</div>
+        <div style="font-size:12px;border:1px solid var(--border);border-radius:8px;padding:9px 10px;margin-top:8px">Mengapa klaim ini berisiko tinggi? ›</div>
+        <div style="font-size:12px;border:1px solid var(--border);border-radius:8px;padding:9px 10px;margin-top:6px">Dokumen mana yang membantah klaim ini? ›</div>
+        <div style="font-size:12px;border:1px solid var(--border);border-radius:8px;padding:9px 10px;margin-top:6px">Bagaimana perbandingannya dengan faskes dan klaim serupa? ›</div>
+      </div>
+    </div>
+  </div>
+  <div class="abs" style="left:50%;transform:translateX(-50%);width:1240px;bottom:12px"><div class="card" style="padding:10px 16px;display:flex;justify-content:space-between;align-items:center;font-size:13px"><span><span class="muted">Disposisi Kasus:</span> <b>Tetapkan status verifikasi berdasarkan bukti rekam medis.</b></span><span style="display:flex;gap:8px"><span class="btn" style="height:32px;font-size:12px;background:var(--bpjs-soft);color:var(--bpjs-dark)">Mulai Investigasi</span><span class="btn" style="height:32px;font-size:12px;background:var(--med-bg);color:var(--med)">Minta Bukti</span><span class="btn" style="height:32px;font-size:12px">Positif Palsu</span><span class="btn red" id="cs-confirm" style="height:32px;font-size:12px">⊘ Konfirmasi Risiko</span><span class="btn green" style="height:32px;font-size:12px">▤ Laporan</span></span></div></div>
+  <!-- modal keputusan -->
+  <div id="modal" class="abs" style="inset:0;background:rgba(0,0,0,.4);opacity:0;display:grid;place-items:center">
+    <div class="card" id="modal-box" style="width:448px;padding:20px">
+      <div style="display:flex;justify-content:space-between"><b style="font-size:14px">Konfirmasi Risiko Klaim</b><span class="dim">✕</span></div>
+      <p class="muted" style="font-size:11px;margin-top:8px">Keputusan ini tercatat permanen di audit trail ber-hash atas nama Anda. Tuliskan dasar keputusan (wajib).</p>
+      <div id="modal-ta" style="margin-top:10px;height:96px;border-radius:8px;background:#fff;border:1px solid var(--bpjs);padding:10px;font-size:12px;line-height:1.5"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px"><span class="btn" style="height:32px;font-size:12px;border:none;color:var(--muted)">Batal</span><span class="btn green" id="modal-save" style="height:32px;font-size:12px">Simpan Keputusan</span></div>
+    </div>
+  </div>
+  </section>
+
+  <!-- ============ COPILOT ============ -->
+  <section class="page" id="pg-copilot">
+    <div class="abs" style="left:24px;right:420px;top:24px;bottom:24px" ><div class="card" style="position:absolute;inset:0;overflow:hidden">
+      <div id="cp-welcome" class="abs" style="inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px">
+        <div style="width:48px;height:48px;border-radius:50%;background:#0b291c;color:#5eead4;display:grid;place-items:center;font-size:22px">⬢</div>
+        <div style="font-size:30px;font-weight:700">Halo, Salfarisa</div><div class="muted" style="font-size:16px;margin-top:-16px">Apa yang ingin Anda periksa hari ini?</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;width:680px">
+          <div style="border:1px solid var(--border);border-radius:16px;padding:14px 16px;font-size:14px;font-weight:500">⌖&nbsp; Mengapa klaim CLM-10459 berisiko?</div>
+          <div style="border:1px solid var(--border);border-radius:16px;padding:14px 16px;font-size:14px;font-weight:500">▦&nbsp; Faskes paling berisiko dan polanya</div>
+          <div style="border:1px solid var(--border);border-radius:16px;padding:14px 16px;font-size:14px;font-weight:500">▥&nbsp; Wajarkah biaya klaim CLM-10459?</div>
+          <div style="border:1px solid var(--border);border-radius:16px;padding:14px 16px;font-size:14px;font-weight:500">⌗&nbsp; DKI Jakarta dibanding Jawa Timur</div>
+        </div>
+      </div>
+      <div id="cp-chat" class="abs" style="left:48px;right:48px;top:30px;bottom:110px;opacity:0">
+        <div style="display:flex;justify-content:flex-end"><div style="background:#0b291c;color:#fff;border-radius:18px 18px 6px 18px;padding:10px 16px;font-size:14px">Bandingkan risiko DKI Jakarta dan Jawa Timur</div></div>
+        <div style="display:flex;gap:12px;margin-top:20px"><div style="width:28px;height:28px;border-radius:50%;background:#0b291c;color:#5eead4;display:grid;place-items:center;font-size:13px;flex:none">⬢</div>
+          <div style="flex:1"><div id="cp-ans" style="font-size:14px;line-height:1.75"></div>
+            <div id="cp-meta" style="font-size:12px;margin-top:8px;opacity:0" class="dim">2 sumber · ⧉ Salin</div>
+            <div id="cp-vis" class="card" style="margin-top:12px;display:grid;grid-template-columns:3fr 2fr;overflow:hidden;opacity:0;border-radius:18px">
+              <svg id="cp-map" width="560" height="230" style="background:#fff;border-right:1px solid var(--border)"></svg>
+              <div style="padding:16px"><b style="font-size:14px">Perbandingan wilayah</b><div id="cp-rows"></div></div>
+            </div>
+          </div></div>
+      </div>
+      <div class="abs" style="left:48px;right:48px;bottom:24px;height:52px;border:1px solid var(--border);border-radius:999px;display:flex;align-items:center;padding:0 8px 0 22px" id="cp-input">
+        <span id="cp-typed" style="font-size:14px;flex:1"></span><span id="cp-ph" class="dim" style="font-size:14px;flex:1;position:absolute;left:22px">Tanyakan sesuatu, misalnya mengapa klaim CLM-10459 berisiko</span>
+        <span id="cp-send" style="width:38px;height:38px;border-radius:50%;background:#0b291c;color:#fff;display:grid;place-items:center;opacity:.35">→</span>
+      </div>
+    </div></div>
+    <div class="card abs" style="right:24px;top:24px;width:372px;bottom:24px;padding:16px">
+      <div style="display:flex;justify-content:space-between"><b style="font-size:14px">Prioritas audit</b><span class="dim" style="font-size:11px">Klik untuk bertanya</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;background:var(--sec);border-radius:10px;padding:4px;margin-top:10px;font-size:12px;font-weight:600;text-align:center"><span style="background:#fff;border-radius:8px;padding:6px">Klaim Kritis <span class="mono" style="color:var(--crit)">5</span></span><span style="padding:6px" class="muted">Faskes <span class="mono">5</span></span></div>
+      <div id="cp-side" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <!-- ============ DATASET ============ -->
+  <section class="page" id="pg-data"><div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end"><div><div class="h1">Dataset</div><div class="muted" style="font-size:14px;margin-top:4px">Unggah ekspor klaim, petakan kolomnya, lalu 8 detektor memeriksanya. Identitas pasien disamarkan otomatis.</div></div><span class="btn dark" id="dt-upload" style="height:34px">⇪ Unggah berkas (CSV, XLSX, JSON)</span></div>
+    <div id="dt-msg" class="card" style="margin-top:14px;padding:12px 16px;font-size:13px;background:#ecfdf5;border-color:#a7f3d0;color:#064e3b;opacity:0"></div>
+    <div style="display:grid;grid-template-columns:7fr 5fr;gap:20px;margin-top:14px">
+      <div class="card" style="padding:16px"><b style="font-size:14px">🗄 Dataset (<span id="dt-n">1</span>)</b>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+          <div id="dt-new" style="border:2px solid var(--bpjs);background:var(--bpjs-soft);border-radius:12px;padding:12px;font-size:12px;opacity:0"><div style="display:flex;justify-content:space-between"><span class="mono dim" style="font-size:10px">DS-001 · CSV</span><span class="pill" id="dt-newst" style="background:#fffbeb;color:#92400e;border-color:#fcd34d;font-size:10px">Perlu Konfirmasi</span></div><b style="display:block;margin-top:6px">uji_rs.csv</b><div class="muted" style="margin-top:6px"><b>43</b> baris · 8 kolom</div></div>
+          <div style="border:1px solid var(--border);border-radius:12px;padding:12px;font-size:12px"><div style="display:flex;justify-content:space-between"><span class="mono dim" style="font-size:10px">DS-SEED · CSV</span><span class="pill" style="background:#ecfdf5;color:#065f46;border-color:#a7f3d0;font-size:10px">Aktif &amp; Dianalisis</span></div><b style="display:block;margin-top:6px">Dataset Sintetis Bawaan (dikalibrasi…)</b><div class="muted" style="margin-top:6px"><b>1.503</b> baris · 9 kolom</div></div>
+        </div></div>
+      <div class="card" style="padding:16px"><b style="font-size:14px">✦ Sampel resmi BPJS</b><div style="border:1px solid var(--border);border-radius:12px;padding:10px;margin-top:10px;font-size:12px"><span class="pill" style="font-size:10px">Skema BPJS resmi</span><b style="display:block;margin-top:6px">Data Sampel BPJS (FKRTL)</b></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:8fr 4fr;gap:20px;margin-top:16px;opacity:0" id="dt-work">
+      <div class="card" style="overflow:hidden">
+        <div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--divider)"><div><b style="font-size:14px">⚙ Pemetaan kolom</b><div class="muted" style="font-size:12px">Tanda <b style="color:#e11d48">*</b> = 5 field wajib untuk deteksi.</div></div><span class="btn green" id="dt-confirm" style="height:34px;font-size:12px">✓ Konfirmasi &amp; Jalankan 8 Detektor</span></div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 3fr;padding:8px 16px;font-size:11px;font-weight:600;background:var(--subtle)" class="muted"><span>1. Kolom Asli Berkas RS &amp; Contoh Data</span><span>Keyakinan AI</span><span>2. Target Field Standar JKN (INA-CBG)</span></div>
+        <div id="dt-rows"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card" style="padding:16px" id="dt-res"><div style="display:flex;justify-content:space-between"><b style="font-size:14px">∿ Hasil Analisis 8 Detektor</b><span class="pill" id="dt-resst" style="background:#fffbeb;color:#92400e;border-color:#fcd34d;font-size:10px">Menunggu Konfirmasi</span></div>
+          <div id="dt-resgrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;opacity:0">
+            <div style="background:var(--subtle);border:1px solid var(--divider);border-radius:10px;padding:10px"><div class="muted" style="font-size:11px">Klaim Masuk</div><b class="mono" style="font-size:20px" id="r-in">40</b></div>
+            <div style="background:var(--crit-bg);border:1px solid var(--crit-bd);border-radius:10px;padding:10px"><div style="font-size:11px;color:var(--crit)">Klaim Berisiko</div><b class="mono" style="font-size:20px;color:var(--crit)" id="r-risk">36</b></div>
+            <div style="background:var(--subtle);border:1px solid var(--divider);border-radius:10px;padding:10px"><div class="muted" style="font-size:11px">Temuan Detektor</div><b class="mono" style="font-size:20px">36</b></div>
+            <div style="background:var(--bpjs-soft);border:1px solid var(--bpjs-border);border-radius:10px;padding:10px"><div style="font-size:11px;color:var(--bpjs-dark)">Berkas Investigasi</div><b class="mono" style="font-size:20px;color:var(--bpjs-dark)">36</b></div>
+          </div>
+          <div id="dt-wait" class="muted" style="font-size:12px;margin-top:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px">Periksa usulan pemetaan kolom di sebelah kiri, lalu klik tombol “Konfirmasi &amp; Jalankan 8 Detektor”.</div>
+        </div>
+        <div class="card" style="padding:16px" id="dt-q"><div style="display:flex;justify-content:space-between"><b style="font-size:14px">▣ Skor Kualitas &amp; Validitas Data</b><span class="pill mono" id="dt-valid" style="background:var(--bpjs-soft);color:var(--bpjs-dark);border-color:var(--bpjs-border);opacity:0">93% Valid</span></div>
+          <div id="dt-qbody" style="opacity:0">
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:10px" class="muted"><span>Kelengkapan Field Wajib</span><b class="mono">99.5%</b></div><div style="height:8px;background:var(--sec);border-radius:8px;margin-top:4px"><div style="width:99.5%;height:8px;background:var(--bpjs);border-radius:8px"></div></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:8px" class="muted"><span>Validitas Skema Baris</span><b class="mono">93%</b></div><div style="height:8px;background:var(--sec);border-radius:8px;margin-top:4px"><div style="width:93%;height:8px;background:var(--bpjs);border-radius:8px"></div></div>
+            <div style="font-size:11px;font-weight:700;color:var(--crit);margin-top:12px">⚠ Log Baris Ditolak (3 baris)</div>
+            <div id="dt-rej" style="font-size:11px;background:#fef2f2;border:1px solid var(--crit-bd);border-radius:10px;padding:8px 10px;margin-top:6px;line-height:1.7"><b class="mono" style="color:var(--crit)">Baris #41</b> — ID klaim duplikat: SEP-UJI-0005<br/><b class="mono" style="color:var(--crit)">Baris #42</b> — ID klaim kosong<br/><b class="mono" style="color:var(--crit)">Baris #43</b> — Total tagihan tidak valid: "abc"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="up-modal" class="abs" style="inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;opacity:0">
+    <div class="card" style="width:512px;padding:24px">
+      <div style="display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--divider)"><div><b style="font-size:14px">Unggah Berkas Ekspor Klaim / SIMRS</b><div class="muted" style="font-size:12px;margin-top:2px">Format didukung: CSV · TSV · XLSX · JSON (maks. 20 MB / 50.000 baris)</div></div><span class="dim">✕</span></div>
+      <div id="up-drop" style="margin-top:16px;border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;font-size:12px;background:var(--subtle)"><div id="up-empty"><div style="font-size:22px;color:var(--bpjs)">⇪</div><b>Seret &amp; lepas berkas di sini, atau klik untuk memilih dari komputer</b><div class="muted" style="font-size:11px;margin-top:4px">PII (NIK, Nama, Alamat, No. HP) akan disensor otomatis di memori</div></div>
+        <div id="up-file" style="opacity:0;margin-top:-62px"><div style="font-size:22px;color:var(--bpjs)">✓</div><b>uji_rs.csv</b><div class="mono" style="font-size:11px;color:var(--bpjs-dark);margin-top:2px">4,1 KB siap dianonimkan &amp; dipetakan</div></div></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px"><span class="btn green" id="up-go" style="height:34px;font-size:12px">Proses &amp; Anonimkan Dataset</span></div>
+    </div>
+  </div>
+  <div id="up-chip" class="abs" style="left:0;top:0;padding:10px 14px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 16px 30px rgba(0,0,0,.2);font-size:13px;font-weight:600;opacity:0">📄 uji_rs.csv</div>
+  </section>
+
+  <!-- ============ EVALUASI ============ -->
+  <section class="page" id="pg-eval"><div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end"><div><div class="h1">Evaluasi &amp; kalibrasi</div><div class="muted" style="font-size:14px;margin-top:4px">1.503 klaim berlabel, 8 detektor aktif.</div></div><span style="display:flex;gap:8px"><span class="btn" style="height:32px;font-size:13px">Uji embedding lokal</span><span class="btn dark" style="height:32px;font-size:13px">↻ Jalankan ulang detektor</span></span></div>
+    <div style="display:flex;gap:10px;margin-top:14px;font-size:13px;align-items:center"><span style="background:var(--sec);border-radius:8px;padding:3px"><span style="background:#fff;border-radius:6px;padding:5px 12px;display:inline-block;font-weight:600">Dataset bawaan</span><span class="dim" style="padding:5px 12px;display:inline-block">Sampel BPJS</span></span><span style="color:var(--bpjs);font-weight:600">Muat sampel BPJS</span></div>
+    <div id="ev-banner" style="margin-top:14px;border-radius:12px;border:1px solid #fde68a;background:#fffbeb;padding:12px 16px;color:#92400e;font-size:14px;font-weight:600">Diukur pada data sintetis berlabel buatan kami; belum divalidasi pada klaim riil.<div style="font-size:12px;font-weight:500;text-decoration:underline;margin-top:2px">Baca batasannya</div></div>
+    <div class="card" style="margin-top:16px;display:grid;grid-template-columns:240px 1fr 1fr 1fr;overflow:hidden" id="ev-kpi">
+      <div style="padding:24px;text-align:center;border-right:1px solid var(--divider)" id="ev-ring"><div class="ring"><svg width="132" height="132"><circle cx="66" cy="66" r="56" fill="none" stroke="#e4ece8" stroke-width="10"/><circle id="ev-arc" cx="66" cy="66" r="56" fill="none" stroke="#ca8a04" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 352" transform="rotate(-90 66 66)"/></svg><span style="font-size:30px" id="ev-f1">82.7</span></div><div class="muted" style="font-size:12px;margin-top:8px">Rerata F1 pada data sintetis berlabel</div></div>
+      <div style="padding:28px" id="ev-p"><div class="muted" style="font-size:14px">Precision mikro</div><div style="font-size:34px;font-weight:700;margin-top:4px">72.9%</div><div style="height:6px;background:var(--sec);border-radius:6px;margin-top:12px"><div style="width:72.9%;height:6px;background:#007a3a;border-radius:6px"></div></div><div class="muted" style="font-size:12px;margin-top:8px">temuan yang benar dari semua sinyal</div></div>
+      <div style="padding:28px;border-left:1px solid var(--divider)" id="ev-r"><div class="muted" style="font-size:14px">Recall mikro</div><div style="font-size:34px;font-weight:700;margin-top:4px">90.4%</div><div style="height:6px;background:var(--sec);border-radius:6px;margin-top:12px"><div style="width:90.4%;height:6px;background:#0e7490;border-radius:6px"></div></div><div class="muted" style="font-size:12px;margin-top:8px">anomali nyata yang tertangkap</div></div>
+      <div style="padding:28px;border-left:1px solid var(--divider)" id="ev-fp"><div class="muted" style="font-size:14px">Positif palsu</div><div style="font-size:34px;font-weight:700;margin-top:4px">2.3%</div><div style="height:6px;background:var(--sec);border-radius:6px;margin-top:12px"><div style="width:2.3%;height:6px;background:#b91c1c;border-radius:6px"></div></div><div class="muted" style="font-size:12px;margin-top:8px">klaim normal yang ikut ditandai</div></div>
+    </div>
+    <div class="card" style="margin-top:16px;padding:18px 24px" id="ev-list"><b style="font-size:18px">Kinerja per detektor</b><div class="muted" style="font-size:13px">TP, FP, FN dihitung per penandaan; satu sinyal detektor satu penandaan.</div><div id="ev-rows" style="margin-top:10px"></div></div>
+  </div></section>
+
+  </main>
+</div>
+<div id="rip" class="ripple"></div>
+<svg id="cursor" viewBox="0 0 34 34"><path d="M5 3 L5 27 L11.5 21 L16 31 L20 29 L15.5 19.5 L24 19.5 Z" fill="#fff" stroke="#111" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+
+<div id="chapter"><i>1</i><span>Command Center</span></div>
+
+<!-- ============ KARTU JUDUL ============ -->
+<div id="title"><div class="dots" id="tdots"></div>
+  <div id="t-intro" class="abs" style="inset:0">
+    <div class="abs center" id="ti-a" style="top:300px;font-size:30px;color:#a9c7b8">In one year, JKN recorded</div>
+    <div class="abs center" id="ti-num" style="top:360px;font-size:190px;font-weight:800;letter-spacing:-0.04em">0</div>
+    <div class="abs center" id="ti-b" style="top:590px;font-size:40px;font-weight:600">inpatient admissions <span style="color:#7fa391;font-size:24px;font-weight:500">(BPJS statistics, 2018)</span></div>
+  </div>
+  <div id="t-problem" class="abs" style="inset:0;opacity:0">
+    <div id="tp-cards" class="abs" style="inset:0"></div>
+    <div class="abs" id="tp-a" style="left:140px;top:330px;font-size:92px;font-weight:800;letter-spacing:-0.03em">A score, no reason.</div>
+    <div class="abs" id="tp-b" style="left:140px;top:450px;font-size:92px;font-weight:800;letter-spacing:-0.03em;color:#ff6b5f">Can't be audited.</div>
+    <div class="abs" id="tp-c" style="left:144px;top:600px;font-size:40px;color:#cfe3d8;display:flex;align-items:center;gap:16px"><img src="assets/arsa_logo.png" style="width:56px;height:56px;background:#fff;border-radius:14px;padding:6px" /> Arsa AI shows the evidence instead.</div>
+  </div>
+  <div id="t-outro" class="abs" style="inset:0;opacity:0">
+    <img class="abs" id="to-logo" src="assets/arsa_logo.png" style="left:900px;top:210px;width:120px;height:120px;object-fit:contain;background:#fff;border-radius:28px;padding:12px" />
+    <div class="abs center" id="to-a" style="top:370px;font-size:110px;font-weight:800;letter-spacing:-0.04em">Arsa AI</div>
+    <div class="abs center" id="to-b" style="top:510px;font-size:42px;color:#e5efe9">Finding the claims that matter, and showing the proof.</div>
+    <div class="abs center" id="to-c" style="top:620px;font-size:28px;color:#34d399;font-weight:600">arsa-jkn-627843549213.asia-southeast2.run.app</div>
+    <div class="abs center" id="to-d" style="top:690px;font-size:22px;color:#7fa391">Healthkathon 2026 · Synthetic labelled data and official BPJS statistics, no real member data</div>
+  </div>
+</div>
+<div id="subs"><span></span></div>
+<div id="progress"></div>
+
+<script src="assets/app-data.js"></script>
+<script src="assets/graph-case.js"></script>
+<script src="assets/geo.js"></script>
+<script src="assets/vo.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const out = (x) => 1 - Math.pow(1 - x, 3);
+const inout = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const lerp = (a, b, k) => a + (b - a) * k;
+const FPS = 30, F = (n) => n / FPS;
+const CUE = Object.fromEntries(VO.cues.map((c) => [c.id, c]));
+const at = (id, off = 0) => CUE[id].start + off;
+const DURATION = VO.total;
+window.DURATION = DURATION;
+const rp = (n, d = 1) => `Rp ${(n / 1e6).toLocaleString("id-ID", { maximumFractionDigits: d })} Jt`;
+const LVL = { CRITICAL: ["#b91c1c", "#fef2f2", "#fecaca", "KRITIS"], HIGH: ["#c2410c", "#fff7ed", "#fed7aa", "TINGGI"], MEDIUM: ["#b45309", "#fffbeb", "#fde68a", "SEDANG"], LOW: ["#047857", "#ecfdf5", "#a7f3d0", "RENDAH"] };
+const TL = { UPCODING: "∿ Upcoding", UNBUNDLING: "≋ Unbundling", ABNORMAL_LOS: "◷ LOS Anomali", CLONING: "⧉ Cloning", PHANTOM_BILLING: "? Phantom Billing", INFLATED_BILLS: "↗ Inflasi Tagihan", REPEAT_BILLING: "⟳ Tagihan Berulang", READMISSION: "↺ Readmisi Dini" };
+const lerpColor = (a, b, t) => { const h = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16)); const A = h(a), B = h(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * clamp(t))).join(",")})`; };
+const ringSvg = (score, lvl, size, sw = 4) => { const r = size / 2 - sw - 1, c = 2 * Math.PI * r; return `<span class="ring"><svg width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e4ece8" stroke-width="${sw}"/><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${LVL[lvl][0]}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${(score / 100) * c} ${c}" transform="rotate(-90 ${size / 2} ${size / 2})"/></svg><span style="font-size:${Math.round(size * 0.3)}px">${score}</span></span>`; };
+
+/* ---------------- Bangun konten dari data aplikasi ---------------- */
+function buildCC() {
+  $("cc-spot").innerHTML = [["RSUD Jakarta Selatan", 90, "CRITICAL", "Rp 66,7 Jt"], ["RS Kasih Nusantara…", 96, "CRITICAL", "Rp 30,5 Jt"], ["RS Bunda Permata…", 80, "HIGH", "Rp 12,5 Jt"]]
+    .map(([n, s, l, e]) => `<div style="border:1px solid var(--divider);border-radius:12px;padding:10px 4px;text-align:center">${ringSvg(s, l, 46)}<div style="font-size:11px;font-weight:600;margin-top:4px">${n}</div><div class="mono dim" style="font-size:10px">${e}</div></div>`).join("");
+  const hot = [...APP.provinces].filter((p) => p.high > 0).sort((a, b) => b.score - a.score).slice(0, 5);
+  const top = hot[0].score;
+  $("cc-hot").innerHTML = hot.map((p) => { const t = p.score / top; return `<div style="border-radius:8px;padding:12px 4px;text-align:center;background:${lerpColor("#dcfce7", "#14532d", 0.1 + 0.9 * Math.pow(t, 0.6))};color:${t > 0.45 ? "#fff" : "#11241d"}"><div style="font-size:16px;font-weight:700">${p.score}</div><div style="font-size:10px;line-height:1.2">${p.name}</div></div>`; }).join("");
+  // Peta panas poligon
+  const POLY = { "DI. ACEH": ["ID-AC"], "SUMATERA UTARA": ["ID-SU"], "SUMATERA BARAT": ["ID-SB"], RIAU: ["ID-RI", "ID-KR"], JAMBI: ["ID-JA"], "SUMATERA SELATAN": ["ID-SS"], BENGKULU: ["ID-BE"], LAMPUNG: ["ID-LA"], "BANGKA BELITUNG": ["ID-BB"], "DKI JAKARTA": ["ID-JK"], "JAWA BARAT": ["ID-JB"], "JAWA TENGAH": ["ID-JT"], "DAERAH ISTIMEWA YOGYAKARTA": ["ID-YO"], PROBANTEN: ["ID-BT"], "JAWA TIMUR": ["ID-JI"], BALI: ["ID-BA"], "NUSATENGGARA BARAT": ["ID-NB"], "NUSA TENGGARA TIMUR": ["ID-NT"], "KALIMANTAN BARAT": ["ID-KB"], "KALIMANTAN TENGAH": ["ID-KT"], "KALIMANTAN SELATAN": ["ID-KS"], "KALIMANTAN TIMUR": ["ID-KI", "ID-KU"], "SULAWESI UTARA": ["ID-SA"], GORONTALO: ["ID-GO"], "SULAWESI TENGAH": ["ID-ST"], "SULAWESI SELATAN": ["ID-SN", "ID-SR"], "SULAWESI TENGGARA": ["ID-SG"], MALUKU: ["ID-MA"], "MALUKU UTARA": ["ID-MU"], "IRIAN JAYA BARAT": ["ID-PB"], "IRIAN JAYA TENGAH": ["ID-PA"], "IRIAN JAYA TIMUR": ["ID-PA"] };
+  const by = Object.fromEntries(APP.provinces.map((p) => [p.code, p]));
+  const scores = Object.values(POLY).map((cs) => { const ds = cs.map((c) => by[c]).filter((d) => d && d.total > 0); const tot = ds.reduce((a, d) => a + d.total, 0); return tot ? ds.reduce((a, d) => a + d.score * d.total, 0) / tot : null; }).filter((x) => x !== null);
+  const mn = Math.min(...scores), mx = Math.max(...scores);
+  const proj = (lon, lat, W, H, box) => [((lon - box[0]) / (box[1] - box[0])) * W, ((box[3] - lat) / (box[3] - box[2])) * H];
+  const drawMap = (svgId, W, H, box, highlight) => {
+    let h = "";
+    GEO.features.forEach((f) => {
+      const name = f.properties.name, cs = POLY[name] || [];
+      const ds = cs.map((c) => by[c]).filter((d) => d && d.total > 0);
+      const tot = ds.reduce((a, d) => a + d.total, 0);
+      const sc = tot ? ds.reduce((a, d) => a + d.score * d.total, 0) / tot : null;
+      const hit = highlight ? cs.some((c) => highlight.includes(c)) : true;
+      const fill = sc === null || !hit ? "#f3f4f6" : lerpColor("#dcfce7", "#14532d", 0.1 + 0.9 * Math.pow(clamp((sc - mn) / (mx - mn)), 0.6));
+      const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+      const d = polys.map((poly) => poly.map((ring) => "M" + ring.map(([x, y]) => proj(x, y, W, H, box).map((v) => v.toFixed(1)).join(",")).join("L") + "Z").join("")).join("");
+      h += `<path d="${d}" fill="${fill}" stroke="${sc === null || !hit ? "#d1d5db" : "#fff"}" stroke-width="0.8" data-p="${cs[0] || ""}"/>`;
+    });
+    $(svgId).innerHTML = h;
+  };
+  drawMap("ccmap", 792, 430, [94.5, 141.5, -11.2, 6.4]);
+  drawMap("cp-map", 560, 230, [104.2, 115.2, -8.9, -5.4], ["ID-JK", "ID-JI"]);
+  // pin di peta copilot
+  const pins = [["ID-JK", "DKI Jakarta", 106.85, -6.2], ["ID-JI", "Jawa Timur", 112.6, -7.6]];
+  $("cp-map").innerHTML += pins.map(([c, n, x, y]) => { const [px, py] = proj(x, y, 560, 230, [104.2, 115.2, -8.9, -5.4]); return `<circle cx="${px}" cy="${py}" r="7" fill="${c === "ID-JK" ? "#b45309" : "#047857"}" stroke="#fff" stroke-width="2"/><rect x="${px - 50}" y="${py - 40}" width="100" height="24" rx="6" fill="#fff" stroke="#d5e0da"/><text x="${px}" y="${py - 23}" text-anchor="middle" font-size="12" font-weight="600" fill="#11241d">${n}</text>`; }).join("");
+}
+
+function buildQueue() {
+  const chips = [["UPCODING", 36], ["ABNORMAL_LOS", 36], ["UNBUNDLING", 14], ["INFLATED_BILLS", 11], ["READMISSION", 10], ["PHANTOM_BILLING", 9], ["CLONING", 8], ["REPEAT_BILLING", 5]];
+  $("q-chips").innerHTML = chips.map(([t, n]) => `<span id="chip-${t}" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:3px 10px 3px 4px"><span class="pill">${TL[t]}</span><b class="mono" style="font-size:12px">${n}</b></span>`).join("");
+  $("q-list").innerHTML = APP.queue.slice(0, 7).map((q, i) => {
+    const up = q.signals.includes("UPCODING");
+    return `<div class="qrow" data-up="${up ? 1 : 0}" id="qr${i}" style="position:absolute;left:0;right:0;top:${i * 80}px;height:80px;display:grid;grid-template-columns:72px 1fr 200px 170px;align-items:center;padding:0 18px;border-bottom:1px solid var(--divider);background:#fff">
+      <div>${ringSvg(q.score, q.level, 54)}</div>
+      <div><div style="font-size:15px;font-weight:700">${q.provider}</div><div class="muted" style="font-size:12px"><span class="mono">${q.claim}</span> · ${q.city} · ${q.age} thn, ${q.gender} · ${q.dx}</div><div style="display:flex;gap:6px;margin-top:4px">${q.signals.slice(0, 2).map((s) => `<span class="pill">${TL[s]}</span>`).join("")}</div></div>
+      <div style="text-align:right">${q.exposure > 0 ? `<div class="mono" style="font-size:18px;font-weight:700;color:var(--crit)">${rp(q.exposure)}</div>` : `<div class="muted" style="font-size:13px;font-weight:600">Tanpa selisih tarif</div>`}<div class="dim" style="font-size:11px">tagihan ${rp(q.amount)}</div></div>
+      <div style="text-align:right"><span class="pill" style="font-size:10px">Belum Ditinjau</span><div style="margin-top:6px;display:flex;gap:6px;justify-content:flex-end"><span class="btn" style="height:30px;width:30px;padding:0;justify-content:center;font-size:12px">⎙</span><span class="btn dark" id="${i === 0 ? "q-open" : ""}" style="height:30px;font-size:12px;padding:0 12px">Periksa ›</span></div></div></div>`;
+  }).join("");
+}
+
+function buildCase() {
+  // sumbu posisi tagihan
+  const marks = [["Rerata kelas 2 BPJS", APP.claim.national.costRef, "#0e7490"], ["Median peer", APP.claim.peer, "#007a3a"], ["Rerata DKI Jakarta", APP.claim.national.provinceCost, "#64748b"], ["Tagihan ini", APP.claim.amount, "#b91c1c"]];
+  const mx = Math.max(...marks.map((m) => m[1])) * 1.08, W = 800;
+  let h = `<rect x="10" y="52" width="${W - 20}" height="6" rx="3" fill="#eef3f0"/><rect x="${10 + (APP.claim.peer / mx) * (W - 20)}" y="52" width="${((APP.claim.amount - APP.claim.peer) / mx) * (W - 20)}" height="6" fill="#fca5a5"/>`;
+  marks.forEach(([l, v, c], i) => { const x = 10 + (v / mx) * (W - 20); const up = i % 2 === 0; h += `<circle cx="${x}" cy="55" r="${l === "Tagihan ini" ? 8 : 6}" fill="${c}" stroke="#fff" stroke-width="2"/><text x="${x}" y="${up ? 22 : 84}" text-anchor="${x > W - 80 ? "end" : "middle"}" font-size="11" fill="#475b53">${l}</text><text x="${x}" y="${up ? 37 : 98}" text-anchor="${x > W - 80 ? "end" : "middle"}" font-size="12" font-weight="700" fill="${c}">${rp(v)}</text>`; });
+  $("axis").innerHTML = h;
+  $("docs").innerHTML = APP.claim.docs.map((d, i) => `<div class="card" id="doc${i}" style="margin-top:12px;padding:14px 16px;border-left:3px solid var(--crit)"><div style="display:flex;justify-content:space-between"><b style="font-size:13px">▤ ${d.title} <span class="mono dim" style="font-size:10px;font-weight:500">(${d.id})</span></b><span class="pill" style="background:var(--crit-bg);color:var(--crit);border-color:var(--crit-bd);font-size:10px">Tidak mendukung klaim</span></div><div style="margin-top:8px;background:var(--subtle);border:1px solid var(--divider);border-radius:8px;padding:9px 12px;font-size:13px;font-style:italic">"${d.excerpt}"</div></div>`).join("");
+  $("g-legend").innerHTML = [["#00a651", "Faskes"], ["#08783e", "Dokter"], ["#d92d20", "Klaim kritis"], ["#1689c8", "Klaim lain"], ["#475467", "Pasien"], ["#7a5af8", "Diagnosis"]].map(([c, l]) => `<span style="display:flex;align-items:center;gap:6px"><i style="width:10px;height:10px;border-radius:2px;background:${c};display:block"></i>${l}</span>`).join("");
+  buildGraph();
+}
+
+let NET = null;
+function buildGraph() {
+  const g = window.GRAPH_CASE, W = 826, H = 420;
+  const rnd = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  const nodes = g.nodes.map((n, i) => ({ ...n, x: W / 2 + (rnd(i + 1) - 0.5) * 500, y: H / 2 + (rnd(i + 41) - 0.5) * 300, vx: 0, vy: 0 }));
+  const idx = new Map(nodes.map((n, i) => [n.id, i]));
+  const edges = g.edges.filter((e) => idx.has(e.from) && idx.has(e.to)).map((e) => ({ ...e, a: idx.get(e.from), b: idx.get(e.to) }));
+  for (let it = 0; it < 800; it++) {
+    const cool = 1 - it / 800;
+    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) { const A = nodes[i], B = nodes[j]; const dx = A.x - B.x, dy = A.y - B.y, d2 = dx * dx + dy * dy + 0.01, d = Math.sqrt(d2), f = 1800 / d2; A.vx += (dx / d) * f; A.vy += (dy / d) * f; B.vx -= (dx / d) * f; B.vy -= (dy / d) * f; }
+    for (const e of edges) { const A = nodes[e.a], B = nodes[e.b]; const dx = B.x - A.x, dy = B.y - A.y, d = Math.sqrt(dx * dx + dy * dy) + 0.01, f = (d - 70) * 0.04; A.vx += (dx / d) * f; A.vy += (dy / d) * f; B.vx -= (dx / d) * f; B.vy -= (dy / d) * f; }
+    for (const n of nodes) { n.vx += (W / 2 - n.x) * 0.005; n.vy += (H / 2 - n.y) * 0.008; n.x += clamp(n.vx, -16, 16) * cool; n.y += clamp(n.vy, -16, 16) * cool; n.vx *= 0.5; n.vy *= 0.5; }
+  }
+  const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y), mnx = Math.min(...xs), mxx = Math.max(...xs), mny = Math.min(...ys), mxy = Math.max(...ys);
+  const s = Math.min((W - 120) / (mxx - mnx), (H - 70) / (mxy - mny));
+  nodes.forEach((n) => { n.x = 60 + (n.x - mnx) * s + ((W - 120) - (mxx - mnx) * s) / 2; n.y = 35 + (n.y - mny) * s + ((H - 70) - (mxy - mny) * s) / 2; });
+  const ORD = { PROVIDER: 0, DOCTOR: 1, CLAIM: 2, DIAGNOSIS: 3, PATIENT: 3 };
+  const order = [...nodes.keys()].sort((p, q) => ORD[nodes[p].type] - ORD[nodes[q].type] || nodes[p].x - nodes[q].x);
+  order.forEach((k, r) => (nodes[k].at = (r / order.length) * 4.2));
+  edges.forEach((e) => (e.at = Math.max(nodes[e.a].at, nodes[e.b].at) + 0.1));
+  const COL = { PROVIDER: "#00a651", DOCTOR: "#08783e", PATIENT: "#475467", DIAGNOSIS: "#7a5af8" };
+  let h = "";
+  edges.forEach((e, i) => { const A = nodes[e.a], B = nodes[e.b]; h += `<line id="ge${i}" x1="${A.x.toFixed(1)}" y1="${A.y.toFixed(1)}" x2="${B.x.toFixed(1)}" y2="${B.y.toFixed(1)}" stroke="${e.dashes ? "#d92d20" : "#cbd5e1"}" stroke-width="${e.dashes ? 2 : 1.4}" ${e.dashes ? 'stroke-dasharray="5 4"' : ""} opacity="0"/>`; });
+  nodes.forEach((n, i) => {
+    const crit = n.type === "CLAIM" && n.risk_level === "CRITICAL";
+    const fill = n.type === "CLAIM" ? (crit ? "#d92d20" : "#1689c8") : COL[n.type];
+    let shape;
+    const lab = String(n.label).replace(/&/g, "&amp;");
+    if (n.type === "PROVIDER" || n.type === "CLAIM") { const w = Math.max(64, lab.length * 5.6 + 14); shape = `<rect x="${-w / 2}" y="-10" width="${w}" height="20" rx="4" fill="${fill}"/><text y="4" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff">${lab.slice(0, 26)}</text>`; }
+    else if (n.type === "DOCTOR") { const w = Math.max(80, lab.length * 5.2 + 16); shape = `<ellipse rx="${w / 2}" ry="10" fill="${fill}"/><text y="3.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">${lab}</text>`; }
+    else if (n.type === "DIAGNOSIS") shape = `<rect x="-9" y="-9" width="18" height="18" transform="rotate(45)" fill="${fill}"/>`;
+    else shape = `<circle r="9" fill="${fill}"/>`;
+    h += `<g id="gn${i}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})">${n.cluster ? `<rect id="gr${i}" x="-58" y="-17" width="116" height="34" rx="17" fill="none" stroke="#d92d20" stroke-width="2.5" opacity="0"/>` : ""}${shape}</g>`;
+  });
+  $("g-svg").innerHTML = h;
+  NET = { nodes, edges };
+  const di = nodes.findIndex((n) => n.type === "DOCTOR" && n.cluster);
+  $("gn" + di).id = "gn" + di; NET.doctor = di;
+}
+
+function buildCopilot() {
+  const md = APP.copilot.answer.split("\n").filter(Boolean).slice(0, 4).map((l) => l.replace(/^- /, "").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\[(\d)\]/g, '<sup style="display:inline-grid;place-items:center;min-width:17px;height:17px;border-radius:5px;background:#e3f3ea;color:#064e2b;font-size:10px;font-weight:700;margin-left:2px">$1</sup>'));
+  $("cp-ans").innerHTML = md.map((l, i) => `<div class="cpl" id="cpl${i}" style="opacity:0;display:flex;gap:10px"><span style="color:#007a3a">•</span><span>${l}</span></div>`).join("");
+  const rows = APP.copilot.visuals[0].rows;
+  $("cp-rows").innerHTML = rows.map((r) => `<div style="display:flex;gap:12px;align-items:center;margin-top:12px">${ringSvg(r.score, r.level, 44)}<div style="font-size:12px"><b style="font-size:14px">${r.name}</b><div class="muted">${r.high} dari ${r.total} klaim berisiko tinggi</div><div class="dim">${rp(r.exposure)}, biaya ${String(r.cost_ratio.toFixed(1)).replace(".", ",")}x rerata nasional</div></div></div>`).join("");
+  $("cp-side").innerHTML = APP.queue.slice(0, 5).map((q) => `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--divider);font-size:12px"><div><b class="tab">${q.claim}</b> <b style="color:var(--crit);font-size:11px">${q.score}</b><div class="muted">${q.provider}</div></div><div style="text-align:right"><b>${q.exposure ? rp(q.exposure) : '<span class="dim" style="font-weight:400">tanpa selisih</span>'}</b><div style="color:var(--bpjs);font-size:11px">Buka berkas</div></div></div>`).join("");
+}
+
+function buildData() {
+  const rows = [["no_sep", "TEKS", "SEP-UJI-0001", "96%", "ID Klaim / No. SEP (claim_id)", "Kolom 'no_sep' secara langsung merepresentasikan nomor SEP"], ["nik", "TEKS", "PSN-6B607C44C1", "99%", "ID Pasien/Peserta (patient_id)", "Token HMAC-SHA256 satu arah dari NIK"], ["kode_rs", "TEKS", "FKL-013", "96%", "Kode Faskes (provider_id)", "Kode faskes bekerja sama BPJS"], ["dx_utama", "TEKS", "J18.9", "99%", "Diagnosis Utama (ICD-10) (primary_diagnosis)", "Kode diagnosis utama ICD-10"], ["tarif_rs", "ANGKA", "3867620", "99%", "Total Tagihan (Rp) (claim_amount)", "Total nilai tagihan klaim INA-CBG"]];
+  $("dt-rows").innerHTML = rows.map((r, i) => `<div id="dr${i}" style="display:grid;grid-template-columns:2fr 1fr 3fr;padding:12px 16px;border-top:1px solid var(--divider);align-items:center"><div><span class="mono" style="font-size:12px;font-weight:700;background:var(--sec);border:1px solid var(--border);border-radius:6px;padding:2px 8px">${r[0]}</span> <span class="pill" style="font-size:9px;background:${r[1] === "ANGKA" ? "#eef2ff" : "#f3f4f6"}">${r[1]}</span>${i === 1 ? `<div id="dr-hmac" style="margin-top:6px"><span class="pill" style="background:#ecfdf5;color:#065f46;border-color:#a7f3d0;font-size:10px">⊘ Token HMAC-SHA256</span></div>` : ""}<div class="dim" style="font-size:11px;margin-top:4px">Contoh: <span class="mono">${r[2]}</span></div></div><div><div style="font-size:10px;font-weight:700" class="dim">AI <span style="float:right;color:var(--ink)">${r[3]}</span></div><div style="height:4px;background:#e4ece8;border-radius:4px;margin-top:4px"><div style="width:${r[3]};height:4px;background:#007a3a;border-radius:4px"></div></div></div><div><div class="mono" style="font-size:12px;border:1px solid var(--bpjs);border-radius:8px;padding:7px 10px">★ ${r[4]}</div><div class="dim" style="font-size:10px;margin-top:3px">● <b style="color:var(--ink)">${r[4].split(" (")[0]}</b> (Wajib) · ${r[5]}</div></div></div>`).join("");
+}
+
+function buildEval() {
+  const R = [["Phantom billing", 9, 1, 1, 1, "9/0/0", true], ["Tagihan berulang", 5, 1, 1, 1, "5/0/0", true], ["Rawat ulang dini", 10, 1, 1, 1, "10/0/0"], ["Upcoding", 35, 0.99, 0.972, 1, "35/1/0"], ["Unbundling", 18, 0.88, 1, 0.778, "14/0/4"], ["Inflasi tagihan", 15, 0.77, 0.909, 0.667, "10/1/5"]];
+  $("ev-rows").innerHTML = R.map((r) => `<div style="display:grid;grid-template-columns:2fr 60px 1.4fr 1.4fr 90px;gap:16px;align-items:center;padding:9px 0;font-size:13px"><div><b style="font-weight:600">${r[0]}</b><div class="dim" style="font-size:11px">${r[1]} kasus berlabel ${r[6] ? '<span class="pill" style="font-size:9px;background:#fffbeb;color:#b45309;border-color:#fde68a">sampel kecil</span>' : ""}</div></div><b style="text-align:right;color:${r[6] ? "#94a3b8" : r[2] >= 0.85 ? "#059669" : "#ca8a04"}">${r[2].toFixed(2)}</b><div><div style="font-size:11px">${(r[3] * 100).toFixed(1)}%</div><div style="height:6px;background:var(--sec);border-radius:6px;margin-top:3px"><div style="width:${r[3] * 100}%;height:6px;background:#007a3a;border-radius:6px"></div></div></div><div><div style="font-size:11px">${(r[4] * 100).toFixed(1)}%</div><div style="height:6px;background:var(--sec);border-radius:6px;margin-top:3px"><div style="width:${r[4] * 100}%;height:6px;background:#0e7490;border-radius:6px"></div></div></div><span class="muted" style="text-align:right;font-size:12px">${r[5]}</span></div>`).join("");
+}
+
+/* ---------------- Jadwal aksi ---------------- */
+// Kursor: setiap gerak memakan 20-30 frame, berhenti 8 frame, lalu klik (bila ada).
+const MOVES = [];
+const CLK = {};
+function move(name, target, arrive, opts = {}) { MOVES.push({ name, target, arrive, dur: F(opts.frames || 26), click: !!opts.click, dx: opts.dx || 0, dy: opts.dy || 0 }); if (opts.click) CLK[name] = arrive + F(8); return arrive + F(8); }
+
+// Kamera: transisi ke {s, target} selama dur, berakhir pada `at`.
+const CAM = [{ at: 0, dur: 0, s: 1, fx: 960, fy: 540 }];
+const cam = (at, s, target, dur = 0.9, dx = 0, dy = 0) => CAM.push({ at, dur, s, target, dx, dy });
+
+function schedule() {
+  // Command Center
+  move("cc1", "cc-exp", at("cc", 1.6), { frames: 28 });
+  cam(at("cc", 2.4), 1.6, "cc-exp", 1.0, 120, 30);
+  move("cc2", "cc-high", at("cc", 5.0), { frames: 24 });
+  cam(at("cc", 5.6), 1.6, "cc-high", 0.8, 60, 30);
+  cam(at("cc", 8.4), 1, null, 0.8);
+  // Peta
+  move("map1", "P:ID-JK", at("map", 1.4), { frames: 26 });
+  cam(at("map", 1.6), 1.6, "P:ID-JK", 1.0, 160, -40);
+  move("map2", "P:ID-JI", at("map", 4.6), { frames: 24 });
+  cam(at("map", 7.4), 1, null, 0.8);
+  // Ke antrean
+  move("toq", "cc-queue", at("toqueue", 1.4), { frames: 26, click: true });
+  cam(at("toqueue", 4.0), 1.6, "q-kpi", 0.9, -120, 30);
+  cam(at("toqueue", 6.6), 1, null, 0.7);
+  // Filter
+  move("flt", "chip-UPCODING", at("filter", 1.2), { frames: 26, click: true });
+  cam(at("filter", 3.0), 1.6, "q-list", 0.9, -60, -200);
+  cam(at("filter", 6.4), 1, null, 0.7);
+  // Buka kasus
+  move("open", "q-open", at("open", 1.4), { frames: 26, click: true });
+  cam(at("open", 3.6), 1.6, "cs-ring", 0.9, 300, 40);
+  cam(at("open", 6.5), 1, null, 0.7);
+  // Alasan
+  move("why1", "cs-bill", at("why", 1.0), { frames: 24 });
+  cam(at("why", 1.6), 1.6, "cs-peer", 0.9, -40, 10);
+  move("why2", "cs-peer", at("why", 4.6), { frames: 22 });
+  move("why3", "cs-nat", at("why", 7.6), { frames: 24 });
+  cam(at("why", 8.2), 1.6, "cs-nat", 0.8, -120, 10);
+  cam(at("why", 11.3), 1, null, 0.7);
+  // Detektor
+  move("det", "cs-det", at("detectors", 1.0), { frames: 24 });
+  cam(at("detectors", 1.6), 1.6, "cs-det", 0.9, 0, -20);
+  cam(at("detectors", 5.5), 1, null, 0.6);
+  // Bukti
+  move("bukti", "tb-bukti", at("evidence", 1.2), { frames: 26, click: true });
+  cam(at("evidence", 3.0), 1.6, "doc0", 0.9, 0, 0);
+  move("doc2", "doc1", at("evidence", 6.0), { frames: 24 });
+  cam(at("evidence", 6.4), 1.6, "doc1", 0.9, 0, 0);
+  cam(at("evidence", 9.4), 1, null, 0.7);
+  // Graf
+  move("graf", "tb-graf", at("graph", 1.2), { frames: 26, click: true });
+  cam(at("graph", 6.2), 1.35, "g-svg", 1.2);
+  cam(at("graph", 8.6), 1, null, 0.6);
+  // Klaster
+  move("focus", "g-focus", at("cluster", 1.2), { frames: 26, click: true });
+  move("doc", "GN:doctor", at("cluster", 4.0), { frames: 26, click: true });
+  cam(at("cluster", 4.8), 1.6, "GN:doctor", 1.0, 120, 40);
+  cam(at("cluster", 8.6), 1, null, 0.6);
+  // Keputusan
+  move("conf", "cs-confirm", at("decide", 1.3), { frames: 28, click: true });
+  cam(at("decide", 2.6), 1.6, "modal-box", 0.9);
+  move("save", "modal-save", at("decide", 8.2), { frames: 24, click: true });
+  cam(at("decide", 9.6), 1, null, 0.6);
+  // Audit
+  move("notes", "tb-notes", at("audit", 1.1), { frames: 26, click: true });
+  cam(at("audit", 2.8), 1.6, "au-new", 0.9, 0, 0);
+  cam(at("audit", 7.0), 1, null, 0.6);
+  // Copilot
+  move("navcp", "nav-copilot", at("copilot", 1.2), { frames: 28, click: true });
+  move("inp", "cp-input", at("copilot", 3.0), { frames: 26, click: true });
+  move("send", "cp-send", at("copilot", 7.6), { frames: 22, click: true });
+  // Jawaban
+  cam(at("answer", 4.6), 1.6, "cp-vis", 1.0);
+  move("vis", "cp-vis", at("answer", 5.6), { frames: 26 });
+  cam(at("answer", 9.4), 1, null, 0.7);
+  // Unggah
+  move("navdt", "nav-data", at("upload", 1.0), { frames: 28, click: true });
+  move("upl", "dt-upload", at("upload", 3.0), { frames: 26, click: true });
+  move("drag", "up-drop", at("upload", 5.2), { frames: 30 });
+  move("go", "up-go", at("upload", 6.3), { frames: 22, click: true });
+  // Pemetaan
+  cam(at("mapping", 2.0), 1.6, "dr1", 1.0, 60, 10);
+  move("hm", "dr-hmac", at("mapping", 2.6), { frames: 26 });
+  cam(at("mapping", 8.4), 1, null, 0.7);
+  // Ingest
+  move("cf", "dt-confirm", at("ingest", 1.2), { frames: 26, click: true });
+  cam(at("ingest", 3.6), 1.6, "dt-q", 0.9, 0, 40);
+  move("rej", "dt-rej", at("ingest", 4.6), { frames: 24 });
+  cam(at("ingest", 8.4), 1, null, 0.6);
+  // Evaluasi
+  move("naveval", "nav-eval", at("honest", 1.0), { frames: 28, click: true });
+  cam(at("honest", 3.0), 1.6, "ev-r", 1.0, 0, 0);
+  move("evr", "ev-r", at("honest", 3.4), { frames: 24 });
+  move("evfp", "ev-fp", at("honest", 6.6), { frames: 22 });
+  cam(at("honest", 7.0), 1.6, "ev-fp", 0.8, 0, 0);
+  move("evb", "ev-banner", at("honest", 9.6), { frames: 26 });
+  cam(at("honest", 10.0), 1.6, "ev-banner", 0.9, 0, 40);
+  cam(at("honest", 12.6), 1, null, 0.6);
+  MOVES.sort((a, b) => a.arrive - b.arrive);
+  CAM.sort((a, b) => a.at - b.at);
+}
+
+/* ---------------- Pengukuran posisi target ---------------- */
+const POS = {};
+function measure() {
+  const st = $("stage").getBoundingClientRect();
+  const center = (el) => { const r = el.getBoundingClientRect(); return [r.left - st.left + r.width / 2, r.top - st.top + r.height / 2]; };
+  { const r = $("ccmap").getBoundingClientRect(); POS.__map = [r.left - st.left, r.top - st.top]; }
+  const all = new Set([...MOVES.map((m) => m.target), ...CAM.filter((c) => c.target).map((c) => c.target)]);
+  for (const k of all) {
+    if (k.startsWith("P:")) { const el = document.querySelector(`#ccmap path[data-p="${k.slice(2)}"]`); POS[k] = center(el); }
+    else if (k === "GN:doctor") POS[k] = center($("gn" + NET.doctor));
+    else POS[k] = center($(k));
+  }
+}
+
+/* ---------------- Render per waktu ---------------- */
+function bezierPoint(a, b, k, bend) { const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2; const nx = -(b[1] - a[1]), ny = b[0] - a[0]; const L = Math.hypot(nx, ny) || 1; const cx = mx + (nx / L) * bend, cy = my + (ny / L) * bend; const u = 1 - k; return [u * u * a[0] + 2 * u * k * cx + k * k * b[0], u * u * a[1] + 2 * u * k * cy + k * k * b[1]]; }
+function cursorAt(t) {
+  let pos = [1500, 760], prev = pos;
+  for (const m of MOVES) {
+    const p = [POS[m.target][0] + m.dx, POS[m.target][1] + m.dy];
+    if (t >= m.arrive) { prev = pos = p; continue; }
+    if (t > m.arrive - m.dur) { const k = inout(prog(t, m.arrive - m.dur, m.arrive)); const d = Math.hypot(p[0] - prev[0], p[1] - prev[1]); return bezierPoint(prev, p, k, Math.min(90, d * 0.18)); }
+    break;
+  }
+  return pos;
+}
+function camAt(t) {
+  let cur = { s: 1, fx: 960, fy: 540 };
+  for (let i = 1; i < CAM.length; i++) {
+    const k = CAM[i];
+    const tgt = k.target ? [POS[k.target][0] + k.dx, POS[k.target][1] + k.dy] : [cur.fx, cur.fy];
+    const next = { s: k.s, fx: tgt[0], fy: tgt[1] };
+    if (t >= k.at) { cur = next; continue; }
+    if (t > k.at - k.dur) { const e = inout(prog(t, k.at - k.dur, k.at)); return { s: lerp(cur.s, next.s, e), fx: lerp(cur.fx, next.fx, e), fy: lerp(cur.fy, next.fy, e) }; }
+    break;
+  }
+  return cur;
+}
+
+const PAGES = ["cc", "queue", "case", "copilot", "data", "eval"];
+function pageAt(t) {
+  if (t < CLK.toq) return "cc";
+  if (t < CLK.open) return "queue";
+  if (t < CLK.navcp) return "case";
+  if (t < CLK.navdt) return "copilot";
+  if (t < CLK.naveval) return "data";
+  return "eval";
+}
+const PSTART = () => ({ cc: 0, queue: CLK.toq, case: CLK.open, copilot: CLK.navcp, data: CLK.navdt, eval: CLK.naveval });
+const CRUMB = { cc: ["Operasional", "Command Center", "nav-cc"], queue: ["Operasional", "Pemeriksaan Klaim & Dosier", "nav-queue"], case: ["Operasional", "Pemeriksaan Klaim & Dosier", "nav-queue"], copilot: ["Intelijen", "AI Copilot", "nav-copilot"], data: ["Tata Kelola", "Manajemen Dataset", "nav-data"], eval: ["Intelijen", "Evaluasi & Kalibrasi", "nav-eval"] };
+const CHAPTERS = [["cc", "Command Center"], ["toqueue", "Priority queue"], ["open", "Evidence, not just a score"], ["graph", "Relationship graph"], ["decide", "Human decision & audit chain"], ["copilot", "Cited Copilot"], ["upload", "Upload & privacy"], ["honest", "Honest evaluation"]];
+const TYPE_Q = "Bandingkan risiko DKI Jakarta dan Jawa Timur";
+const TYPE_D = "Severity 3 tidak didukung DOC-10459-01 dan DOC-10459-02: pasien stabil. Tagihan 184% di atas median peer.";
+
+function render(t) {
+  const ps = PSTART(), page = pageAt(t);
+  // halaman aktif + crossfade cepat
+  PAGES.forEach((p) => { const el = $("pg-" + p); const k = p === page ? prog(t, ps[p], ps[p] + 0.3) || (ps[p] === 0 ? 1 : 0) : 0; el.style.opacity = p === page ? Math.max(k, ps[p] === 0 ? 1 : 0) : 0; el.style.transform = p === page ? `translateY(${(1 - out(k)) * 10}px)` : ""; });
+  const [ca, cb, nav] = CRUMB[page];
+  $("crumbA").textContent = ca; $("crumbB").textContent = cb;
+  document.querySelectorAll(".navi").forEach((n) => n.classList.toggle("active", n.id === nav));
+
+  // Command Center: tooltip peta
+  const tip = $("maptip");
+  const hov = t >= MOVES.find((m) => m.name === "map2").arrive ? "ID-JI" : t >= MOVES.find((m) => m.name === "map1").arrive ? "ID-JK" : null;
+  const tipOn = hov && t < at("toqueue", 0.4);
+  tip.style.opacity = tipOn ? 1 : 0;
+  document.querySelectorAll("#ccmap path").forEach((p) => { p.setAttribute("stroke", p.dataset.p === hov && tipOn ? "#064e3b" : p.getAttribute("fill") === "#f3f4f6" ? "#d1d5db" : "#fff"); p.setAttribute("stroke-width", p.dataset.p === hov && tipOn ? 2.4 : 0.8); });
+  if (tipOn) { const pr = APP.provinces.find((p) => p.code === hov); tip.innerHTML = `<b>${pr.name}</b><br/>Skor risiko ${pr.score}<br/>${pr.high} dari ${pr.total} klaim berisiko tinggi`; const [px, py] = POS["P:" + hov]; tip.style.left = `${px - POS.__map[0] + 18}px`; tip.style.top = `${py - POS.__map[1] - 70}px`; }
+
+  // Antrean: filter Upcoding
+  const fk = prog(t, CLK.flt, CLK.flt + 0.45);
+  $("q-filter").style.opacity = fk;
+  const ch = $("chip-UPCODING"); ch.style.borderColor = fk > 0 ? "#007a3a" : ""; ch.style.background = fk > 0 ? "#e3f3ea" : "";
+  let slot = 0;
+  APP.queue.slice(0, 7).forEach((q, i) => { const el = $("qr" + i); const up = el.dataset.up === "1"; const target = fk > 0 ? (up ? slot++ : i) : i; const y = lerp(i * 80, up ? target * 80 : i * 80, out(fk)); el.style.top = `${y}px`; el.style.opacity = up ? 1 : 1 - fk; });
+
+  // Detail kasus: tab
+  const tabTimes = [["ring", 0], ["bukti", CLK.bukti], ["graf", CLK.graf], ["notes", CLK.notes]];
+  let tab = "ring"; for (const [n, tt] of tabTimes) if (t >= tt) tab = n;
+  ["ring", "bukti", "graf", "notes"].forEach((n) => { $("ct-" + n).style.opacity = n === tab ? prog(t, (tabTimes.find((x) => x[0] === n)[1] || 0), (tabTimes.find((x) => x[0] === n)[1] || 0) + 0.25) : 0; $("tb-" + n).classList.toggle("on", n === tab); });
+  // Graf membangun
+  if (NET) {
+    const g0 = CLK.graf + 0.3, focus = prog(t, CLK.focus, CLK.focus + 0.5);
+    NET.nodes.forEach((n, i) => { const k = out(prog(t, g0 + n.at, g0 + n.at + 0.35)); const g = $("gn" + i); const dim = n.cluster ? 1 : lerp(1, 0.15, focus); g.setAttribute("opacity", k * dim); const pulse = n.cluster && t > CLK.focus + 0.5 ? 1 + 0.06 * Math.sin((t - CLK.focus) * 6) : 1; g.setAttribute("transform", `translate(${n.x.toFixed(1)},${n.y.toFixed(1)}) scale(${lerp(0.3, 1, k) * pulse})`); const r = $("gr" + i); if (r) r.setAttribute("opacity", focus); });
+    NET.edges.forEach((e, i) => { const k = prog(t, g0 + e.at, g0 + e.at + 0.4); const inC = NET.nodes[e.a].cluster && NET.nodes[e.b].cluster; $("ge" + i).setAttribute("opacity", k * (inC ? 1 : lerp(1, 0.12, focus))); });
+    $("g-focus").style.background = focus > 0 ? "#b91c1c" : ""; $("g-focus").style.color = focus > 0 ? "#fff" : ""; $("g-focus").style.borderColor = focus > 0 ? "#b91c1c" : "";
+    $("g-all").style.background = focus > 0 ? "#fff" : "#007a3a"; $("g-all").style.color = focus > 0 ? "#11241d" : "#fff"; $("g-all").style.borderColor = focus > 0 ? "#d5e0da" : "#007a3a";
+    const dk = out(prog(t, CLK.doc, CLK.doc + 0.35)) * (1 - prog(t, CLK.conf - 0.4, CLK.conf));
+    $("g-drawer").style.opacity = dk; $("g-drawer").style.transform = `translateY(${(1 - dk) * 12}px)`;
+  }
+  // Modal keputusan
+  const mk = prog(t, CLK.conf, CLK.conf + 0.3) * (1 - prog(t, CLK.save + 0.15, CLK.save + 0.45));
+  $("modal").style.opacity = mk; $("modal-box").style.transform = `scale(${lerp(0.95, 1, mk)})`;
+  const n = Math.floor(clamp((t - (CLK.conf + 0.9)) / 0.045, 0, TYPE_D.length));
+  $("modal-ta").innerHTML = TYPE_D.slice(0, n) + (t > CLK.conf && t < CLK.save ? '<span style="display:inline-block;width:2px;height:14px;background:#007a3a;vertical-align:middle"></span>' : "");
+  const saved = t >= CLK.save + 0.3;
+  $("cs-status").textContent = saved ? "Risiko Terkonfirmasi" : "Kasus baru";
+  $("cs-status").style.background = saved ? "#fef2f2" : ""; $("cs-status").style.color = saved ? "#b91c1c" : ""; $("cs-status").style.borderColor = saved ? "#fecaca" : "";
+  $("tb-notes-n").textContent = saved ? "2" : "1";
+  $("au-new").style.boxShadow = t > CLK.notes + 0.3 ? `0 0 0 ${3 * (0.5 + 0.5 * Math.sin((t - CLK.notes) * 5))}px rgba(0,122,58,.35)` : "";
+
+  // Copilot
+  const typed = Math.floor(clamp((t - (CLK.inp + 0.25)) / 0.07, 0, TYPE_Q.length));
+  $("cp-typed").textContent = TYPE_Q.slice(0, typed); $("cp-ph").style.opacity = typed > 0 ? 0 : 1;
+  $("cp-send").style.opacity = typed >= TYPE_Q.length ? 1 : 0.35;
+  $("cp-input").style.borderColor = t > CLK.inp && t < CLK.send + 0.2 ? "#007a3a" : "#d5e0da";
+  const chat = prog(t, CLK.send + 0.1, CLK.send + 0.4);
+  $("cp-welcome").style.opacity = 1 - chat; $("cp-chat").style.opacity = chat;
+  if (chat >= 1) { $("cp-typed").textContent = ""; $("cp-ph").style.opacity = 1; }
+  document.querySelectorAll(".cpl").forEach((el, i) => { const k = out(prog(t, at("answer", 0.2 + i * 0.75), at("answer", 0.55 + i * 0.75))); el.style.opacity = k; el.style.transform = `translateY(${(1 - k) * 8}px)`; });
+  $("cp-meta").style.opacity = prog(t, at("answer", 3.2), at("answer", 3.5));
+  const vk = out(prog(t, at("answer", 3.4), at("answer", 3.9))); $("cp-vis").style.opacity = vk; $("cp-vis").style.transform = `translateY(${(1 - vk) * 16}px)`;
+
+  // Dataset
+  const um = prog(t, CLK.upl, CLK.upl + 0.3) * (1 - prog(t, CLK.go + 0.3, CLK.go + 0.6));
+  $("up-modal").style.opacity = um;
+  const dragA = MOVES.find((m) => m.name === "drag");
+  const dk2 = prog(t, dragA.arrive - dragA.dur, dragA.arrive);
+  const chip = $("up-chip");
+  if (t > dragA.arrive - dragA.dur - 0.1 && t < dragA.arrive + 0.2) { const c = cursorAt(t); chip.style.opacity = 1; chip.style.left = `${c[0] + 16}px`; chip.style.top = `${c[1] + 14}px`; } else chip.style.opacity = 0;
+  const dropped = t >= dragA.arrive;
+  $("up-drop").style.borderColor = dk2 > 0.6 && !dropped ? "#007a3a" : dropped ? "#007a3a" : "#d5e0da"; $("up-drop").style.background = dropped ? "#f0f8f3" : "#f6f9f7";
+  $("up-empty").style.opacity = dropped ? 0 : 1; $("up-file").style.opacity = dropped ? 1 : 0;
+  const after = t >= CLK.go + 0.5;
+  $("dt-new").style.opacity = after ? 1 : 0; $("dt-n").textContent = after ? "2" : "1";
+  $("dt-work").style.opacity = prog(t, CLK.go + 0.5, CLK.go + 0.9);
+  document.querySelectorAll("#dt-rows > div").forEach((el, i) => { const k = out(prog(t, CLK.go + 0.7 + i * 0.25, CLK.go + 1.0 + i * 0.25)); el.style.opacity = k; el.style.transform = `translateX(${(1 - k) * -14}px)`; });
+  const ingested = t >= CLK.cf + 0.9;
+  const msg = $("dt-msg");
+  msg.style.opacity = after ? 1 : 0;
+  msg.innerHTML = ingested ? "✓ Berhasil! 40 klaim telah dinormalisasi ke skema JKN dan dianalisis oleh 8 detektor (36 klaim berisiko ditandai)." : '✓ Berkas "uji_rs.csv" (43 baris) berhasil diekstrak & dianonimkan di memori. Silakan tinjau pemetaan kolom di bawah lalu klik "Konfirmasi & Jalankan Analisis".';
+  $("dt-resgrid").style.opacity = prog(t, CLK.cf + 0.9, CLK.cf + 1.3); $("dt-wait").style.display = ingested ? "none" : "block";
+  $("dt-resst").textContent = ingested ? "Selesai Dianalisis" : t > CLK.cf ? "Menganalisis…" : "Menunggu Konfirmasi";
+  $("dt-resst").style.background = ingested ? "#ecfdf5" : ""; $("dt-resst").style.color = ingested ? "#065f46" : ""; $("dt-resst").style.borderColor = ingested ? "#a7f3d0" : "";
+  $("dt-newst").textContent = ingested ? "Aktif & Dianalisis" : "Perlu Konfirmasi";
+  $("dt-valid").style.opacity = prog(t, CLK.cf + 1.0, CLK.cf + 1.4); $("dt-qbody").style.opacity = prog(t, CLK.cf + 1.1, CLK.cf + 1.5);
+  const rk = inout(prog(t, CLK.cf + 0.9, CLK.cf + 2.0)); $("r-in").textContent = Math.round(40 * rk); $("r-risk").textContent = Math.round(36 * rk);
+
+  // Evaluasi
+  const ek = inout(prog(t, CLK.naveval + 0.4, CLK.naveval + 1.8)); $("ev-arc").setAttribute("stroke-dasharray", `${0.827 * 352 * ek} 352`); $("ev-f1").textContent = (82.7 * ek).toFixed(1);
+
+  // Kamera
+  const c = camAt(t);
+  const tx = clamp(960 - c.fx * c.s, 1920 - 1920 * c.s, 0), ty = clamp(540 - c.fy * c.s, 1080 - 1080 * c.s, 0);
+  $("stage").style.transform = `translate(${tx}px, ${ty}px) scale(${c.s})`;
+  // Kursor (di ruang layar)
+  const p = cursorAt(t);
+  const sx = tx + p[0] * c.s, sy = ty + p[1] * c.s;
+  let press = 1, rip = 0, rx = 0, ry = 0;
+  for (const m of MOVES) if (m.click) { const tc = CLK[m.name]; if (t >= tc - 0.05 && t < tc + 0.5) { press = t < tc + 0.12 ? 0.86 : 1; rip = prog(t, tc, tc + 0.45); const q = [POS[m.target][0] + m.dx, POS[m.target][1] + m.dy]; rx = tx + q[0] * c.s; ry = ty + q[1] * c.s; } }
+  const curOn = t > at("cc", 0.3) && t < at("outro", -0.2);
+  $("cursor").style.opacity = curOn ? 1 : 0;
+  $("cursor").style.transform = `translate(${sx - 4}px, ${sy - 3}px) scale(${press})`;
+  const r = $("rip"); r.style.opacity = rip > 0 && rip < 1 ? 1 - rip : 0; r.style.left = `${rx}px`; r.style.top = `${ry}px`; r.style.transform = `scale(${lerp(0.3, 1.6, out(rip))})`;
+
+  // Bab
+  let chap = null; for (const [id, label] of CHAPTERS) if (t >= at(id)) chap = [id, label];
+  const chapEl = $("chapter");
+  if (chap && t < at("outro") - 0.3) { const i = CHAPTERS.findIndex((x) => x[0] === chap[0]); const k = out(prog(t, at(chap[0]), at(chap[0]) + 0.5)); const fade = 1 - prog(t, at(chap[0]) + 3.6, at(chap[0]) + 4.2); chapEl.style.opacity = k * fade; chapEl.style.transform = `translateX(${(1 - k) * -30}px)`; chapEl.querySelector("i").textContent = i + 1; chapEl.querySelector("span").textContent = chap[1]; } else chapEl.style.opacity = 0;
+
+  // Kartu judul
+  const T = $("title");
+  const introOn = t < at("cc", 0.5), outroOn = t > at("outro", -0.3);
+  T.style.opacity = introOn ? 1 - prog(t, at("cc", -0.1), at("cc", 0.5)) : outroOn ? prog(t, at("outro", -0.3), at("outro", 0.3)) : 0;
+  $("tdots").style.transform = `translateY(${-t * 4}px)`;
+  const tp = prog(t, at("problem", -0.2), at("problem", 0.3));
+  $("t-intro").style.opacity = 1 - tp; $("t-problem").style.opacity = tp * (outroOn ? 0 : 1); $("t-outro").style.opacity = outroOn ? 1 : 0;
+  const sh = (id, a, rise = 30) => { const k = out(prog(t, a, a + 0.7)); $(id).style.opacity = k; $(id).style.transform = `translateY(${(1 - k) * rise}px)`; };
+  sh("ti-a", at("intro", 0.1)); $("ti-num").textContent = Math.round(11126720 * inout(prog(t, at("intro", 0.4), at("intro", 3.4)))).toLocaleString("id-ID"); sh("ti-b", at("intro", 2.6));
+  sh("tp-a", at("problem", 0.4)); sh("tp-b", at("problem", 2.4)); sh("tp-c", at("problem", 4.6));
+  document.querySelectorAll(".tpc").forEach((el, i) => { const k = out(prog(t, at("problem", 0.1 + i * 0.07), at("problem", 0.5 + i * 0.07))); el.style.opacity = k * (1 - 0.6 * prog(t, at("problem", 4.4), at("problem", 5.2))); el.style.transform = `translate(${el.dataset.x}px, ${+el.dataset.y - (1 - k) * 100}px) rotate(${el.dataset.r * k}deg)`; });
+  const ol = out(prog(t, at("outro", 0.1), at("outro", 0.9))); $("to-logo").style.opacity = ol; $("to-logo").style.transform = `scale(${lerp(0.5, 1, ol)})`;
+  sh("to-a", at("outro", 0.5)); sh("to-b", at("outro", 1.3)); sh("to-c", at("outro", 2.4)); sh("to-d", at("outro", 3.0));
+
+  // Subtitle
+  let sub = "";
+  for (const cue of VO.cues) { if (t < cue.start || t > cue.start + cue.voice + 0.35) continue; for (let i = 0; i < cue.subs.length; i++) { const s = cue.subs[i], nx = cue.subs[i + 1]; const a = cue.start + s.t0, b = nx ? cue.start + nx.t0 : cue.start + cue.voice + 0.35; if (t >= a - 0.05 && t < b) sub = s.text; } }
+  const sEl = $("subs").firstElementChild; sEl.textContent = sub; sEl.style.opacity = sub ? 1 : 0;
+  $("progress").style.width = `${(t / DURATION) * 100}%`;
+}
+
+function buildTitle() {
+  const rnd = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  let h = "";
+  for (let i = 0; i < 26; i++) { const s = 60 + Math.floor(rnd(i) * 39); h += `<div class="tpc abs" data-x="${(1040 + rnd(i + 3) * 780).toFixed(0)}" data-y="${(40 + rnd(i + 7) * 940).toFixed(0)}" data-r="${((rnd(i + 11) - 0.5) * 18).toFixed(1)}" style="left:0;top:0;width:200px;height:68px;border-radius:14px;background:#fff;color:#11241d;display:flex;align-items:center;gap:12px;padding:0 16px;font-size:20px;font-weight:700;opacity:0"><span style="width:28px;height:28px;border-radius:50%;background:${s > 85 ? "#fde2df" : "#fef3c7"};color:${s > 85 ? "#d92d20" : "#ca8a04"};display:grid;place-items:center">!</span>Score ${s}</div>`; }
+  $("tp-cards").innerHTML = h;
+}
+
+window.seek = (t) => render(clamp(t, 0, DURATION));
+window.__ready = (async () => {
+  try { await document.fonts.ready; } catch {}
+  buildCC(); buildQueue(); buildCase(); buildCopilot(); buildData(); buildEval(); buildTitle();
+  schedule();
+  // ukur dengan semua halaman terlihat (opacity tidak mengubah tata letak)
+  measure();
+  render(0);
+  return true;
+})();
+if (location.search.includes("play")) { window.__ready.then(() => { const t0 = performance.now(); const tick = () => { render(((performance.now() - t0) / 1000) % DURATION); requestAnimationFrame(tick); }; requestAnimationFrame(tick); }); }
+</script>
+</body>
+</html>

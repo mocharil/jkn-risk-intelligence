@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<title>Arsa AI Teaser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --forest: #0b291c; --forest2: #0f3a28; --green: #007a3a; --leaf: #34d399; --sage: #edf2ef;
+    --ink: #11241d; --muted: #4b5f57; --red: #d92d20; --amber: #ca8a04; --white: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--forest); }
+  body { font-family: "IBM Plex Sans", system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .scene { position: absolute; inset: 0; opacity: 0; overflow: hidden; }
+  .dark { background: var(--forest); color: var(--white); }
+  .light { background: #f4f7f5; }
+  .abs { position: absolute; }
+  .will { will-change: transform, opacity; }
+  .center { left: 0; right: 0; text-align: center; }
+  .eyebrow-num { font-family: "IBM Plex Mono", monospace; font-weight: 500; letter-spacing: .04em; }
+  h1, h2, h3 { font-weight: 700; letter-spacing: -0.025em; line-height: 1.02; }
+  .dots { position: absolute; inset: -80px; background-image: radial-gradient(rgba(255,255,255,.07) 1.5px, transparent 1.6px); background-size: 40px 40px; }
+  .dots.ink { background-image: radial-gradient(rgba(11,41,28,.07) 1.5px, transparent 1.6px); }
+
+  /* Bingkai tangkapan layar aplikasi */
+  .frame { position: absolute; border-radius: 18px; overflow: hidden; background: #fff; box-shadow: 0 40px 80px -30px rgba(5,25,15,.45), 0 0 0 1px rgba(11,41,28,.08); }
+  .frame .bar { height: 34px; background: #e7ede9; display: flex; align-items: center; gap: 8px; padding-left: 16px; }
+  .frame .bar i { width: 11px; height: 11px; border-radius: 50%; background: #c8d3cd; display: block; }
+  .frame .bar span { margin-left: 18px; font-size: 13px; color: #5f7068; background: #fff; border-radius: 6px; padding: 3px 14px; }
+  .frame .view { position: absolute; left: 0; right: 0; top: 34px; bottom: 0; overflow: hidden; }
+  .cam { position: absolute; inset: 0; transform-origin: 50% 50%; }
+  .cam img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: top left; }
+  .hl { position: absolute; border: 4px solid var(--green); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(11,41,28,.0); opacity: 0; }
+  .hl.red { border-color: var(--red); }
+
+  /* Teks fitur */
+  .feat { position: absolute; left: 110px; top: 300px; width: 560px; }
+  .feat .num { font-size: 26px; color: var(--green); }
+  .feat h2 { font-size: 64px; color: var(--forest); margin-top: 18px; }
+  .feat p { font-size: 30px; line-height: 1.38; color: var(--muted); margin-top: 26px; }
+  .feat .pill { display: inline-block; margin-top: 30px; font-size: 22px; font-weight: 600; color: var(--green); background: #e3f3ea; border-radius: 999px; padding: 10px 22px; }
+
+  .chip { position: absolute; border-radius: 999px; font-weight: 600; font-size: 22px; padding: 10px 22px; }
+  .card { position: absolute; background: #fff; border-radius: 16px; box-shadow: 0 18px 40px -22px rgba(5,25,15,.4); }
+  #progress { position: absolute; left: 0; bottom: 0; height: 5px; background: var(--leaf); z-index: 50; }
+  #wm { position: absolute; right: 44px; bottom: 30px; z-index: 40; display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 20px; color: var(--forest); opacity: 0; }
+  #wm img { height: 34px; }
+</style>
+</head>
+<body>
+
+<!-- 1. Hook: skala -->
+<section class="scene dark" id="s1">
+  <div class="dots" id="s1dots"></div>
+  <div class="abs center will" id="s1a" style="top:300px;font-size:30px;color:#a9c7b8;">Dalam satu tahun, JKN mencatat</div>
+  <div class="abs center will" id="s1num" style="top:360px;font-size:200px;font-weight:700;letter-spacing:-0.04em;">0</div>
+  <div class="abs center will" id="s1b" style="top:590px;font-size:40px;font-weight:600;">admisi rawat inap tingkat lanjut</div>
+  <div class="abs will" id="s1c" style="left:470px;top:720px;font-size:30px;color:#cfe3d8;"><b style="color:#fff;font-size:44px">2.511</b>&nbsp; fasilitas rujukan</div>
+  <div class="abs will" id="s1d" style="left:1040px;top:720px;font-size:30px;color:#cfe3d8;"><b style="color:#fff;font-size:44px">Rp 4,75 jt</b>&nbsp; per admisi</div>
+  <div class="abs center will" id="s1src" style="top:980px;font-size:18px;color:#7fa391;">Sumber: Statistik BPJS Kesehatan 2018</div>
+</section>
+
+<!-- 2. Masalah: banjir peringatan -->
+<section class="scene light" id="s2">
+  <div class="dots ink"></div>
+  <div id="alerts" class="abs" style="inset:0"></div>
+  <div class="abs will" id="s2a" style="left:110px;top:330px;font-size:96px;font-weight:700;color:var(--forest);letter-spacing:-0.03em;">Ribuan peringatan.</div>
+  <div class="abs will" id="s2b" style="left:110px;top:450px;font-size:96px;font-weight:700;color:var(--red);letter-spacing:-0.03em;">Tanpa alasan.</div>
+  <div class="abs will" id="s2c" style="left:114px;top:600px;font-size:36px;color:var(--muted);width:900px;line-height:1.35;">Verifikator tetap membuka berkas satu per satu, karena skor tidak menjelaskan apa pun.</div>
+</section>
+
+<!-- 3. Pertanyaan -->
+<section class="scene dark" id="s3">
+  <div class="dots"></div>
+  <div class="abs center" id="s3q" style="top:380px;font-size:84px;font-weight:700;letter-spacing:-0.03em;"></div>
+  <div class="abs center will" id="s3b" style="top:520px;font-size:84px;font-weight:700;letter-spacing:-0.03em;color:var(--leaf);">Dan apa buktinya?</div>
+</section>
+
+<!-- 4. Logo -->
+<section class="scene dark" id="s4">
+  <div class="dots"></div>
+  <div class="abs will" id="s4ring" style="left:860px;top:250px;width:200px;height:200px;border-radius:50%;border:3px solid rgba(52,211,153,.5);"></div>
+  <img class="abs will" id="s4logo" src="assets/arsa_logo.png" style="left:885px;top:275px;width:150px;height:150px;object-fit:contain;background:#fff;border-radius:34px;padding:16px;" />
+  <div class="abs center will" id="s4t" style="top:500px;font-size:120px;font-weight:700;letter-spacing:-0.04em;">Arsa AI</div>
+  <div class="abs center will" id="s4s" style="top:640px;font-size:34px;font-weight:600;color:var(--leaf);letter-spacing:.02em;">JKN Risk Intelligence</div>
+  <div class="abs center will" id="s4tag" style="top:730px;font-size:40px;color:#e5efe9;">Menemukan klaim berisiko, dan menunjukkan buktinya.</div>
+</section>
+
+<!-- 5. Alur -->
+<section class="scene light" id="s5">
+  <div class="dots ink"></div>
+  <h2 class="abs will" id="s5h" style="left:110px;top:120px;font-size:64px;color:var(--forest);">Dari berkas klaim sampai keputusan</h2>
+  <svg class="abs" id="s5svg" width="1920" height="1080" style="left:0;top:0"></svg>
+</section>
+
+<!-- 6. 8 detektor -->
+<section class="scene dark" id="s6">
+  <div class="dots"></div>
+  <h2 class="abs will" id="s6h" style="left:110px;top:110px;font-size:64px;">8 detektor, satu skor yang bisa dijelaskan</h2>
+  <div id="s6grid" class="abs" style="left:110px;top:260px;width:1080px;height:700px"></div>
+  <svg class="abs will" id="s6ring" width="460" height="460" style="left:1330px;top:330px"></svg>
+  <div class="abs will" id="s6cap" style="left:1300px;top:820px;width:520px;text-align:center;font-size:28px;color:#cfe3d8;">Skor komposit, lengkap dengan bukti tiap detektor</div>
+</section>
+
+<!-- 7. F1 Command Center -->
+<section class="scene light" id="s7">
+  <div class="feat will" id="s7t"><div class="num eyebrow-num">01 · Command Center</div><h2>Di mana risiko menumpuk</h2><p>Eksposur, tren, dan peta panas provinsi dalam satu layar.</p><div class="pill">Rp 350,8 Jt eksposur terdeteksi</div></div>
+  <div class="frame will" id="s7f" style="left:740px;top:150px;width:1110px;height:658px"><div class="bar"><i></i><i></i><i></i><span>arsa-jkn · Command Center</span></div><div class="view"><div class="cam" id="s7c"><img src="assets/s-command-center.jpg" /><div class="hl" id="s7h" style="left:12%;top:58%;width:33%;height:32%"></div></div></div></div>
+</section>
+
+<!-- 8. F2 Antrean -->
+<section class="scene light" id="s8">
+  <div class="feat will" id="s8t"><div class="num eyebrow-num">02 · Antrean prioritas</div><h2>Mulai dari yang paling penting</h2><p>Verifikator tidak membuka semua berkas. Ia mulai dari kasus dengan skor tertinggi.</p></div>
+  <div class="abs will" id="s8num" style="left:110px;top:720px;font-size:120px;font-weight:700;color:var(--forest);letter-spacing:-0.04em;">1.503</div>
+  <div class="abs will" id="s8lab" style="left:116px;top:860px;font-size:28px;color:var(--muted);">klaim dianalisis</div>
+  <div class="frame will" id="s8f" style="left:740px;top:150px;width:1110px;height:658px"><div class="bar"><i></i><i></i><i></i><span>arsa-jkn · Pemeriksaan Klaim</span></div><div class="view"><div class="cam" id="s8c"><img src="assets/s-antrean.jpg" /><div class="hl" id="s8h" style="left:24%;top:44%;width:65%;height:10%"></div><div class="hl" id="s8h2" style="left:57%;top:17%;width:30%;height:14%"></div></div></div></div>
+</section>
+
+<!-- 9. F3 Bukti -->
+<section class="scene light" id="s9">
+  <div class="feat will" id="s9t"><div class="num eyebrow-num">03 · Bukti, bukan sekadar skor</div><h2 id="s9h">Skor 99. Ini alasannya.</h2><p id="s9p">Tagihan 3,5 kali rerata nasional BPJS, jauh di atas median klaim sejenis.</p></div>
+  <div class="frame will" id="s9f" style="left:740px;top:150px;width:1110px;height:658px"><div class="bar"><i></i><i></i><i></i><span>arsa-jkn · Detail kasus</span></div><div class="view">
+    <div class="cam" id="s9c"><img src="assets/s-detail-kasus.jpg" /><div class="hl red" id="s9h1" style="left:27%;top:8%;width:6.5%;height:12%"></div><div class="hl" id="s9h2" style="left:25%;top:20%;width:64%;height:9%"></div></div>
+    <div class="cam" id="s9c2" style="opacity:0"><img src="assets/s-papan-bukti.jpg" /><div class="hl red" id="s9h3" style="left:24%;top:44%;width:44%;height:8%"></div><div class="hl red" id="s9h4" style="left:24%;top:67%;width:44%;height:8%"></div></div>
+  </div></div>
+</section>
+
+<!-- 10. F4 Graf relasi -->
+<section class="scene dark" id="s10">
+  <div class="dots" id="s10dots"></div>
+  <div class="feat will" id="s10t" style="top:260px"><div class="num eyebrow-num" style="color:var(--leaf)">04 · Graf relasi</div><h2 style="color:#fff">Siapa terhubung dengan siapa</h2><p id="s10p" style="color:#cfe3d8">Faskes, dokter, klaim, pasien, dan diagnosis dalam satu jaringan.</p><div class="pill" id="s10pill" style="background:rgba(217,45,32,.18);color:#ffb4ad;opacity:0"></div></div>
+  <svg class="abs" id="net" width="1160" height="900" style="left:700px;top:90px"></svg>
+  <div class="abs will" id="s10leg" style="left:110px;top:860px;display:flex;gap:26px;font-size:20px;color:#cfe3d8"></div>
+  <div class="frame will" id="s10f" style="left:740px;top:150px;width:1110px;height:658px;opacity:0"><div class="bar"><i></i><i></i><i></i><span>arsa-jkn · Peta Risiko &amp; Graf</span></div><div class="view"><div class="cam" id="s10c"><img src="assets/s-graf-jaringan.jpg" /></div></div></div>
+</section>
+
+<!-- 11. F5 Pola -->
+<section class="scene light" id="s11">
+  <div class="feat will" id="s11t"><div class="num eyebrow-num">05 · Pola risiko</div><h2>Pola yang bergeser, terlihat lebih awal</h2><p>Radar 8 jenis temuan dan tren 28 hari, diuji secara statistik.</p></div>
+  <div class="frame will" id="s11f" style="left:740px;top:150px;width:1110px;height:658px"><div class="bar"><i></i><i></i><i></i><span>arsa-jkn · Pola yang naik</span></div><div class="view"><div class="cam" id="s11c"><img src="assets/s-pola.jpg" /><div class="hl" id="s11h" style="left:63%;top:34%;width:26%;height:36%"></div></div></div></div>
+</section>
+
+<!-- 12. F6 Copilot -->
+<section class="scene light" id="s12">
+  <div class="feat will" id="s12t"><div class="num eyebrow-num">06 · Copilot bersitasi</div><h2>Bertanya, lalu melihat buktinya</h2><p>Setiap kalimat mengutip sumber. Peta perbandingan tampil di dalam jawaban.</p></div>
+  <div class="card will" id="s12in" style="left:740px;top:170px;width:1110px;height:96px;display:flex;align-items:center;padding:0 34px;border-radius:999px;font-size:32px;color:var(--ink)"><span id="s12type"></span><span id="s12caret" style="display:inline-block;width:3px;height:38px;background:var(--green);margin-left:4px"></span></div>
+  <div class="frame will" id="s12f" style="left:740px;top:300px;width:1110px;height:620px"><div class="bar"><i></i><i></i><i></i><span>arsa-jkn · AI Copilot</span></div><div class="view"><div class="cam" id="s12c"><img src="assets/s-copilot.jpg" /><div class="hl" id="s12h" style="left:27%;top:46%;width:40%;height:28%"></div></div></div></div>
+  <div class="chip will" id="s12k1" style="left:1640px;top:280px;background:var(--forest);color:#fff">[1] Peta risiko DKI</div>
+  <div class="chip will" id="s12k2" style="left:1640px;top:350px;background:var(--forest);color:#fff">[2] Peta risiko Jatim</div>
+</section>
+
+<!-- 13. F7 Unggah dan privasi -->
+<section class="scene light" id="s13">
+  <div class="feat will" id="s13t"><div class="num eyebrow-num">07 · Unggah dan privasi</div><h2>Identitas disamarkan sebelum disimpan</h2><p>CSV, Excel, atau JSON. Kolom dipetakan otomatis, dikonfirmasi manusia.</p></div>
+  <div class="card will" id="s13row" style="left:740px;top:200px;width:1110px;height:330px;padding:40px 48px">
+    <div style="font-size:20px;color:var(--muted);margin-bottom:20px">Contoh baris berkas rumah sakit</div>
+    <div style="display:grid;grid-template-columns:220px 1fr;row-gap:26px;font-size:34px;align-items:center">
+      <span style="color:var(--muted);font-size:26px">NIK</span><span id="r1" class="eyebrow-num"></span>
+      <span style="color:var(--muted);font-size:26px">Nama pasien</span><span id="r2" class="eyebrow-num"></span>
+      <span style="color:var(--muted);font-size:26px">Alamat</span><span id="r3" class="eyebrow-num"></span>
+    </div>
+  </div>
+  <div class="frame will" id="s13f" style="left:740px;top:570px;width:1110px;height:420px"><div class="bar"><i></i><i></i><i></i><span>arsa-jkn · Dataset</span></div><div class="view"><div class="cam" id="s13c"><img src="assets/s-dataset.jpg" /></div></div></div>
+</section>
+
+<!-- 14. F8 Audit dan jujur -->
+<section class="scene dark" id="s14">
+  <div class="dots"></div>
+  <div class="feat will" id="s14t"><div class="num eyebrow-num" style="color:var(--leaf)">08 · Audit dan kejujuran</div><h2 style="color:#fff">Setiap keputusan tercatat</h2><p style="color:#cfe3d8">Rantai SHA-256 yang hanya bisa ditambah. Angka kinerja dilabeli batasannya.</p></div>
+  <svg class="abs" id="chain" width="1180" height="300" style="left:690px;top:230px"></svg>
+  <div class="card will" id="s14ev" style="left:740px;top:600px;width:1110px;height:250px;padding:36px 44px;background:#fff">
+    <div style="display:flex;gap:70px;align-items:flex-end">
+      <div><div style="font-size:22px;color:var(--muted)">Recall</div><div style="font-size:72px;font-weight:700;color:var(--forest)">90,4%</div></div>
+      <div><div style="font-size:22px;color:var(--muted)">Positif palsu</div><div style="font-size:72px;font-weight:700;color:var(--forest)">2,3%</div></div>
+      <div><div style="font-size:22px;color:var(--muted)">Temuan bersitasi</div><div style="font-size:72px;font-weight:700;color:var(--forest)">97%</div></div>
+    </div>
+    <div id="s14amb" style="margin-top:22px;display:inline-block;font-size:22px;color:#92400e;background:#fef3c7;border:2px solid var(--amber);border-radius:10px;padding:8px 16px">Diukur pada data sintetis berlabel; belum divalidasi pada klaim riil.</div>
+  </div>
+</section>
+
+<!-- 15. Penutup -->
+<section class="scene dark" id="s15">
+  <div class="dots"></div>
+  <img class="abs will" id="s15logo" src="assets/arsa_logo.png" style="left:900px;top:200px;width:120px;height:120px;object-fit:contain;background:#fff;border-radius:28px;padding:12px;" />
+  <div class="abs center will" id="s15a" style="top:360px;font-size:110px;font-weight:700;letter-spacing:-0.04em;">Arsa AI</div>
+  <div class="abs center will" id="s15b" style="top:500px;font-size:44px;color:#e5efe9;">Menemukan klaim berisiko, dan menunjukkan buktinya.</div>
+  <div class="abs center will" id="s15c" style="top:640px;font-size:30px;color:var(--leaf);font-weight:600;">arsa-jkn-627843549213.asia-southeast2.run.app</div>
+  <div class="abs center will" id="s15d" style="top:900px;font-size:22px;color:#7fa391;">Healthkathon 2026 · Detect Smarter, Protect JKN · Data sintetis berlabel dan statistik resmi BPJS, tanpa data peserta riil</div>
+</section>
+
+<div id="wm"><img src="assets/arsa_logo.png" /> Arsa AI</div>
+<div id="progress"></div>
+
+<script src="assets/graph.js"></script>
+<script>
+const DURATION = 180;
+window.DURATION = DURATION;
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const out = (x) => 1 - Math.pow(1 - x, 3);
+const inout = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const lerp = (a, b, k) => a + (b - a) * k;
+const fmt = (n) => Math.round(n).toLocaleString("id-ID");
+
+function show(el, t, a, dur = 0.7, rise = 30, x = 0) {
+  if (typeof el === "string") el = $(el);
+  const k = out(prog(t, a, a + dur));
+  el.style.opacity = k;
+  el.style.transform = `translate(${(1 - k) * x}px, ${(1 - k) * rise}px)`;
+  return k;
+}
+function cam(el, s, fx, fy) {
+  if (typeof el === "string") el = $(el);
+  el.style.transformOrigin = `${fx}% ${fy}%`;
+  el.style.transform = `scale(${s})`;
+}
+function hl(el, t, a, b = 999) {
+  if (typeof el === "string") el = $(el);
+  const k = out(prog(t, a, a + 0.5)) * (1 - prog(t, b, b + 0.4));
+  el.style.opacity = k;
+  el.style.transform = `scale(${lerp(1.12, 1, k)})`;
+}
+function frameIn(id, t, a) {
+  const k = out(prog(t, a, a + 0.9));
+  const el = $(id);
+  el.style.opacity = k;
+  el.style.transform = `translateX(${(1 - k) * 160}px) scale(${lerp(0.96, 1, k)})`;
+}
+
+// Jadwal adegan: [id, mulai, selesai]
+const SCENES = [
+  ["s1", 0, 10], ["s2", 10, 22], ["s3", 22, 30], ["s4", 30, 38], ["s5", 38, 52], ["s6", 52, 62],
+  ["s7", 62, 75], ["s8", 75, 88], ["s9", 88, 104], ["s10", 104, 124], ["s11", 124, 134],
+  ["s12", 134, 149], ["s13", 149, 160], ["s14", 160, 170], ["s15", 170, 180],
+];
+const FADE = 0.6;
+
+// ---------- Adegan 2: peringatan berjatuhan (deterministik) ----------
+const rnd = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const ALERTS = [];
+(function () {
+  const host = $("alerts");
+  for (let i = 0; i < 70; i++) {
+    const d = document.createElement("div");
+    d.className = "card abs";
+    const score = 60 + Math.floor(rnd(i) * 39);
+    d.style.cssText = `width:210px;height:74px;padding:12px 16px;display:flex;align-items:center;gap:12px;font-size:20px;font-weight:600;color:#11241d;`;
+    d.innerHTML = `<span style="width:30px;height:30px;border-radius:50%;background:${score > 85 ? "#fde2df" : "#fef3c7"};display:grid;place-items:center;color:${score > 85 ? "#d92d20" : "#ca8a04"};font-size:18px">!</span><span>Skor ${score}</span>`;
+    host.appendChild(d);
+    ALERTS.push({ el: d, x: 960 + rnd(i + 3) * 880, y: 40 + rnd(i + 7) * 960, at: 0.2 + i * 0.12, rot: (rnd(i + 11) - 0.5) * 18 });
+  }
+})();
+
+// ---------- Adegan 5: alur ----------
+const STEPS = [["Berkas klaim", "CSV · Excel · JSON"], ["Anonimisasi", "identitas disamarkan"], ["8 detektor", "dibanding klaim sejenis"], ["Bukti", "dokumen · selisih · kemiripan"], ["Keputusan", "manusia + rantai audit"]];
+(function () {
+  const svg = $("s5svg");
+  let h = `<line id="s5line" x1="250" y1="560" x2="1670" y2="560" stroke="#007a3a" stroke-width="6" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>`;
+  STEPS.forEach((s, i) => {
+    const x = 250 + i * 355, hero = i === 2;
+    h += `<g id="s5n${i}" opacity="0"><circle cx="${x}" cy="560" r="${hero ? 92 : 74}" fill="${hero ? "#0b291c" : "#fff"}" stroke="#007a3a" stroke-width="5"/>
+      <text x="${x}" y="${hero ? 578 : 574}" text-anchor="middle" font-size="${hero ? 52 : 40}" font-weight="700" fill="${hero ? "#34d399" : "#007a3a"}">${i + 1}</text>
+      <text x="${x}" y="720" text-anchor="middle" font-size="36" font-weight="700" fill="#0b291c">${s[0]}</text>
+      <text x="${x}" y="764" text-anchor="middle" font-size="25" fill="#4b5f57">${s[1]}</text></g>`;
+  });
+  h += `<circle id="s5dot" cx="250" cy="560" r="14" fill="#34d399" opacity="0"/>`;
+  svg.innerHTML = h;
+})();
+
+// ---------- Adegan 6: detektor ----------
+const DET = [["Upcoding", "keparahan tidak sesuai bukti"], ["Cloning", "narasi medis nyaris identik"], ["Phantom billing", "tindakan tanpa catatan"], ["Lama rawat", "hari rawat tidak wajar"], ["Unbundling", "paket ditagih terpisah"], ["Inflated bills", "tagihan di atas acuan"], ["Repeat billing", "episode ditagih dua kali"], ["Readmisi dini", "kembali dalam 30 hari"]];
+(function () {
+  const g = $("s6grid");
+  DET.forEach((d, i) => {
+    const el = document.createElement("div");
+    el.className = "abs";
+    el.id = "det" + i;
+    const col = i % 2, row = Math.floor(i / 2);
+    el.style.cssText = `left:${col * 545}px;top:${row * 168}px;width:515px;height:146px;border-radius:18px;background:rgba(255,255,255,.06);border:2px solid rgba(52,211,153,.25);padding:26px 30px;opacity:0`;
+    el.innerHTML = `<div style="font-size:34px;font-weight:700">${d[0]}</div><div style="font-size:24px;color:#a9c7b8;margin-top:10px">${d[1]}</div>`;
+    g.appendChild(el);
+  });
+  $("s6ring").innerHTML = `<circle cx="230" cy="230" r="190" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="26"/>
+    <circle id="s6arc" cx="230" cy="230" r="190" fill="none" stroke="#d92d20" stroke-width="26" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100" transform="rotate(-90 230 230)"/>
+    <text id="s6val" x="230" y="262" text-anchor="middle" font-size="120" font-weight="700" fill="#fff">0</text>
+    <text x="230" y="320" text-anchor="middle" font-size="28" fill="#a9c7b8">skor risiko</text>`;
+})();
+
+// ---------- Adegan 10: graf dari data aplikasi ----------
+let NET = null;
+const TYPE_ORDER = { PROVIDER: 0, DOCTOR: 1, CLAIM: 2, DIAGNOSIS: 3, PATIENT: 3 };
+const COLOR = { PROVIDER: "#00a651", DOCTOR: "#2fbf71", PATIENT: "#8aa39a", DIAGNOSIS: "#8b6cf8" };
+function buildNet(data) {
+  const W = 1160, H = 900;
+  const nodes = data.nodes.map((n, i) => ({ ...n, x: W / 2 + (rnd(i + 1) - 0.5) * 700, y: H / 2 + (rnd(i + 41) - 0.5) * 600, vx: 0, vy: 0 }));
+  const idx = new Map(nodes.map((n, i) => [n.id, i]));
+  const edges = data.edges.filter((e) => idx.has(e.from) && idx.has(e.to)).map((e) => ({ ...e, a: idx.get(e.from), b: idx.get(e.to) }));
+  for (let it = 0; it < 700; it++) {
+    const cool = 1 - it / 700;
+    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+      const A = nodes[i], B = nodes[j];
+      let dx = A.x - B.x, dy = A.y - B.y, d2 = dx * dx + dy * dy + 0.01;
+      const f = 2600 / d2;
+      const d = Math.sqrt(d2);
+      A.vx += (dx / d) * f; A.vy += (dy / d) * f; B.vx -= (dx / d) * f; B.vy -= (dy / d) * f;
+    }
+    for (const e of edges) {
+      const A = nodes[e.a], B = nodes[e.b];
+      const dx = B.x - A.x, dy = B.y - A.y, d = Math.sqrt(dx * dx + dy * dy) + 0.01;
+      const f = (d - 95) * 0.035;
+      A.vx += (dx / d) * f; A.vy += (dy / d) * f; B.vx -= (dx / d) * f; B.vy -= (dy / d) * f;
+    }
+    for (const n of nodes) {
+      n.vx += (W / 2 - n.x) * 0.004; n.vy += (H / 2 - n.y) * 0.004;
+      n.x += clamp(n.vx, -20, 20) * cool; n.y += clamp(n.vy, -20, 20) * cool;
+      n.vx *= 0.5; n.vy *= 0.5;
+    }
+  }
+  const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
+  const minx = Math.min(...xs), maxx = Math.max(...xs), miny = Math.min(...ys), maxy = Math.max(...ys);
+  const s = Math.min((W - 120) / (maxx - minx), (H - 100) / (maxy - miny));
+  nodes.forEach((n) => { n.x = 60 + (n.x - minx) * s + ((W - 120) - (maxx - minx) * s) / 2; n.y = 50 + (n.y - miny) * s + ((H - 100) - (maxy - miny) * s) / 2; });
+  // urutan muncul: per jenis, lalu menurut jarak dari pusat
+  const order = [...nodes.keys()].sort((p, q) => (TYPE_ORDER[nodes[p].type] - TYPE_ORDER[nodes[q].type]) || (Math.hypot(nodes[p].x - W / 2, nodes[p].y - H / 2) - Math.hypot(nodes[q].x - W / 2, nodes[q].y - H / 2)));
+  order.forEach((k, r) => (nodes[k].at = 0.6 + (r / order.length) * 8.4));
+  edges.forEach((e) => (e.at = Math.max(nodes[e.a].at, nodes[e.b].at) + 0.15));
+  let h = `<g id="netE">`;
+  edges.forEach((e, i) => {
+    const A = nodes[e.a], B = nodes[e.b];
+    h += `<line id="ne${i}" x1="${A.x.toFixed(1)}" y1="${A.y.toFixed(1)}" x2="${B.x.toFixed(1)}" y2="${B.y.toFixed(1)}" stroke="${e.dashes ? "#ff6b5f" : "rgba(207,227,216,.35)"}" stroke-width="${e.dashes ? 3 : 2}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>`;
+  });
+  h += `</g><g id="netN">`;
+  nodes.forEach((n, i) => {
+    const crit = n.type === "CLAIM" && (n.risk_level === "CRITICAL" || n.risk_level === "HIGH");
+    const fill = n.type === "CLAIM" ? (crit ? "#d92d20" : "#3b9fd8") : COLOR[n.type] || "#8aa39a";
+    const r = n.type === "PROVIDER" ? 17 : n.type === "DOCTOR" ? 14 : n.type === "CLAIM" ? 11 : 7;
+    const shape = n.type === "DIAGNOSIS" ? `<rect x="-9" y="-9" width="18" height="18" transform="rotate(45)" fill="${fill}"/>` : `<circle r="${r}" fill="${fill}" stroke="#0b291c" stroke-width="3"/>`;
+    const label = n.type === "PROVIDER" || n.type === "DOCTOR" || (n.type === "CLAIM" && crit) ? `<text y="${r + 22}" text-anchor="middle" font-size="15" fill="#e5efe9">${String(n.label).replace(/&/g, "&amp;").slice(0, 26)}</text>` : "";
+    h += `<g id="nn${i}" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)}) scale(0)" opacity="0">${n.cluster ? `<circle id="nr${i}" r="${r + 10}" fill="none" stroke="#ff6b5f" stroke-width="3" opacity="0"/>` : ""}${shape}${label}</g>`;
+  });
+  h += `</g>`;
+  $("net").innerHTML = h;
+  const cl = nodes.filter((n) => n.cluster);
+  const cc = (t) => cl.filter((n) => n.type === t).length;
+  const clusterName = cl[0] ? cl[0].cluster : "";
+  $("s10pill").textContent = `${clusterName}: ${cc("DOCTOR")} dokter, ${cc("CLAIM")} klaim`;
+  $("s10leg").innerHTML = [["#00a651", "Faskes"], ["#2fbf71", "Dokter"], ["#d92d20", "Klaim berisiko"], ["#3b9fd8", "Klaim lain"], ["#8aa39a", "Pasien"], ["#8b6cf8", "Diagnosis"]]
+    .map(([c, l]) => `<span style="display:flex;align-items:center;gap:8px"><i style="width:14px;height:14px;border-radius:50%;background:${c};display:block"></i>${l}</span>`).join("");
+  NET = { nodes, edges };
+}
+
+// ---------- Adegan 14: rantai audit ----------
+(function () {
+  let h = "";
+  const hashes = ["9efb60e1", "6e58282d", "4f2d814e", "ff51bce4", "03f5e958"];
+  hashes.forEach((x, i) => {
+    const cx = 20 + i * 232;
+    if (i > 0) h += `<line id="ch${i}" x1="${cx - 52}" y1="140" x2="${cx}" y2="140" stroke="#34d399" stroke-width="5" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>`;
+    h += `<g id="cb${i}" opacity="0"><rect x="${cx}" y="60" width="180" height="160" rx="18" fill="rgba(255,255,255,.07)" stroke="#34d399" stroke-width="3"/>
+      <text x="${cx + 90}" y="120" text-anchor="middle" font-size="30" font-weight="700" fill="#fff">#${111 + i}</text>
+      <text x="${cx + 90}" y="166" text-anchor="middle" font-size="22" font-family="IBM Plex Mono" fill="#a9c7b8">${x}…</text></g>`;
+  });
+  $("chain").innerHTML = h;
+})();
+
+// ---------- Adegan 13: animasi penyamaran ----------
+const SCR = "ABCDEF0123456789XYZ";
+function scramble(from, to, k, seed) {
+  if (k <= 0) return from;
+  if (k >= 1) return to;
+  const n = Math.max(from.length, to.length);
+  let s = "";
+  for (let i = 0; i < n; i++) s += i / n < k ? (to[i] || "") : SCR[Math.floor(rnd(seed + i + Math.floor(k * 30)) * SCR.length)];
+  return s;
+}
+
+// ---------- Pembaruan per waktu ----------
+const QTEXT = "Klaim mana yang benar-benar perlu diperiksa?";
+const COP = "Bandingkan risiko DKI Jakarta dan Jawa Timur";
+
+function render(t) {
+  for (const [id, a, b] of SCENES) {
+    const el = $(id);
+    const vis = t >= a - FADE && t <= b + FADE;
+    el.style.display = vis ? "block" : "none";
+    if (!vis) continue;
+    el.style.opacity = Math.min(prog(t, a - FADE / 2, a + FADE / 2), 1 - prog(t, b - FADE / 2, b + FADE / 2));
+  }
+  $("progress").style.width = `${(t / DURATION) * 100}%`;
+  $("wm").style.opacity = t > 62 && t < 160 && !(t > 104 && t < 124) ? 0.85 : 0;
+
+  // 1
+  if (t < 11) {
+    show("s1a", t, 0.3);
+    const k = inout(prog(t, 0.6, 3.6));
+    $("s1num").textContent = fmt(11126720 * k);
+    $("s1num").style.opacity = prog(t, 0.5, 0.9);
+    show("s1b", t, 2.2); show("s1c", t, 4.2, 0.7, 30, -40); show("s1d", t, 5.0, 0.7, 30, 40); show("s1src", t, 6);
+    $("s1dots").style.transform = `translateY(${-t * 4}px)`;
+  }
+  // 2
+  if (t > 9 && t < 23) {
+    const lt = t - 10;
+    for (const a of ALERTS) {
+      const k = out(prog(lt, a.at, a.at + 0.5));
+      a.el.style.opacity = k * (lt > 8.5 ? 1 - prog(lt, 8.5, 9.5) * 0.65 : 1);
+      a.el.style.transform = `translate(${a.x}px, ${a.y - (1 - k) * 120}px) rotate(${a.rot * k}deg)`;
+    }
+    show("s2a", lt, 1.2, 0.7, 30, -30); show("s2b", lt, 3.0, 0.7, 30, -30); show("s2c", lt, 5.0);
+  }
+  // 3
+  if (t > 21 && t < 31) {
+    const lt = t - 22;
+    const words = QTEXT.split(" ");
+    const n = Math.floor(clamp(lt / 0.32, 0, words.length));
+    $("s3q").innerHTML = words.map((w, i) => `<span style="opacity:${i < n ? 1 : 0.12}">${w}</span>`).join(" ");
+    show("s3b", lt, 4.2, 0.8, 40);
+  }
+  // 4
+  if (t > 29 && t < 39) {
+    const lt = t - 30;
+    const k = out(prog(lt, 0.2, 1.2));
+    $("s4logo").style.opacity = k; $("s4logo").style.transform = `scale(${lerp(0.4, 1, k)}) rotate(${(1 - k) * -40}deg)`;
+    const r = prog(lt, 0.6, 2.6);
+    $("s4ring").style.opacity = 1 - r; $("s4ring").style.transform = `scale(${lerp(1, 2.6, out(r))})`;
+    show("s4t", lt, 1.2, 0.8, 40); show("s4s", lt, 1.9); show("s4tag", lt, 3.0);
+  }
+  // 5
+  if (t > 37 && t < 53) {
+    const lt = t - 38;
+    show("s5h", lt, 0.2);
+    const lk = inout(prog(lt, 1.0, 9.0));
+    $("s5line").setAttribute("stroke-dashoffset", 1 - lk);
+    STEPS.forEach((_, i) => {
+      const at = 1.0 + i * 2.0;
+      const k = out(prog(lt, at, at + 0.6));
+      const g = $("s5n" + i);
+      g.setAttribute("opacity", k);
+      const x = 250 + i * 355;
+      g.setAttribute("transform", `translate(${x} 560) scale(${lerp(0.6, 1, k)}) translate(${-x} -560)`);
+    });
+    const dot = $("s5dot");
+    dot.setAttribute("opacity", lt > 1 && lt < 12.5 ? 1 : 0);
+    dot.setAttribute("cx", 250 + 1420 * inout(prog(lt, 1.0, 9.0)));
+  }
+  // 6
+  if (t > 51 && t < 63) {
+    const lt = t - 52;
+    show("s6h", lt, 0.2);
+    DET.forEach((_, i) => show("det" + i, lt, 0.8 + i * 0.45, 0.5, 26));
+    const rk = inout(prog(lt, 4.8, 7.6));
+    $("s6ring").style.opacity = prog(lt, 4.4, 5.0);
+    $("s6arc").setAttribute("stroke-dasharray", `${99 * rk} 100`);
+    $("s6val").textContent = Math.round(99 * rk);
+    show("s6cap", lt, 6.8);
+  }
+  // 7
+  if (t > 61 && t < 76) {
+    const lt = t - 62;
+    show("s7t", lt, 0.3, 0.8, 30, -40); frameIn("s7f", lt, 0.5);
+    cam("s7c", lerp(1, 1.9, inout(prog(lt, 3.0, 8.0))), 28, 74);
+    hl("s7h", lt, 8.2);
+  }
+  // 8
+  if (t > 74 && t < 89) {
+    const lt = t - 75;
+    show("s8t", lt, 0.3, 0.8, 30, -40);
+    show("s8num", lt, 0.8); show("s8lab", lt, 0.9);
+    const k = inout(prog(lt, 3.0, 5.0));
+    $("s8num").textContent = fmt(lerp(1503, 65, k));
+    $("s8num").style.color = k > 0.5 ? "#007a3a" : "#0b291c";
+    $("s8lab").textContent = k > 0.98 ? "kasus prioritas untuk diperiksa" : "klaim dianalisis";
+    frameIn("s8f", lt, 0.6);
+    hl("s8h2", lt, 5.5, 8.3);
+    hl("s8h", lt, 8.6);
+    cam("s8c", lerp(1, 1.35, inout(prog(lt, 8.4, 12))), 56, 48);
+  }
+  // 9
+  if (t > 87 && t < 105) {
+    const lt = t - 88;
+    show("s9t", lt, 0.3, 0.8, 30, -40); frameIn("s9f", lt, 0.5);
+    const z1 = inout(prog(lt, 2.0, 5.0));
+    cam("s9c", lerp(1, 1.55, z1), 30, 18);
+    hl("s9h1", lt, 3.0, 7.6); hl("s9h2", lt, 5.0, 7.6);
+    const sw = prog(lt, 8.0, 8.8);
+    $("s9c2").style.opacity = sw; $("s9c").style.opacity = 1 - sw;
+    cam("s9c2", lerp(1.0, 1.45, inout(prog(lt, 9.0, 12.5))), 45, 58);
+    hl("s9h3", lt, 10.0); hl("s9h4", lt, 11.2);
+    if (lt > 8) { $("s9h").textContent = "Dokumen bertentangan"; $("s9p").textContent = "Rekam medis menyebut pasien stabil, sedangkan tagihan setara kasus berat."; }
+    else { $("s9h").textContent = "Skor 99. Ini alasannya."; $("s9p").textContent = "Tagihan 3,5 kali rerata nasional BPJS, jauh di atas median klaim sejenis."; }
+  }
+  // 10
+  if (t > 103 && t < 125 && NET) {
+    const lt = t - 104;
+    show("s10t", lt, 0.3, 0.8, 30, -40);
+    show("s10leg", lt, 2.0);
+    $("s10dots").style.transform = `translate(${-lt * 3}px, ${-lt * 2}px)`;
+    const focus = prog(lt, 10.5, 11.5);
+    NET.nodes.forEach((n, i) => {
+      const k = out(prog(lt, n.at, n.at + 0.45));
+      const g = $("nn" + i);
+      const dim = n.cluster ? 1 : lerp(1, 0.18, focus);
+      g.setAttribute("opacity", k * dim);
+      const pulse = n.cluster && lt > 11.5 ? 1 + 0.12 * Math.sin((lt - 11.5) * 6) : 1;
+      g.setAttribute("transform", `translate(${n.x.toFixed(1)},${n.y.toFixed(1)}) scale(${lerp(0.2, 1, k) * pulse})`);
+      const ring = $("nr" + i);
+      if (ring) ring.setAttribute("opacity", focus);
+    });
+    NET.edges.forEach((e, i) => {
+      const el = $("ne" + i);
+      el.setAttribute("stroke-dashoffset", 1 - out(prog(lt, e.at, e.at + 0.6)));
+      const inCl = NET.nodes[e.a].cluster && NET.nodes[e.b].cluster;
+      el.setAttribute("opacity", inCl ? 1 : lerp(1, 0.15, focus));
+    });
+    const pill = $("s10pill");
+    pill.style.opacity = prog(lt, 11.2, 11.8);
+    $("s10p").textContent = lt > 11 ? "Klaster anomali terlihat dalam satu gambar: satu dokter terhubung dengan banyak klaim berisiko." : "Faskes, dokter, klaim, pasien, dan diagnosis dalam satu jaringan, dibangun dari data analisis.";
+    const sw = prog(lt, 16.2, 17.2);
+    $("net").style.opacity = 1 - sw; $("s10leg").style.opacity = Math.min(prog(lt, 2, 2.7), 1 - sw);
+    const f = $("s10f"); f.style.opacity = sw; f.style.transform = `scale(${lerp(0.94, 1, out(sw))})`;
+    cam("s10c", lerp(1.0, 1.35, inout(prog(lt, 17.0, 20))), 58, 66);
+  }
+  // 11
+  if (t > 123 && t < 135) {
+    const lt = t - 124;
+    show("s11t", lt, 0.3, 0.8, 30, -40); frameIn("s11f", lt, 0.5);
+    cam("s11c", lerp(1, 1.6, inout(prog(lt, 2.5, 6.5))), 45, 40);
+    hl("s11h", lt, 6.8);
+  }
+  // 12
+  if (t > 133 && t < 150) {
+    const lt = t - 134;
+    show("s12t", lt, 0.3, 0.8, 30, -40);
+    show("s12in", lt, 0.5, 0.6, -20);
+    const n = Math.floor(clamp((lt - 1.2) / 0.07, 0, COP.length));
+    $("s12type").textContent = COP.slice(0, n);
+    $("s12caret").style.opacity = lt < 5 ? (Math.floor(lt * 2.5) % 2 ? 1 : 0.2) : 0;
+    frameIn("s12f", lt, 4.6);
+    cam("s12c", lerp(1, 1.5, inout(prog(lt, 7.0, 10.5))), 46, 58);
+    hl("s12h", lt, 10.6);
+    show("s12k1", lt, 6.0, 0.5, 20, 40); show("s12k2", lt, 6.6, 0.5, 20, 40);
+  }
+  // 13
+  if (t > 148 && t < 161) {
+    const lt = t - 149;
+    show("s13t", lt, 0.3, 0.8, 30, -40);
+    show("s13row", lt, 0.6, 0.7, 30, 60);
+    const k = prog(lt, 2.5, 5.0);
+    $("r1").textContent = scramble("3201 2345 6789 0012", "PSN-1E1AE40790", k, 3);
+    $("r2").textContent = scramble("Budi Santoso", "B. S.", k, 9);
+    const k3 = prog(lt, 4.0, 5.2);
+    $("r3").innerHTML = k3 >= 1 ? `<span style="color:#d92d20;font-family:IBM Plex Sans;font-size:28px;font-weight:600">dibuang sebelum disimpan</span>` : `<span style="opacity:${1 - k3}">Jl. Melati No. 12</span>`;
+    $("r1").style.color = k >= 1 ? "#007a3a" : "#11241d"; $("r2").style.color = k >= 1 ? "#007a3a" : "#11241d";
+    frameIn("s13f", lt, 5.5);
+    cam("s13c", lerp(1.15, 1.3, prog(lt, 6, 11)), 50, 60);
+  }
+  // 14
+  if (t > 159 && t < 171) {
+    const lt = t - 160;
+    show("s14t", lt, 0.3, 0.8, 30, -40);
+    for (let i = 0; i < 5; i++) {
+      const at = 0.8 + i * 0.6;
+      $("cb" + i).setAttribute("opacity", out(prog(lt, at, at + 0.4)));
+      if (i > 0) $("ch" + i).setAttribute("stroke-dashoffset", 1 - out(prog(lt, at - 0.3, at)));
+    }
+    show("s14ev", lt, 4.5, 0.8, 40);
+    const amb = $("s14amb");
+    amb.style.opacity = prog(lt, 6.0, 6.6);
+  }
+  // 15
+  if (t > 169) {
+    const lt = t - 170;
+    const k = out(prog(lt, 0.2, 1.0));
+    $("s15logo").style.opacity = k; $("s15logo").style.transform = `scale(${lerp(0.5, 1, k)})`;
+    show("s15a", lt, 0.6, 0.8, 40); show("s15b", lt, 1.4); show("s15c", lt, 2.4); show("s15d", lt, 3.2);
+  }
+}
+
+window.seek = (t) => render(clamp(t, 0, DURATION));
+window.__ready = (async () => {
+  try { await document.fonts.ready; } catch {}
+  await Promise.all([...document.images].map((im) => (im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; }))));
+  try { buildNet(window.GRAPH || (await (await fetch("assets/graph.json")).json())); } catch (e) { console.error("graph", e); }
+  render(0);
+  return true;
+})();
+// Pratinjau di browser: ?play
+if (location.search.includes("play")) { const t0 = performance.now(); const tick = () => { const t = ((performance.now() - t0) / 1000) % DURATION; render(t); requestAnimationFrame(tick); }; window.__ready.then(() => requestAnimationFrame(tick)); }
+</script>
+</body>
+</html>
