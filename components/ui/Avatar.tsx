@@ -53,3 +53,28 @@ export function FacilityMark({ level, size = 36 }: { level?: "CRITICAL" | "HIGH"
     </span>
   );
 }
+
+/** Foto ilustrasi gedung dan bangsal; dipilih tetap per faskes dari kodenya (bukan foto faskes sebenarnya). */
+const FACILITY_PHOTOS = ["/facility/rs-gedung.jpg", "/facility/rs-bangsal.jpg"];
+
+export function facilityPhotoFor(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return FACILITY_PHOTOS[h % FACILITY_PHOTOS.length];
+}
+
+/** Foto default faskes dengan cincin warna tingkat risiko. */
+export function FacilityPhoto({ id, level, size = 40, rounded = "rounded-xl" }: { id: string; level?: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"; size?: number; rounded?: string }) {
+  const ring = level === "CRITICAL" ? "ring-risk-critical" : level === "HIGH" ? "ring-risk-high" : level === "MEDIUM" ? "ring-risk-medium" : "ring-bpjs-border";
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={facilityPhotoFor(id)}
+      alt=""
+      aria-hidden="true"
+      loading="lazy"
+      className={`shrink-0 object-cover ring-2 ring-offset-1 ring-offset-white ${ring} ${rounded}`}
+      style={{ width: size, height: size }}
+    />
+  );
+}

@@ -46,7 +46,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
     <div className="p-5 flex flex-col justify-between">
       <span className="text-sm font-medium text-jkn-muted">{label}</span>
       <div className="mt-2">
-        <div className="text-2xl font-mono font-bold text-jkn-text tracking-tight leading-none">{value}</div>
+        <div className="text-2xl font-bold text-jkn-text tracking-tight leading-none">{value}</div>
         {hint && <div className="mt-2 text-xs text-jkn-muted">{hint}</div>}
       </div>
     </div>
@@ -69,6 +69,7 @@ function Gap({ ours, against: nat }: { ours: number; against: number }) {
 export default function AcuanNasionalPage() {
   const [data, setData] = useState<{ national: National; comparison: Comparison } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showAllDx, setShowAllDx] = useState(false);
 
   useEffect(() => {
     fetch("/api/reference/national")
@@ -116,16 +117,16 @@ export default function AcuanNasionalPage() {
     <DashboardShell>
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
         <div className="max-w-3xl">
-          <h1 className="text-xl sm:text-2xl font-bold text-jkn-text tracking-tight">Acuan nasional BPJS Kesehatan</h1>
-          <p className="text-sm text-jkn-muted mt-1.5 leading-relaxed">
-            Statistik resmi pelayanan rawat inap tingkat lanjut (RITL) {n.years[0]} sampai {y} dari Portal Data BPJS Kesehatan. Ini data agregat nasional, bukan klaim per orang, jadi dipakai sebagai pembanding kewajaran angka klaim, bukan sebagai bukti kecurangan.
+          <h1 className="text-2xl font-semibold text-jkn-text">Acuan nasional BPJS</h1>
+          <p className="text-sm text-jkn-muted mt-1">
+            Statistik resmi rawat inap tingkat lanjut {n.years[0]} sampai {y}. Pembanding kewajaran angka klaim, bukan bukti kecurangan.
           </p>
         </div>
         <a
           href={n.source.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-surface border border-jkn-border text-sm font-semibold text-jkn-text hover:bg-surface-secondary transition-colors"
+          className="shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-jkn-border text-sm font-medium text-jkn-text hover:bg-frame transition-colors"
         >
           <span>Portal data BPJS</span>
           <ExternalLink className="w-3.5 h-3.5" aria-hidden />
@@ -143,51 +144,52 @@ export default function AcuanNasionalPage() {
 
       {/* Posisi dataset */}
       <section className="bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card">
-        <h2 className="text-base font-bold text-jkn-text">Posisi dataset Anda terhadap acuan</h2>
+        <h2 className="text-lg font-semibold text-jkn-text">Posisi dataset terhadap acuan</h2>
         <p className="text-xs text-jkn-muted mt-0.5 max-w-3xl">
-          {formatNumber(c.claims)} klaim {c.data_mode === "sintetis" ? "(dataset sintetis berlabel)" : "(sintetis dan unggahan)"}. Perbandingan memakai {formatNumber(c.clean_claims)} klaim yang tidak ditandai, supaya anomali tidak menggeser rata-rata. Selisih dalam 15% dianggap sejalan.
+          {formatNumber(c.claims)} klaim; dibandingkan memakai {formatNumber(c.clean_claims)} klaim yang tidak ditandai agar anomali tidak menggeser rata-rata.
         </p>
-        <div className="overflow-x-auto mt-3">
-          <table className="w-full text-sm tabular-nums">
-            <thead>
-              <tr className="text-left text-xs font-semibold text-jkn-muted border-b border-jkn-border">
-                <th className="py-2 pr-3">Ukuran</th>
-                <th className="py-2 px-3 text-right">Dataset</th>
-                <th className="py-2 px-3 text-right">Nasional {y}</th>
-                <th className="py-2 pl-3 text-right">Selisih</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-jkn-divider">
-              <tr>
-                <td className="py-2 pr-3 font-medium">Biaya klaim per admisi</td>
-                <td className="py-2 px-3 text-right font-mono">{juta(c.mean_amount_clean)}</td>
-                <td className="py-2 px-3 text-right font-mono">{juta(n.kpi.cost_per_admission)}</td>
-                <td className="py-2 pl-3 text-right"><Gap ours={c.mean_amount_clean} against={n.kpi.cost_per_admission} /></td>
-              </tr>
-              <tr>
-                <td className="py-2 pr-3 font-medium">Rerata lama rawat</td>
-                <td className="py-2 px-3 text-right font-mono">{c.mean_los_clean.toLocaleString("id-ID")} hari</td>
-                <td className="py-2 px-3 text-right font-mono">{n.kpi.los_days.toLocaleString("id-ID")} hari</td>
-                <td className="py-2 pl-3 text-right"><Gap ours={c.mean_los_clean} against={n.kpi.los_days} /></td>
-              </tr>
-              {["1", "2", "3"].map((k) => (
-                <React.Fragment key={k}>
-                  <tr>
-                    <td className="py-2 pr-3">Biaya per admisi, kelas {k}</td>
-                    <td className="py-2 px-3 text-right font-mono">{c.by_class[k]?.n ? juta(c.by_class[k].mean_amount) : <span className="text-jkn-muted">tidak ada klaim</span>}</td>
-                    <td className="py-2 px-3 text-right font-mono">{juta(n.cost_by_class[k])}</td>
-                    <td className="py-2 pl-3 text-right"><Gap ours={c.by_class[k]?.mean_amount || 0} against={n.cost_by_class[k]} /></td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 pr-3 text-jkn-muted">Pangsa admisi, kelas {k}</td>
-                    <td className="py-2 px-3 text-right font-mono">{pct(c.class_share[k] || 0, 0)}</td>
-                    <td className="py-2 px-3 text-right font-mono">{pct(n.class_share[k], 0)}</td>
-                    <td className="py-2 pl-3 text-right"><Gap ours={c.class_share[k] || 0} against={n.class_share[k]} /></td>
-                  </tr>
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
+        {(() => {
+          const items: Array<{ label: string; ours: number; nat: number; fmt: (v: number) => string; sub?: boolean }> = [
+            { label: "Biaya klaim per admisi", ours: c.mean_amount_clean, nat: n.kpi.cost_per_admission, fmt: juta },
+            { label: "Rerata lama rawat", ours: c.mean_los_clean, nat: n.kpi.los_days, fmt: (v) => `${v.toLocaleString("id-ID")} hari` },
+            ...(["1", "2", "3"] as const).flatMap((k) => [
+              { label: `Biaya per admisi, kelas ${k}`, ours: c.by_class[k]?.mean_amount || 0, nat: n.cost_by_class[k], fmt: juta },
+              { label: `Pangsa admisi, kelas ${k}`, ours: c.class_share[k] || 0, nat: n.class_share[k], fmt: (v: number) => pct(v, 0), sub: true },
+            ]),
+          ];
+          return (
+            <ul className="mt-4 divide-y divide-jkn-divider tabular-nums">
+              {items.map((it) => {
+                const d = it.nat && it.ours ? it.ours / it.nat - 1 : null;
+                const ok = d !== null && Math.abs(d) <= 0.15;
+                const w = d === null ? 0 : Math.min(50, (Math.abs(d) / 0.3) * 50);
+                return (
+                  <li key={it.label} className={`grid grid-cols-[minmax(0,1.4fr)_96px_96px_minmax(160px,1fr)_56px] gap-4 items-center py-2.5 text-sm ${it.sub ? "text-jkn-muted" : ""}`}>
+                    <span className={it.sub ? "" : "font-medium text-jkn-text"}>{it.label}</span>
+                    <span className="text-right text-jkn-text">{it.ours ? it.fmt(it.ours) : "-"}</span>
+                    <span className="text-right text-jkn-muted">{it.fmt(it.nat)}</span>
+                    <span className="relative h-2 rounded-full bg-frame" aria-hidden>
+                      <span className="absolute top-[-2px] bottom-[-2px] left-1/2 w-px bg-jkn-dim/50" />
+                      {d !== null && (
+                        <span
+                          className="absolute top-0 bottom-0 rounded-full"
+                          style={{ backgroundColor: ok ? "#007A3A" : "#EA580C", width: `${w}%`, left: d >= 0 ? "50%" : `${50 - w}%` }}
+                        />
+                      )}
+                    </span>
+                    <span className="text-right"><Gap ours={it.ours} against={it.nat} /></span>
+                  </li>
+                );
+              })}
+            </ul>
+          );
+        })()}
+        <div className="mt-1 grid grid-cols-[minmax(0,1.4fr)_96px_96px_minmax(160px,1fr)_56px] gap-4 text-[11px] text-jkn-dim">
+          <span />
+          <span className="text-right">Dataset</span>
+          <span className="text-right">Nasional {y}</span>
+          <span className="text-center">selisih, hijau bila dalam 15%</span>
+          <span />
         </div>
       </section>
 
@@ -196,7 +198,7 @@ export default function AcuanNasionalPage() {
         <section className="bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card">
           <h2 className="text-base font-bold text-jkn-text">Biaya klaim per admisi menurut kelas</h2>
           <p className="text-xs text-jkn-muted mt-0.5">Rupiah, {n.years[0]} sampai {y}</p>
-          <div className="h-60 mt-3">
+          <div className="h-48 mt-3">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={n.cost_trend} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                 <CartesianGrid stroke="#E4ECE8" vertical={false} />
@@ -216,7 +218,7 @@ export default function AcuanNasionalPage() {
         <section className="bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card">
           <h2 className="text-base font-bold text-jkn-text">Biaya per admisi menurut usia dan jenis kelamin</h2>
           <p className="text-xs text-jkn-muted mt-0.5">Rupiah, {y}. Biaya laki-laki melampaui perempuan pada usia produktif.</p>
-          <div className="h-60 mt-3">
+          <div className="h-48 mt-3">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={n.cost_by_age_sex} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
                 <CartesianGrid stroke="#E4ECE8" vertical={false} />
@@ -235,8 +237,8 @@ export default function AcuanNasionalPage() {
       {/* Diagnosis */}
       <section className="bg-surface rounded-2xl border border-jkn-border/90 shadow-card overflow-hidden">
         <div className="px-5 py-4 border-b border-jkn-divider">
-          <h2 className="text-base font-bold text-jkn-text">15 diagnosis rawat inap terbanyak {y}</h2>
-          <p className="text-xs text-jkn-muted mt-0.5">Jumlah admisi per kode ICD-10 primer. Varian ejaan pada berkas sumber digabung per kode. Tren antar tahun tidak ditampilkan karena sistem pengkodean dan cakupan peserta berubah (admisi nasional naik dua kali lipat sejak 2014).</p>
+          <h2 className="text-base font-bold text-jkn-text">Diagnosis rawat inap terbanyak {y}</h2>
+          <p className="text-xs text-jkn-muted mt-0.5">Admisi per kode ICD-10 primer. Tren antar tahun tidak ditampilkan karena sistem pengkodean dan cakupan peserta berubah.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm tabular-nums">
@@ -249,15 +251,15 @@ export default function AcuanNasionalPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-jkn-divider">
-              {n.top_diagnoses.map((d) => {
+              {(showAllDx ? n.top_diagnoses : n.top_diagnoses.slice(0, 6)).map((d) => {
                 return (
                   <tr key={d.code}>
                     <td className="py-2.5 px-4">
-                      <span className="font-mono font-semibold text-jkn-text">{d.code}</span>
+                      <span className="font-semibold text-jkn-text">{d.code}</span>
                       <span className="text-jkn-muted ml-2">{d.description}</span>
                     </td>
-                    <td className="py-2.5 px-3 text-right font-mono font-semibold">{formatNumber(d.admisi[y])}</td>
-                    <td className="py-2.5 px-3 text-right font-mono">{pct(d.admisi[y] / n.kpi.admissions, 1)}</td>
+                    <td className="py-2.5 px-3 text-right font-semibold">{formatNumber(d.admisi[y])}</td>
+                    <td className="py-2.5 px-3 text-right">{pct(d.admisi[y] / n.kpi.admissions, 1)}</td>
                     <td className="py-2.5 px-4">
                       <div className="h-2 rounded-full bg-surface-secondary overflow-hidden">
                         <div className="h-full rounded-full bg-bpjs" style={{ width: `${(d.admisi[y] / maxDx) * 100}%` }} />
@@ -269,6 +271,12 @@ export default function AcuanNasionalPage() {
             </tbody>
           </table>
         </div>
+        {n.top_diagnoses.length > 6 && (
+          <button type="button" onClick={() => setShowAllDx((v) => !v)} className="w-full py-2.5 text-sm font-medium text-bpjs hover:bg-frame/60 border-t border-jkn-divider transition-colors">
+            {showAllDx ? "Tampilkan 6 teratas" : `Tampilkan ${n.top_diagnoses.length} diagnosis dan perbandingan dengan dataset`}
+          </button>
+        )}
+        {showAllDx && (
         <div className="px-5 py-4 border-t border-jkn-divider">
           <h3 className="text-sm font-semibold text-jkn-text">Diagnosis di dataset Anda</h3>
           <p className="text-xs text-jkn-muted mt-0.5 mb-2">Apakah kode terbanyak di dataset juga termasuk 100 teratas nasional, beserta admisi nasionalnya.</p>
@@ -276,9 +284,9 @@ export default function AcuanNasionalPage() {
             {c.diagnoses.map((d) => (
               <li key={d.code} className="flex items-baseline justify-between gap-3 border-b border-jkn-divider/70 py-1">
                 <span className="truncate">
-                  <span className="font-mono font-semibold">{d.code}</span> <span className="text-jkn-muted">{d.description}</span>
+                  <span className="font-semibold">{d.code}</span> <span className="text-jkn-muted">{d.description}</span>
                 </span>
-                <span className="font-mono text-xs shrink-0">
+                <span className="text-xs shrink-0">
                   {pct(d.dataset_share, 0)} dataset,{" "}
                   {d.in_national_top100 ? <span className="text-bpjs-dark">{formatNumber(d.national_admissions)} nasional</span> : <span className="text-risk-high">di luar 100 teratas</span>}
                 </span>
@@ -286,6 +294,7 @@ export default function AcuanNasionalPage() {
             ))}
           </ul>
         </div>
+        )}
       </section>
 
       {/* Provinsi */}
@@ -294,7 +303,14 @@ export default function AcuanNasionalPage() {
       <p className="text-xs text-jkn-muted pb-2">
         Sumber: {n.source.name}, {n.source.url}. {n.source.scope} Rerata lama rawat dihitung dari hari rawat dibagi admisi per kelas. Data mikro klaim memerlukan akun peneliti terdaftar pada portal yang sama.
       </p>
-      <ProvenanceCatalog />
+      <details className="group rounded-2xl border border-jkn-border/80 bg-surface">
+        <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between text-base font-semibold text-jkn-text">
+          <span>Asal data: resmi dan sintetis</span>
+          <span className="text-xs font-medium text-bpjs group-open:hidden">Tampilkan</span>
+          <span className="text-xs font-medium text-bpjs hidden group-open:inline">Sembunyikan</span>
+        </summary>
+        <div className="px-1 pb-3"><ProvenanceCatalog /></div>
+      </details>
     </DashboardShell>
   );
 }

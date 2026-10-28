@@ -22,12 +22,21 @@ import {
   PieChart,
   Pie,
   Cell,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Legend,
+  Treemap,
 } from "recharts";
 
 interface DashboardPayload {
   kpis: DashboardKPIs;
   province_risk: ProvinceRiskData[];
   emerging_signals: EmergingSignal[];
+  pattern_shifts: Array<{ risk_type: string; recent: number; previous: number; change_percentage: number | null; exposure_recent: number; significant: boolean }>;
+  queue_age: Array<{ key: string; label: string; count: number }>;
   top_providers: Provider[];
   providers_total: number;
   workflow: {
@@ -50,6 +59,65 @@ interface DashboardPayload {
 }
 
 const LEVEL_COLOR = { CRITICAL: "#B91C1C", HIGH: "#EA580C", MEDIUM: "#CA8A04", LOW: "#059669" } as const;
+
+const TYPE_SHORT: Record<string, string> = {
+  UPCODING: "Upcoding",
+  CLONING: "Cloning",
+  PHANTOM_BILLING: "Phantom billing",
+  ABNORMAL_LOS: "LOS anomali",
+  UNBUNDLING: "Unbundling",
+  INFLATED_BILLS: "Inflasi tagihan",
+  REPEAT_BILLING: "Tagihan berulang",
+  READMISSION: "Rawat ulang dini",
+};
+
+/** Warna petak provinsi: putih-hijau yang sama dengan peta panas. */
+function heatColor(t: number): string {
+  const from = [220, 252, 231];
+  const to = [20, 83, 45];
+  const k = 0.1 + 0.9 * Math.pow(Math.max(0, Math.min(1, t)), 0.6);
+  return `rgb(${from.map((v, i) => Math.round(v + (to[i] - v) * k)).join(",")})`;
+}
+
+interface TreeCellProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  name?: string;
+  exposure?: number;
+  claims?: number;
+  tone?: number;
+}
+
+/** Petak treemap: luas = eksposur, warna = keyakinan rata-rata detektor (makin pekat makin yakin). */
+function TreeCell({ x = 0, y = 0, width = 0, height = 0, name, exposure = 0, claims = 0, tone = 0 }: TreeCellProps) {
+  if (width <= 0 || height <= 0) return null;
+  const dark = tone > 0.45;
+  const ink = dark ? "#FFFFFF" : "#11241D";
+  const roomy = width > 96 && height > 56;
+  const narrow = width > 60 && height > 34;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} rx={6} fill={heatColor(tone)} stroke="#FFFFFF" strokeWidth={3} />
+      {narrow && (
+        <text x={x + 10} y={y + 20} fill={ink} fontSize={12} fontWeight={600}>
+          {name}
+        </text>
+      )}
+      {roomy && (
+        <>
+          <text x={x + 10} y={y + 38} fill={ink} fontSize={12} opacity={0.9}>
+            {formatRupiah(exposure, true)}
+          </text>
+          <text x={x + 10} y={y + 54} fill={ink} fontSize={11} opacity={0.75}>
+            {claims} klaim
+          </text>
+        </>
+      )}
+    </g>
+  );
+}
 
 const RISK_TYPE_DESC: Record<string, string> = {
   UPCODING: "Tingkat keparahan INA-CBG dinaikkan tanpa bukti klinis",
@@ -190,7 +258,7 @@ export default function CommandCenterPage() {
     );
   }
 
-  const { kpis, province_risk, emerging_signals, top_providers, providers_total, workflow, meta } = data;
+  const { kpis, province_risk, emerging_signals, pattern_shifts = [], queue_age = [], top_providers, providers_total, workflow, meta } = data;
   const { trends } = kpis;
 
   const distribution = [
@@ -208,6 +276,34 @@ export default function CommandCenterPage() {
   const trendExposure = series.reduce((a, p) => a + p.exposure_amount, 0);
   const statusTotal = Math.max(1, workflow.total);
   const asOfLabel = formatDate(kpis.as_of);
+  const topProvinces = [...province_risk]
+    .filter((p) => p.high_risk_claims > 0)
+    .sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0) || b.potential_exposure - a.potential_exposure)
+    .slice(0, 5);
+  const spotlightProviders = [...top_providers].sort((a, b) => b.potential_exposure - a.potential_exposure).slice(0, 3);
+  const spotlightMax = Math.max(1, ...spotlightProviders.map((p) => p.potential_exposure));
+  const topScore = Math.max(1, ...topProvinces.map((p) => p.risk_score ?? 0));
+  const radarData = Object.keys(TYPE_SHORT).map((k) => {
+    const t = pattern_shifts.find((x) => x.risk_type === k);
+    return { label: TYPE_SHORT[k], recent: t?.recent ?? 0, previous: t?.previous ?? 0 };
+  });
+  const shiftTop = [...pattern_shifts].sort((a, b) => b.recent - b.previous - (a.recent - a.previous))[0];
+  const confMin = Math.min(...riskByType.filter((r) => r.claim_count > 0).map((r) => r.avg_confidence), 1);
+  const confMax = Math.max(...riskByType.filter((r) => r.claim_count > 0).map((r) => r.avg_confidence), 0);
+  const treeData = riskByType
+    .filter((r) => r.claim_count > 0 && r.potential_exposure > 0)
+    .map((r) => ({
+      name: TYPE_SHORT[r.risk_type] || r.risk_type,
+      size: r.potential_exposure,
+      exposure: r.potential_exposure,
+      claims: r.claim_count,
+      conf: r.avg_confidence,
+      tone: confMax > confMin ? (r.avg_confidence - confMin) / (confMax - confMin) : 1,
+    }));
+  const queueAgeMax = Math.max(1, ...queue_age.map((q) => q.count));
+  const queueAgeTotal = queue_age.reduce((a, q) => a + q.count, 0);
+  const oldestBucket = [...queue_age].reverse().find((q) => q.count > 0);
+  const shiftMax = Math.max(1, ...pattern_shifts.map((t) => Math.max(t.recent, t.previous)));
   const firstLabel = meta.first_submission_date ? formatDate(meta.first_submission_date) : "-";
 
   return (
@@ -347,48 +443,110 @@ export default function CommandCenterPage() {
       {/* Peta + ringkasan */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div className="lg:col-span-8">
-          <IndonesiaRiskMap provinceData={province_risk} />
+          <IndonesiaRiskMap provinceData={province_risk} tall heat />
         </div>
 
-        <div className="lg:col-span-4 bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card flex flex-col justify-between">
-          <div className="space-y-4">
-            <div className="pb-3 border-b border-jkn-divider">
-              <div className="flex items-start justify-between gap-2">
-                <h2 className="text-base font-bold text-jkn-text">Ringkasan temuan</h2>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-md font-semibold whitespace-nowrap shrink-0 border ${
-                    kpis.ai_briefing.source === "llm" ? "bg-intel-light text-intel-deep border-intel-border" : "bg-surface-secondary text-jkn-muted border-jkn-border"
-                  }`}
-                >
-                  {kpis.ai_briefing.source === "llm" ? "Ditulis AI" : kpis.ai_briefing.pending ? "Menyusun" : "Dihitung otomatis"}
-                </span>
-              </div>
-              <p className="text-xs text-jkn-muted mt-1">
-                {kpis.ai_briefing.source === "llm"
-                  ? `${kpis.ai_briefing.model || "Model bahasa"}, setiap rujukan dicek terhadap data`
-                  : kpis.ai_briefing.pending
-                  ? "Model bahasa sedang menulis ringkasan; sementara ini tampil ringkasan hitung otomatis."
-                  : "Rangkuman dari agregat klaim tanpa model bahasa."}
-              </p>
+        <div className="lg:col-span-4 bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card flex flex-col gap-4 tabular-nums">
+          <div>
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="text-base font-bold text-jkn-text">Ringkasan temuan</h2>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-md font-semibold whitespace-nowrap shrink-0 border ${
+                  kpis.ai_briefing.source === "llm" ? "bg-intel-light text-intel-deep border-intel-border" : "bg-surface-secondary text-jkn-muted border-jkn-border"
+                }`}
+              >
+                {kpis.ai_briefing.source === "llm" ? "Ditulis AI" : kpis.ai_briefing.pending ? "Menyusun" : "Dihitung otomatis"}
+              </span>
             </div>
-
-            <p className="text-sm text-jkn-text leading-relaxed">{kpis.ai_briefing.summary}</p>
-
-            <div>
-              <h3 className="text-sm font-semibold text-jkn-text mb-1.5">Temuan teratas</h3>
-              <ul className="divide-y divide-jkn-divider border-t border-b border-jkn-divider">
-                {kpis.ai_briefing.key_findings.map((finding, idx) => (
-                  <li key={idx} className="py-2.5 text-sm text-jkn-text leading-snug">
-                    {finding}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <p className="mt-1.5 text-[13px] text-jkn-text leading-relaxed line-clamp-3">{kpis.ai_briefing.summary}</p>
+            {kpis.ai_briefing.key_findings.length > 0 && (
+              <details className="mt-1 group">
+                <summary className="cursor-pointer text-xs font-semibold text-bpjs hover:underline list-none">
+                  <span className="group-open:hidden">Baca rincian dari AI</span>
+                  <span className="hidden group-open:inline">Tutup rincian</span>
+                </summary>
+                <ul className="mt-2 space-y-2 text-xs text-jkn-muted leading-relaxed max-h-40 overflow-y-auto">
+                  {kpis.ai_briefing.key_findings.map((f, i) => (
+                    <li key={i}>{f}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </div>
 
-          <div className="mt-4 pt-3 border-t border-jkn-divider flex items-center justify-between gap-2">
+          {/* Faskes sorotan: skor risiko sebagai cincin */}
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-jkn-text">Faskes sorotan</h3>
+              <Link href="/providers" className="text-xs font-semibold text-bpjs hover:underline">
+                Semua faskes
+              </Link>
+            </div>
+            <ul className="mt-2 grid grid-cols-3 gap-2">
+              {spotlightProviders.map((p) => {
+                const r = 20;
+                const c = 2 * Math.PI * r;
+                return (
+                  <li key={p.provider_id}>
+                    <Link href={`/providers/${p.provider_id}`} className="flex flex-col items-center text-center group rounded-xl border border-jkn-divider py-2.5 px-1.5 hover:border-bpjs/50 transition-colors h-full">
+                      <svg width="52" height="52" viewBox="0 0 52 52" role="img" aria-label={`Skor risiko ${p.risk_score}`}>
+                        <circle cx="26" cy="26" r={r} fill="none" stroke="#E4ECE8" strokeWidth="5" />
+                        <circle
+                          cx="26"
+                          cy="26"
+                          r={r}
+                          fill="none"
+                          stroke={LEVEL_COLOR[p.risk_level]}
+                          strokeWidth="5"
+                          strokeLinecap="round"
+                          strokeDasharray={`${(p.risk_score / 100) * c} ${c}`}
+                          transform="rotate(-90 26 26)"
+                        />
+                        <text x="26" y="30" textAnchor="middle" fontSize="13" fontWeight="600" fill="#11241D">
+                          {p.risk_score}
+                        </text>
+                      </svg>
+                      <span className="mt-1.5 text-[11px] font-medium text-jkn-text group-hover:text-bpjs leading-tight line-clamp-2">{p.name}</span>
+                      <span className="mt-0.5 text-[11px] font-mono text-jkn-muted">{formatRupiah(p.potential_exposure, true)}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {/* Provinsi terpanas: petak berwarna sama dengan peta */}
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-jkn-text">Provinsi terpanas</h3>
+              <Link href="/risk-intelligence" className="text-xs font-semibold text-bpjs hover:underline">
+                Peta lengkap
+              </Link>
+            </div>
+            <ul className="mt-2 grid grid-cols-5 gap-1.5">
+              {topProvinces.map((p) => {
+                const t = Math.max(0, Math.min(1, (p.risk_score ?? 0) / Math.max(1, topScore)));
+                const dark = t > 0.45;
+                return (
+                  <li key={p.province_code}>
+                    <Link
+                      href={`/investigation-queue?mode=CLAIMS&province=${p.province_code}`}
+                      title={`${p.province_name}: skor ${p.risk_score}, ${p.high_risk_claims} dari ${p.total_claims} klaim berisiko tinggi`}
+                      className="block rounded-lg px-1.5 py-3.5 text-center h-full hover:ring-2 hover:ring-bpjs/40 transition-shadow"
+                      style={{ backgroundColor: heatColor(t), color: dark ? "#FFFFFF" : "#11241D" }}
+                    >
+                      <span className="block text-base font-semibold leading-none">{p.risk_score}</span>
+                      <span className="block mt-1 text-[10px] leading-tight line-clamp-2 opacity-90">{p.province_name}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <div className="mt-auto pt-3 border-t border-jkn-divider flex items-center justify-between gap-2">
             <span className="text-xs text-jkn-muted">Tanya jawab dengan rujukan klaim</span>
-            <Link href="/copilot" className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#071A12] hover:bg-[#0D2B1E] text-white text-sm font-semibold transition-colors">
+            <Link href="/copilot" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#071A12] hover:bg-[#0D2B1E] text-white text-sm font-semibold transition-colors">
               <span>Buka Copilot</span>
               <ArrowRight className="w-4 h-4 text-[#34D399]" aria-hidden />
             </Link>
@@ -396,19 +554,44 @@ export default function CommandCenterPage() {
         </div>
       </div>
 
-      {/* Status penanganan kasus (berubah saat pengguna memutuskan) */}
-      <div className="bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card tabular-nums">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+      {/* Penanganan kasus: status dan umur antrean */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 tabular-nums">
+        <div className="lg:col-span-7 bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card flex flex-col">
           <div>
             <h2 className="text-base font-bold text-jkn-text">Penanganan kasus</h2>
             <p className="text-xs text-jkn-muted mt-0.5">
-              {formatNumber(workflow.total)} kasus, {formatNumber(workflow.open)} belum diputuskan. Angka ini berubah setiap kali verifikator atau supervisor menetapkan status.
+              {formatNumber(workflow.total)} kasus, {formatNumber(workflow.open)} belum diputuskan. Berubah setiap kali verifikator atau supervisor menetapkan status.
             </p>
           </div>
-          <div className="flex gap-6 text-sm">
+
+          <div className="mt-4 flex h-3 w-full overflow-hidden rounded-full bg-surface-secondary" role="img" aria-label="Komposisi status kasus">
+            {STATUS_FLOW.map((s) => {
+              const n = workflow.by_status[s.key] || 0;
+              return n ? <div key={s.key} style={{ width: `${(n / statusTotal) * 100}%`, backgroundColor: s.color }} title={`${s.label}: ${n}`} /> : null;
+            })}
+          </div>
+          <ul className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 mb-5">
+            {STATUS_FLOW.map((s) => {
+              const n = workflow.by_status[s.key] || 0;
+              return (
+                <li key={s.key}>
+                  <Link href={`/investigation-queue?status=${s.key}`} className={`flex items-center gap-2 text-sm hover:text-bpjs transition-colors ${n === 0 ? "opacity-60" : ""}`}>
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} aria-hidden />
+                    <span className="text-jkn-muted truncate">{s.label}</span>
+                    <span className="font-mono font-semibold text-jkn-text ml-auto">{formatNumber(n)}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-auto pt-4 border-t border-jkn-divider grid grid-cols-3 gap-4">
             <div>
               <div className="font-mono font-bold text-lg text-risk-critical leading-none">{formatRupiah(workflow.confirmed_recovery, true)}</div>
-              <div className="text-xs text-jkn-muted mt-1">pemulihan dari {formatNumber(workflow.confirmed_count)} kasus terkonfirmasi</div>
+              <div className="text-xs text-jkn-muted mt-1">pemulihan terkonfirmasi</div>
+            </div>
+            <div>
+              <div className="font-mono font-bold text-lg text-jkn-text leading-none">{formatNumber(workflow.confirmed_count)}</div>
+              <div className="text-xs text-jkn-muted mt-1">kasus terkonfirmasi</div>
             </div>
             <div>
               <div className="font-mono font-bold text-lg text-jkn-text leading-none">{formatNumber(workflow.false_positive_count)}</div>
@@ -417,29 +600,31 @@ export default function CommandCenterPage() {
           </div>
         </div>
 
-        <div className="mt-4 flex h-3 w-full overflow-hidden rounded-full bg-surface-secondary" role="img" aria-label="Komposisi status kasus">
-          {STATUS_FLOW.map((s) => {
-            const n = workflow.by_status[s.key] || 0;
-            return n ? <div key={s.key} style={{ width: `${(n / statusTotal) * 100}%`, backgroundColor: s.color }} title={`${s.label}: ${n}`} /> : null;
-          })}
+        <div className="lg:col-span-5 bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card">
+          <h2 className="text-base font-bold text-jkn-text">Umur kasus yang belum diputuskan</h2>
+          <p className="text-xs text-jkn-muted mt-0.5">
+            Hari sejak klaim diajukan sampai {asOfLabel}
+            {oldestBucket && oldestBucket.key !== "d7" ? `. ${formatNumber(oldestBucket.count)} kasus berumur ${oldestBucket.label}.` : "."}
+          </p>
+          <ul className="mt-3 space-y-2">
+            {queue_age.map((q) => (
+              <li key={q.key} className="grid grid-cols-[120px_1fr_36px] items-center gap-3 text-sm">
+                <span className="text-jkn-muted">{q.label}</span>
+                <span className="h-2.5 rounded-full bg-surface-secondary overflow-hidden">
+                  <span className="block h-full rounded-full bg-bpjs" style={{ width: `${(q.count / queueAgeMax) * 100}%` }} />
+                </span>
+                <span className="font-mono font-semibold text-jkn-text text-right">{formatNumber(q.count)}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-xs text-jkn-muted">Total {formatNumber(queueAgeTotal)} kasus terbuka. Target penyelesaian diatur di Pengaturan.</p>
         </div>
-        <ul className="mt-3 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-x-4 gap-y-2">
-          {STATUS_FLOW.map((s) => (
-            <li key={s.key}>
-              <Link href={`/investigation-queue?status=${s.key}`} className="flex items-center gap-2 text-sm hover:text-bpjs transition-colors">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} aria-hidden />
-                <span className="text-jkn-muted truncate">{s.label}</span>
-                <span className="font-mono font-semibold text-jkn-text ml-auto">{formatNumber(workflow.by_status[s.key] || 0)}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
       </div>
 
       {/* Tren + distribusi + faskes prioritas */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 tabular-nums">
-        <div className="lg:col-span-6 bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div className="lg:col-span-5 bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card space-y-3">
+          <div className="flex flex-col gap-3">
             <div>
               <h2 className="text-base font-bold text-jkn-text">{trendMode === "VOLUME" ? "Klaim berisiko per tanggal pengajuan" : "Eksposur finansial per tanggal pengajuan"}</h2>
               <p className="text-xs text-jkn-muted mt-0.5">
@@ -525,10 +710,10 @@ export default function CommandCenterPage() {
             <h2 className="text-base font-bold text-jkn-text">Tingkat risiko klaim</h2>
             <p className="text-xs text-jkn-muted mt-0.5">Klik untuk membuka daftar klaim</p>
           </div>
-          <div className="h-36 w-full relative my-3">
+          <div className="h-48 w-full relative my-3">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={distribution} cx="50%" cy="50%" innerRadius={42} outerRadius={62} paddingAngle={2} dataKey="value" stroke="none">
+                <Pie data={distribution} cx="50%" cy="50%" innerRadius={56} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
                   {distribution.map((entry) => (
                     <Cell key={entry.level} fill={entry.color} />
                   ))}
@@ -554,7 +739,7 @@ export default function CommandCenterPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-3 bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card flex flex-col">
+        <div className="lg:col-span-4 bg-surface rounded-2xl border border-jkn-border/90 p-5 shadow-card flex flex-col">
           <div className="flex items-start justify-between gap-2">
             <div>
               <h2 className="text-base font-bold text-jkn-text">Faskes prioritas audit</h2>
@@ -566,7 +751,7 @@ export default function CommandCenterPage() {
           </div>
           <div className="divide-y divide-jkn-divider border-t border-b border-jkn-divider my-3 flex-1">
             {top_providers.map((p) => (
-              <Link key={p.provider_id} href={`/providers/${p.provider_id}`} className="py-2.5 flex items-center justify-between gap-2 hover:bg-surface-subtle transition-colors group">
+              <Link key={p.provider_id} href={`/providers/${p.provider_id}`} className="py-3.5 flex items-center justify-between gap-2 hover:bg-surface-subtle transition-colors group">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-jkn-text group-hover:text-bpjs truncate">{p.name}</div>
                   <div className="text-xs text-jkn-muted truncate">
@@ -583,95 +768,72 @@ export default function CommandCenterPage() {
         </div>
       </div>
 
-      {/* Sinyal emergen + matriks detektor */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 tabular-nums items-start">
-        <div className="lg:col-span-5 bg-surface rounded-2xl border border-jkn-border/90 shadow-card overflow-hidden">
-          <div className="px-5 py-4 border-b border-jkn-divider flex items-start justify-between gap-2">
+      {/* Pergeseran pola (radar) + eksposur per detektor (treemap) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 tabular-nums">
+        <div className="lg:col-span-5 bg-surface rounded-2xl border border-jkn-border/90 shadow-card overflow-hidden flex flex-col">
+          <div className="px-5 py-4 flex items-start justify-between gap-2">
             <div>
-              <h2 className="text-base font-bold text-jkn-text">Pola yang sedang naik</h2>
-              <p className="text-xs text-jkn-muted mt-0.5">14 hari sampai {asOfLabel}, dibanding 14 hari sebelumnya</p>
+              <h2 className="text-base font-bold text-jkn-text">{emerging_signals.length > 0 ? "Pola yang sedang naik" : "Pergeseran pola 14 hari"}</h2>
+              <p className="text-xs text-jkn-muted mt-0.5">Klaim per jenis temuan, 14 hari sampai {asOfLabel} dibanding 14 hari sebelumnya</p>
             </div>
             <Link href="/risk-intelligence" className="text-xs font-semibold text-bpjs hover:underline flex items-center gap-0.5 shrink-0 mt-1">
               <span>Graf klaster</span>
               <ChevronRight className="w-3.5 h-3.5" aria-hidden />
             </Link>
           </div>
-
-          {emerging_signals.length === 0 ? (
-            <p className="p-5 text-sm text-jkn-muted">Belum ada pola dengan minimal 3 klaim pada periode ini.</p>
-          ) : (
-            <div className="divide-y divide-jkn-divider">
-              {emerging_signals.map((signal) => (
-                <Link key={signal.signal_id} href={`/investigation-queue?risk_type=${signal.risk_type}`} className="p-4 block hover:bg-surface-subtle transition-colors group">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <RiskPill type={signal.risk_type} size="sm" />
-                      <span className="text-sm font-bold text-jkn-text group-hover:text-bpjs truncate">{signal.title}</span>
-                    </div>
-                    <span className="font-mono text-sm font-bold text-risk-critical shrink-0">{formatRupiah(signal.potential_exposure, true)}</span>
-                  </div>
-                  <p className="text-xs text-jkn-muted mt-1.5 leading-relaxed">{signal.description}</p>
-                  <div className="mt-1.5 text-xs text-jkn-dim">
-                    <strong className={`font-mono ${signal.change_percentage > 0 ? "text-risk-critical" : "text-bpjs-dark"}`}>
-                      {signal.change_percentage > 0 ? "+" : ""}
-                      {signal.change_percentage.toLocaleString("id-ID")}%
-                    </strong>{" "}
-                    dari {signal.previous_count ?? "-"} ke {signal.recent_count ?? "-"} klaim, {signal.affected_providers_count} faskes
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          <div className="h-72 w-full px-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={radarData} outerRadius="72%">
+                <PolarGrid stroke="#D5E0DA" />
+                <PolarAngleAxis dataKey="label" tick={{ fontSize: 11, fill: "#475B53" }} />
+                <PolarRadiusAxis angle={90} tick={false} axisLine={false} domain={[0, "dataMax"]} />
+                <Radar name="14 hari sebelumnya" dataKey="previous" stroke="#94A3B8" fill="#94A3B8" fillOpacity={0.18} strokeWidth={1.5} />
+                <Radar name="14 hari terakhir" dataKey="recent" stroke="#007A3A" fill="#007A3A" fillOpacity={0.35} strokeWidth={2} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: number, n: string) => [`${formatNumber(v)} klaim`, n]} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="px-5 pb-4 text-xs text-jkn-muted">
+            {emerging_signals.length > 0
+              ? `${emerging_signals.length} jenis naik secara bermakna: ${emerging_signals.map((e) => TYPE_SHORT[e.risk_type] || e.risk_type).join(", ")}.`
+              : shiftTop
+              ? `Belum ada kenaikan yang bermakna secara statistik. Selisih terbesar: ${TYPE_SHORT[shiftTop.risk_type] || shiftTop.risk_type} (${shiftTop.previous} menjadi ${shiftTop.recent} klaim).`
+              : "Belum ada temuan pada 28 hari terakhir."}
+          </p>
         </div>
 
-        <div className="lg:col-span-7 bg-surface rounded-2xl border border-jkn-border/90 shadow-card overflow-hidden">
-          <div className="px-5 py-4 border-b border-jkn-divider flex items-start justify-between gap-2">
+        <div className="lg:col-span-7 bg-surface rounded-2xl border border-jkn-border/90 shadow-card overflow-hidden flex flex-col">
+          <div className="px-5 py-4 flex items-start justify-between gap-2">
             <div>
-              <h2 className="text-base font-bold text-jkn-text">Temuan per detektor</h2>
-              <p className="text-xs text-jkn-muted mt-0.5">Jumlah klaim, rata-rata keyakinan, dan eksposur dari {riskByType.length} detektor</p>
+              <h2 className="text-base font-bold text-jkn-text">Eksposur per jenis temuan</h2>
+              <p className="text-xs text-jkn-muted mt-0.5">Luas petak = eksposur, warna makin pekat = keyakinan detektor makin tinggi</p>
             </div>
             <Link href="/model-performance" className="text-xs font-semibold text-bpjs hover:underline flex items-center gap-0.5 shrink-0 mt-1">
               <span>Akurasi detektor</span>
               <ChevronRight className="w-3.5 h-3.5" aria-hidden />
             </Link>
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-surface-subtle border-b border-jkn-border text-xs font-semibold text-jkn-muted">
-                  <th scope="col" className="py-2.5 px-4">Detektor</th>
-                  <th scope="col" className="py-2.5 px-3 text-right">Klaim</th>
-                  <th scope="col" className="py-2.5 px-3 text-right">Keyakinan</th>
-                  <th scope="col" className="py-2.5 px-4 text-right w-48">Eksposur</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-jkn-divider">
-                {riskByType.map((item) => {
-                  const barPct = Math.max(4, Math.round((item.potential_exposure / maxTypeExposure) * 100));
-                  return (
-                    <tr key={item.risk_type} className="hover:bg-surface-subtle transition-colors group">
-                      <td className="py-2.5 px-4">
-                        <Link href={`/investigation-queue?risk_type=${item.risk_type}`} className="block">
-                          <RiskPill type={item.risk_type} size="sm" />
-                          <div className="text-xs text-jkn-muted mt-1 line-clamp-1">{RISK_TYPE_DESC[item.risk_type] || "Deteksi anomali klaim berbasis aturan dan statistik."}</div>
-                        </Link>
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-jkn-text whitespace-nowrap">{formatNumber(item.claim_count)}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-jkn-muted whitespace-nowrap">{item.claim_count ? `${(item.avg_confidence * 100).toFixed(0)}%` : "-"}</td>
-                      <td className="py-2.5 px-4 text-right whitespace-nowrap">
-                        <Link href={`/investigation-queue?risk_type=${item.risk_type}`} className="block space-y-1">
-                          <div className="font-mono font-bold text-risk-critical group-hover:underline">{formatRupiah(item.potential_exposure, true)}</div>
-                          <div className="h-1.5 w-full rounded-full bg-surface-secondary overflow-hidden ml-auto max-w-[140px]">
-                            <div className="h-full rounded-full bg-bpjs" style={{ width: `${barPct}%` }} />
-                          </div>
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="h-72 w-full px-4 pb-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <Treemap data={treeData} dataKey="size" aspectRatio={16 / 9} isAnimationActive={false} content={<TreeCell />}>
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(_v: number, _n: string, item) => {
+                    const d = item.payload as { exposure: number; claims: number; conf: number };
+                    return [`${formatRupiah(d.exposure)}, ${d.claims} klaim, keyakinan ${Math.round(d.conf * 100)}%`, item.payload.name];
+                  }}
+                />
+              </Treemap>
+            </ResponsiveContainer>
+          </div>
+          <div className="px-5 pb-4 flex items-center justify-between text-xs text-jkn-muted">
+            <span>Detektor dengan klaim: {treeData.length} dari {riskByType.length}</span>
+            <span className="inline-flex items-center gap-2">
+              keyakinan rendah
+              <span className="inline-block w-20 h-2 rounded-full border border-jkn-border" style={{ background: "linear-gradient(90deg,#DCFCE7,#14532D)" }} aria-hidden />
+              tinggi
+            </span>
           </div>
         </div>
       </div>

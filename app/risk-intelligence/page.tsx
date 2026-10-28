@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { IndonesiaRiskMap } from "@/components/map/IndonesiaRiskMap";
+import { PatternShiftRadar, PatternShift } from "@/components/analytics/PatternShiftRadar";
 import { NetworkGraphView } from "@/components/network/NetworkGraphView";
 import { RiskPill } from "@/components/ui/RiskPill";
 import { PageLoader } from "@/components/ui/PageLoader";
@@ -45,6 +46,8 @@ export default function RiskIntelligencePage() {
   const [activeTab, setActiveTab] = useState<RiskTab>("OVERVIEW");
   const [provinceData, setProvinceData] = useState<ProvinceRiskData[]>([]);
   const [signals, setSignals] = useState<EmergingSignal[]>([]);
+  const [shifts, setShifts] = useState<PatternShift[]>([]);
+  const [daily, setDaily] = useState<Record<string, number[]>>({});
   const [asOf, setAsOf] = useState<string | null>(null);
   const [dataMode, setDataMode] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -85,6 +88,8 @@ export default function RiskIntelligencePage() {
       .then(([d, p]) => {
         setProvinceData(d.province_risk || []);
         setSignals(d.emerging_signals || []);
+        setShifts(d.pattern_shifts || []);
+        setDaily(Object.fromEntries(((d.pattern_detail?.types as Array<{ risk_type: string; daily: number[] }>) || []).map((t) => [t.risk_type, t.daily])));
         setAsOf(d.kpis?.as_of || null);
         setDataMode(d.meta?.data_mode || "");
         setProviderOptions((p.data || []).slice(0, 80));
@@ -196,34 +201,29 @@ export default function RiskIntelligencePage() {
         <div className="space-y-5">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <div className="lg:col-span-8">
-              <IndonesiaRiskMap provinceData={provinceData} />
+              <IndonesiaRiskMap provinceData={provinceData} tall heat />
             </div>
             <div className="lg:col-span-4">
-              <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3 h-full">
-                <h2 className="text-base font-bold text-jkn-text">Pola yang sedang naik</h2>
+              <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle h-full flex flex-col">
+                <h2 className="text-base font-bold text-jkn-text">{signals.length > 0 ? "Pola yang sedang naik" : "Pergeseran pola 14 hari"}</h2>
                 <p className="text-xs text-jkn-muted">14 hari terakhir dibanding 14 hari sebelumnya</p>
-                <div className="space-y-2.5">
-                  {signals.length === 0 && <p className="text-sm text-jkn-muted">Belum ada pola dengan minimal 3 klaim pada periode ini.</p>}
-                  {signals.slice(0, 3).map((sig) => (
-                    <Link
-                      key={sig.signal_id}
-                      href={`/investigation-queue?risk_type=${sig.risk_type}`}
-                      className={`block p-3 rounded-lg border text-sm space-y-1 transition-shadow hover:shadow-subtle ${
-                        sig.severity === "CRITICAL" ? "bg-risk-critical-bg border-risk-critical-border" : sig.severity === "HIGH" ? "bg-risk-high-bg border-risk-high-border" : "bg-risk-medium-bg border-risk-medium-border"
-                      }`}
-                    >
-                      <div className="flex justify-between gap-2 font-bold text-jkn-text">
-                        <span>{sig.title}</span>
-                        <span className="text-xs shrink-0">{SEVERITY_LABEL[sig.severity]}</span>
-                      </div>
-                      <p className="text-xs text-jkn-muted leading-relaxed">{sig.description}</p>
-                      <div className="flex items-center justify-between pt-1 text-xs font-semibold font-mono tabular-nums">
-                        <span className="text-bpjs-dark">Keyakinan {(sig.confidence * 100).toFixed(0)}%</span>
-                        <span className="text-risk-critical">{formatRupiah(sig.potential_exposure, true)}</span>
-                      </div>
-                    </Link>
-                  ))}
+                {signals.slice(0, 2).map((sig) => (
+                  <Link key={sig.signal_id} href={`/investigation-queue?risk_type=${sig.risk_type}`} className="mt-2 block rounded-lg border border-risk-critical-border bg-risk-critical-bg px-3 py-2 text-sm">
+                    <div className="flex justify-between gap-2 font-semibold text-jkn-text">
+                      <span className="truncate">{sig.title}</span>
+                      <span className="font-mono text-xs text-risk-critical shrink-0">{formatRupiah(sig.potential_exposure, true)}</span>
+                    </div>
+                  </Link>
+                ))}
+                <div className="mt-2 flex-1">
+                  <PatternShiftRadar shifts={shifts} height={250} showList={false} />
                 </div>
+                <p className="text-xs text-jkn-muted">
+                  {signals.length === 0 ? "Belum ada kenaikan yang bermakna secara statistik. " : ""}
+                  <button type="button" onClick={() => setActiveTab("PATTERNS")} className="font-semibold text-bpjs hover:underline">
+                    Lihat rincian per jenis
+                  </button>
+                </p>
               </div>
             </div>
           </div>
@@ -294,7 +294,7 @@ export default function RiskIntelligencePage() {
       ) : activeTab === "MAP" ? (
         <div className="space-y-5">
           <div ref={mapRef} className="scroll-mt-4">
-            <IndonesiaRiskMap provinceData={provinceData} focusProvince={focusProvince} className="min-h-[500px]" />
+            <IndonesiaRiskMap provinceData={provinceData} focusProvince={focusProvince} tall heat />
           </div>
 
           <section className="bg-surface rounded-xl border border-jkn-border shadow-subtle overflow-hidden">
@@ -346,7 +346,7 @@ export default function RiskIntelligencePage() {
                       <td className="py-2 px-3 text-right font-mono">{formatNumber(p.total_claims)}</td>
                       <td className="py-2 px-3 text-right font-mono">{formatNumber(p.high_risk_claims)}</td>
                       <td className="py-2 px-3">{p.total_claims > 0 ? <RiskPill score={p.risk_score ?? 0} level={p.risk_level} size="sm" /> : <span className="text-jkn-dim text-xs">tanpa klaim</span>}</td>
-                      <td className="py-2 px-3 text-right font-mono font-semibold">{p.total_claims > 0 ? formatRupiah(p.potential_exposure, true) : "-"}</td>
+                      <td className="py-2 px-3 text-right font-mono font-semibold whitespace-nowrap">{p.total_claims > 0 ? formatRupiah(p.potential_exposure, true) : "-"}</td>
                       <td className={`py-2 px-3 text-right font-mono font-semibold ${(p.national?.cost_ratio ?? 0) >= 1.5 ? "text-risk-critical" : (p.national?.cost_ratio ?? 0) >= 1.25 ? "text-risk-high" : "text-jkn-text"}`}>{ratio(p.national?.cost_ratio)}</td>
                       <td className="py-2 px-3 text-right font-mono">{p.national ? p.national.admission_rate_per_10k.toLocaleString("id-ID", { maximumFractionDigits: 0 }) : "-"}</td>
                       <td className="py-2 px-3 text-right font-mono">{p.national ? p.national.fkrtl_per_100k.toLocaleString("id-ID") : "-"}</td>
@@ -430,7 +430,11 @@ export default function RiskIntelligencePage() {
       ) : (
         <div className="space-y-5">
           {signals.length === 0 ? (
-            <p className="text-sm text-jkn-muted bg-surface rounded-xl border border-jkn-border p-5">Belum ada pola dengan minimal 3 klaim dalam 14 hari terakhir.</p>
+            <div className="bg-surface rounded-2xl border border-jkn-border/80 px-6 py-5 shadow-subtle">
+              <h2 className="text-lg font-semibold text-jkn-text">Pergeseran pola per jenis temuan</h2>
+              <p className="text-sm text-jkn-muted mt-1 mb-3">Jumlah klaim bertanda per jenis, 14 hari terakhir dibanding 14 hari sebelumnya. Belum ada jenis yang naik secara bermakna secara statistik.</p>
+              <PatternShiftRadar shifts={shifts} height={300} split daily={daily} />
+            </div>
           ) : (
             <div className="bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-3">
               <div>

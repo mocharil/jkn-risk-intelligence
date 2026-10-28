@@ -174,3 +174,31 @@ export async function confirmMappingAndIngest(datasetId: string, mappings: Field
   persist();
   return dataset;
 }
+
+/** Membuang dataset yang belum selesai (MAPPING_REQUIRED atau ERROR) beserta baris anonimnya. Dataset READY tidak dapat dibuang karena klaimnya sudah masuk analisis. */
+export function discardDataset(datasetId: string, actor: Actor): void {
+  const store = getStore();
+  const dataset = store.datasets.find((d) => d.dataset_id === datasetId);
+  if (!dataset) throw new Error("Dataset tidak ditemukan");
+  if (datasetId === "DS-SEED") throw new Error("Dataset sintetis bawaan tidak dapat dibuang");
+  if (dataset.status === "READY") throw new Error("Dataset yang sudah dianalisis tidak dapat dibuang");
+  if (dataset.status === "NORMALIZING") throw new Error("Dataset sedang diproses. Tunggu hingga selesai.");
+  const previous = dataset.status;
+  store.datasets = store.datasets.filter((d) => d.dataset_id !== datasetId);
+  memoryRows.delete(datasetId);
+  try {
+    fs.rmSync(path.join(uploadDir(), `${datasetId}.json`), { force: true });
+  } catch {
+    /* berkas tidak ada atau tidak dapat dihapus */
+  }
+  recordAudit({
+    claim_id: datasetId,
+    actor: actor.name,
+    actor_role: actor.role,
+    action: "DATASET_DISCARDED",
+    previous_status: previous,
+    new_status: null,
+    justification: `${dataset.name} dibuang sebelum dianalisis (${previous}).`,
+  });
+  persist();
+}

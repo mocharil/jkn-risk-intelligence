@@ -175,11 +175,11 @@ export function ModeBadge({ mode, provider, model, reason }: { mode?: "llm" | "d
   if (!mode) return null;
   return mode === "llm" ? (
     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-intel-deep">
-      <BadgeCheck className="w-3.5 h-3.5 shrink-0" /> {provider || "LLM"}{model ? ` (${model})` : ""} · sitasi tervalidasi
+      <BadgeCheck className="w-3.5 h-3.5 shrink-0" /> AI · sitasi tervalidasi
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800" title={reason}>
-      <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Mode deterministik (tanpa LLM)
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800">
+      <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> Mode aturan (tanpa AI)
     </span>
   );
 }

@@ -58,7 +58,7 @@ export function ProvinceExplorer({ mapData, year, nationalCost, nationalFkrtl }:
   if (!rows.length) return null;
   const max = rows[0].value;
   const min = rows[rows.length - 1].value;
-  const top = rows.slice(0, 10).map((r) => ({ ...r, t: (r.value - min) / Math.max(1e-9, max - min) }));
+  const top = rows.slice(0, 8).map((r) => ({ ...r, t: (r.value - min) / Math.max(1e-9, max - min) }));
   const focus = selected ? rows.find((r) => r.code === selected) : undefined;
 
   const cards = [
@@ -71,7 +71,7 @@ export function ProvinceExplorer({ mapData, year, nationalCost, nationalFkrtl }:
     <section className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-jkn-text">Biaya dan akses per provinsi {year}</h2>
+          <h2 className="text-lg font-semibold text-jkn-text">Biaya dan akses per provinsi {year}</h2>
           <p className="text-xs text-jkn-muted mt-0.5">{L.hint}. Klik provinsi di peta atau batang untuk menyorotnya.</p>
         </div>
         <div role="tablist" aria-label="Lapisan" className="inline-flex rounded-xl bg-surface-secondary p-0.5 border border-jkn-border shrink-0">
@@ -89,27 +89,22 @@ export function ProvinceExplorer({ mapData, year, nationalCost, nationalFkrtl }:
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <p className="text-sm text-jkn-muted tabular-nums flex flex-wrap gap-x-5 gap-y-1">
         {cards.map((c) => (
-          <div key={c.title} className="bg-surface rounded-2xl border border-jkn-border/90 shadow-card p-4 flex items-center gap-3">
-            <c.icon className={`w-5 h-5 shrink-0 ${c.tone}`} aria-hidden />
-            <div className="min-w-0">
-              <div className="text-xs text-jkn-muted">{c.title}</div>
-              <div className="text-lg font-mono font-bold text-jkn-text leading-tight">{c.value}</div>
-              <div className="text-xs text-jkn-muted truncate">{c.name}</div>
-            </div>
-          </div>
+          <span key={c.title}>
+            {c.title}: <strong className="text-jkn-text font-semibold">{c.value}</strong> <span className="text-jkn-dim">({c.name})</span>
+          </span>
         ))}
-      </div>
+      </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3 min-w-0">
-          <IndonesiaRiskMap provinceData={mapData} nationalOnly metric={layer} focusProvince={selected} onSelectProvince={setSelected} />
+          <IndonesiaRiskMap provinceData={mapData} nationalOnly heat metric={layer} focusProvince={selected} onSelectProvince={setSelected} />
         </div>
         <div className="lg:col-span-2 bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle flex flex-col min-w-0">
-          <h3 className="text-sm font-bold text-jkn-text">10 provinsi teratas: {L.label.toLowerCase()}</h3>
+          <h3 className="text-sm font-bold text-jkn-text">8 provinsi teratas: {L.label.toLowerCase()}</h3>
           <p className="text-xs text-jkn-muted">Garis putus-putus = rerata nasional ({L.fmt(avg)})</p>
-          <div className="flex-1 min-h-[380px] mt-2 tabular-nums">
+          <div className="flex-1 min-h-[300px] mt-2 tabular-nums">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={top} layout="vertical" margin={{ top: 4, right: 64, left: 0, bottom: 0 }}>
                 <XAxis type="number" hide domain={[0, "dataMax"]} />
@@ -157,10 +152,10 @@ export function ProvinceExplorer({ mapData, year, nationalCost, nationalFkrtl }:
                 {rows.map((r) => (
                   <tr key={r.code} className={r.code === selected ? "bg-bpjs-soft" : ""}>
                     <td className="py-2 px-4 font-medium">{r.name}</td>
-                    <td className="py-2 px-3 text-right font-mono">{LAYERS.NAT_COST.fmt(r.nat.cost_per_admission)}</td>
-                    <td className="py-2 px-3 text-right font-mono">{id(r.nat.cost_index, 2)}</td>
-                    <td className="py-2 px-3 text-right font-mono">{id(r.nat.admission_rate_per_10k)}</td>
-                    <td className="py-2 px-4 text-right font-mono">{formatNumber(r.nat.fkrtl_count)}</td>
+                    <td className="py-2 px-3 text-right">{LAYERS.NAT_COST.fmt(r.nat.cost_per_admission)}</td>
+                    <td className="py-2 px-3 text-right">{id(r.nat.cost_index, 2)}</td>
+                    <td className="py-2 px-3 text-right">{id(r.nat.admission_rate_per_10k)}</td>
+                    <td className="py-2 px-4 text-right">{formatNumber(r.nat.fkrtl_count)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -80,7 +80,7 @@ export default function DataManagementPage() {
   const [normalizing, setNormalizing] = useState(false);
   const [quickLoadingSample, setQuickLoadingSample] = useState<string | null>(null);
   const [isEditingMapping, setIsEditingMapping] = useState(false);
-  const [filterMode, setFilterMode] = useState<"ALL" | "REQUIRED" | "PII" | "UNMAPPED">("ALL");
+  const [filterMode, setFilterMode] = useState<"ALL" | "REQUIRED" | "PII" | "UNMAPPED">("REQUIRED");
   const [message, setMessage] = useState<{ kind: "ok" | "warn" | "err"; text: string } | null>(
     null
   );
@@ -228,6 +228,19 @@ export default function DataManagementPage() {
     }
   };
 
+  const discard = async (d: Dataset) => {
+    if (!window.confirm(`Buang dataset "${d.name}"? Baris anonim yang tersimpan akan dihapus.`)) return;
+    try {
+      const res = await fetch(`/api/datasets/${d.dataset_id}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({} as Record<string, any>)); // eslint-disable-line @typescript-eslint/no-explicit-any
+      if (!res.ok) throw new Error(json.error || "Gagal membuang dataset");
+      setMessage({ kind: "ok", text: `Dataset "${d.name}" dibuang.` });
+      await load();
+    } catch (e) {
+      setMessage({ kind: "err", text: e instanceof Error ? e.message : "Gagal membuang dataset" });
+    }
+  };
+
   const quickIngestSample = async (sampleFile: string, sampleTitle: string) => {
     if (!canUpload || quickLoadingSample) return;
     setQuickLoadingSample(sampleFile);
@@ -297,84 +310,28 @@ export default function DataManagementPage() {
 
   return (
     <DashboardShell>
-      {/* 1. EXECUTIVE HERO BANNER */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#072418] via-[#0B3824] to-[#0F4C31] text-white p-6 shadow-subtle border border-emerald-900/40">
-        <div
-          className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full opacity-20 blur-3xl"
-          style={{ background: "radial-gradient(circle, #34d399 0%, transparent 70%)" }}
-        />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-200 text-[11px] font-semibold">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Pipeline ingesti data klaim · Kepatuhan UU PDP No. 27/2022</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-              Manajemen Dataset & Pemetaan Skema Klaim JKN
-            </h1>
-            <p className="text-xs sm:text-sm text-emerald-100/85 leading-relaxed">
-              Hubungkan ekspor data klaim rumah sakit (CSV, XLSX, JSON) yang berbeda-beda nama
-              kolomnya. ARSA menyensor identitas pribadi pasien (NIK/Nama) di memori secara otomatis,
-              memetakan kolom ke standar kanonik JKN dengan AI, dan menjalankan 8 detektor forensik.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {canUpload ? (
-              <button
-                onClick={() => setIsUploadOpen(true)}
-                className="h-10 flex items-center gap-2 px-4 rounded-xl bg-white text-[#072418] font-bold text-xs hover:bg-emerald-50 transition-all shadow-sm"
-              >
-                <Upload className="w-4 h-4 text-bpjs" />
-                <span>Unggah Berkas RS (CSV / XLSX / JSON)</span>
-              </button>
-            ) : (
-              <span className="flex items-center gap-1.5 text-xs text-emerald-100 px-3.5 py-2 rounded-xl bg-white/10 border border-white/15">
-                <Lock className="w-3.5 h-3.5" /> Mode Baca Saja
-              </span>
-            )}
-          </div>
+      {/* Judul bagian */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold text-jkn-text">Dataset</h1>
+          <p className="mt-1 text-sm text-jkn-muted max-w-2xl">
+            Unggah ekspor klaim, petakan kolomnya, lalu 8 detektor memeriksanya. Identitas pasien disamarkan otomatis.
+          </p>
         </div>
-
-        {/* Step-by-Step Guide Strip inside Hero */}
-        <div className="relative z-10 mt-5 pt-4 border-t border-white/10 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-          {[
-            {
-              num: "Langkah 1",
-              title: "Pilih / Unggah Berkas RS",
-              sub: "Unggah file atau muat sampel resmi BPJS",
-            },
-            {
-              num: "Langkah 2",
-              title: "Sensor PII Otomatis",
-              sub: "NIK & No. Kartu diubah jadi token HMAC di memori",
-            },
-            {
-              num: "Langkah 3",
-              title: "Tinjau Pemetaan Kolom",
-              sub: "Pastikan semua kolom wajib JKN sudah sesuai",
-            },
-            {
-              num: "Langkah 4",
-              title: "Konfirmasi & Analisis",
-              sub: "Klaim dinormalisasi & diperiksa oleh 8 detektor",
-            },
-          ].map((item, idx) => (
-            <div
-              key={item.num}
-              className="rounded-xl bg-white/6 border border-white/10 px-3.5 py-2.5 flex items-start gap-2.5"
+        <div className="shrink-0">
+          {canUpload ? (
+            <button
+              onClick={() => setIsUploadOpen(true)}
+              className="h-8 inline-flex items-center gap-2 px-3.5 rounded-md bg-[#1d1f20] text-white text-sm font-medium hover:bg-black"
             >
-              <span className="w-5 h-5 rounded-full bg-emerald-400/20 border border-emerald-300/40 text-emerald-200 font-mono text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                {idx + 1}
-              </span>
-              <div className="min-w-0">
-                <div className="font-bold text-white text-xs">{item.title}</div>
-                <div className="text-[11px] text-emerald-100/75 leading-snug mt-0.5">
-                  {item.sub}
-                </div>
-              </div>
-            </div>
-          ))}
+              <Upload className="w-3.5 h-3.5" aria-hidden />
+              <span>Unggah berkas (CSV, XLSX, JSON)</span>
+            </button>
+          ) : (
+            <span className="h-8 inline-flex items-center gap-1.5 px-3 rounded-md border border-jkn-border text-sm text-jkn-muted">
+              <Lock className="w-3.5 h-3.5" aria-hidden /> Mode baca saja
+            </span>
+          )}
         </div>
       </div>
 
@@ -419,11 +376,11 @@ export default function DataManagementPage() {
               <div className="flex items-center gap-2">
                 <Database className="w-4 h-4 text-bpjs" />
                 <h2 className="text-sm font-bold text-jkn-text">
-                  Daftar Dataset di Ruang Kerja ({datasets.length})
+                  Dataset ({datasets.length})
                 </h2>
               </div>
               <span className="text-[11px] text-jkn-muted">
-                Klik kartu untuk melihat detail & pemetaan
+                Klik untuk membuka
               </span>
             </div>
 
@@ -484,17 +441,13 @@ export default function DataManagementPage() {
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-bpjs" />
                 <h2 className="text-sm font-bold text-jkn-text">
-                  Data Sampel Resmi BPJS
+                  Sampel resmi BPJS
                 </h2>
               </div>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-bpjs-soft text-bpjs-dark border border-bpjs-border">
                 Sumber: panitia
               </span>
             </div>
-            <p className="text-[11px] text-jkn-muted leading-relaxed">
-              Skema file FKRTL dari data.bpjs-kesehatan.go.id. Klik untuk memuat, lalu tinjau pemetaan
-              kolom dan jalankan analisis. Berkas Anda sendiri bisa diunggah lewat tombol di atas.
-            </p>
             <div className="grid grid-cols-1 sm:grid-cols-1 gap-2">
               {SAMPLES.map((s) => {
                 const busy = quickLoadingSample === s.file;
@@ -525,7 +478,6 @@ export default function DataManagementPage() {
                     <div className="font-bold text-xs text-jkn-text mt-1.5 group-hover:text-bpjs-dark truncate">
                       {s.shortTitle}
                     </div>
-                    <div className="text-[10px] text-jkn-muted line-clamp-2 mt-0.5" title={s.desc}>{s.desc}</div>
                   </button>
                 );
               })}
@@ -539,21 +491,6 @@ export default function DataManagementPage() {
         <div className="space-y-5 tabular-nums">
           {/* Interactive 4-Stage Pipeline Progress Bar */}
           <div className="bg-surface rounded-2xl border border-jkn-border shadow-subtle overflow-hidden">
-            <div className="px-5 py-3 bg-surface-secondary border-b border-jkn-border flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-bpjs" />
-                <span className="text-xs font-bold text-jkn-text">
-                  Status Alur Pemrosesan Dataset:{" "}
-                  <span className="text-bpjs-dark">{selected.name}</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-[11px] font-mono text-jkn-muted">
-                <span>ID: {selected.dataset_id}</span>
-                <span>·</span>
-                <span>Ukuran: {(selected.file_size_bytes / 1024).toFixed(1)} KB</span>
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-jkn-divider">
               {[
                 {
@@ -610,9 +547,7 @@ export default function DataManagementPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-jkn-muted">
-                        Tahap {s.step}
-                      </span>
+                      <span className="text-[11px] text-jkn-muted">Langkah {Number(s.step)}</span>
                       <span
                         className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${
                           s.state === "DONE"
@@ -630,7 +565,7 @@ export default function DataManagementPage() {
                       </span>
                     </div>
                     <div className="text-xs font-bold text-jkn-text mt-0.5">{s.title}</div>
-                    <div className="text-[11px] text-jkn-muted mt-0.5 leading-snug">{s.desc}</div>
+                    <div className="text-[11px] text-jkn-muted mt-0.5 leading-snug truncate" title={s.desc}>{s.desc}</div>
                   </div>
                 </div>
               ))}
@@ -649,14 +584,10 @@ export default function DataManagementPage() {
                       <div className="flex items-center gap-2">
                         <SlidersHorizontal className="w-4 h-4 text-bpjs" />
                         <h2 className="text-sm font-bold text-jkn-text">
-                          Meja Kerja Pemetaan Skema Kolom (Human-in-the-Loop)
+                          Pemetaan kolom
                         </h2>
                       </div>
-                      <p className="text-xs text-jkn-muted mt-1">
-                        Cocokkan kolom asli dari tabel Rumah Sakit (kiri) ke Field Standar Kanonik
-                        JKN (kanan). Tanda bintang (<span className="text-rose-600 font-bold">*</span>)
-                        menandakan {REQUIRED_FIELDS.length} field wajib untuk deteksi klaim.
-                      </p>
+                      <p className="text-xs text-jkn-muted mt-1">Tanda <span className="text-rose-600 font-bold">*</span> = {REQUIRED_FIELDS.length} field wajib untuk deteksi.</p>
                     </div>
 
                     {/* Action Button in Header so User Immediately Sees It */}
@@ -857,7 +788,7 @@ export default function DataManagementPage() {
                                 <div className="flex items-center justify-between w-full text-[11px]">
                                   <span className="text-[10px] font-semibold text-jkn-muted">
                                     {m.suggested_by === "llm"
-                                      ? "AI LLM"
+                                      ? "AI"
                                       : m.suggested_by === "manual"
                                       ? "Manual"
                                       : "Heuristik"}
@@ -1045,7 +976,7 @@ export default function DataManagementPage() {
                         : "bg-amber-50 text-amber-800 border-amber-200"
                     }`}
                   >
-                    {selected.result ? "Selesai Dianalisis" : "Menunggu Konfirmasi"}
+                    {selected.result ? "Selesai Dianalisis" : selected.status === "ERROR" ? "Gagal" : "Menunggu Konfirmasi"}
                   </span>
                 </div>
 
@@ -1054,7 +985,7 @@ export default function DataManagementPage() {
                     <div className="grid grid-cols-2 gap-2.5">
                       <div className="p-3 rounded-xl bg-surface-subtle border border-jkn-divider">
                         <div className="text-[11px] text-jkn-muted">Klaim Masuk</div>
-                        <div className="text-lg font-bold font-mono text-jkn-text mt-0.5">
+                        <div className="text-lg font-semibold text-jkn-text mt-0.5">
                           {formatNumber(selected.result.claims_ingested)}
                         </div>
                       </div>
@@ -1062,13 +993,13 @@ export default function DataManagementPage() {
                         <div className="text-[11px] text-risk-critical font-medium">
                           Klaim Berisiko
                         </div>
-                        <div className="text-lg font-bold font-mono text-risk-critical mt-0.5">
+                        <div className="text-lg font-semibold text-risk-critical mt-0.5">
                           {formatNumber(selected.result.flagged_claims)}
                         </div>
                       </div>
                       <div className="p-3 rounded-xl bg-surface-subtle border border-jkn-divider">
                         <div className="text-[11px] text-jkn-muted">Temuan Detektor</div>
-                        <div className="text-base font-bold font-mono text-jkn-text mt-0.5">
+                        <div className="text-base font-semibold text-jkn-text mt-0.5">
                           {formatNumber(selected.result.findings_total)}
                         </div>
                       </div>
@@ -1076,18 +1007,12 @@ export default function DataManagementPage() {
                         <div className="text-[11px] text-bpjs-dark font-medium">
                           Berkas Investigasi
                         </div>
-                        <div className="text-base font-bold font-mono text-bpjs-dark mt-0.5">
+                        <div className="text-base font-semibold text-bpjs-dark mt-0.5">
                           {formatNumber(selected.result.investigations_created)}
                         </div>
                       </div>
                     </div>
 
-                    <div className="text-[11px] text-jkn-muted flex items-center justify-between pt-1">
-                      <span>Mesin Vektor Kemiripan:</span>
-                      <code className="font-mono text-jkn-text bg-surface-secondary px-1.5 py-0.5 rounded border border-jkn-border">
-                        {selected.result.embedding_model}
-                      </code>
-                    </div>
 
                     <Link
                       href="/investigation-queue"
@@ -1098,6 +1023,15 @@ export default function DataManagementPage() {
                     </Link>
                   </>
                 ) : (
+                  selected.status === "ERROR" ? (
+                    <div role="alert" className="rounded-xl bg-risk-critical-bg/70 border border-risk-critical-border p-3.5 text-xs text-risk-critical space-y-2">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                        <span>Dataset tidak dapat diproses</span>
+                      </div>
+                      <p className="leading-relaxed">{selected.error_message || "Proses gagal. Periksa berkas lalu unggah ulang."}</p>
+                    </div>
+                  ) : (
                   <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-3.5 text-xs text-amber-950 space-y-2">
                     <div className="font-bold flex items-center gap-1.5">
                       <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
@@ -1109,13 +1043,19 @@ export default function DataManagementPage() {
                       memasukkan klaim ke dalam antrean investigasi.
                     </p>
                   </div>
+                  )
+                )}
+                {canUpload && selected.status !== "READY" && selected.status !== "NORMALIZING" && selected.dataset_id !== "DS-SEED" && (
+                  <button type="button" onClick={() => discard(selected)} className="w-full h-8 rounded-md border border-jkn-border text-sm font-medium text-risk-critical hover:bg-risk-critical-bg transition-colors">
+                    Buang dataset ini
+                  </button>
                 )}
               </div>
 
               {/* Card 2: UU PDP Privacy Shield Ledger */}
               {selected.anonymization && (
-                <div className="bg-surface rounded-2xl border border-jkn-border p-5 shadow-subtle space-y-3.5">
-                  <div className="flex items-center justify-between pb-3 border-b border-jkn-divider">
+                <details className="group bg-surface rounded-2xl border border-jkn-border p-5 space-y-3.5">
+                  <summary className="list-none cursor-pointer flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-bpjs" />
                       <h3 className="text-sm font-bold text-jkn-text">
@@ -1125,7 +1065,7 @@ export default function DataManagementPage() {
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                       0 PII Mentah Disimpan
                     </span>
-                  </div>
+                  </summary>
                   <p className="text-[11px] text-jkn-muted leading-relaxed">
                     Transformasi kriptografis diterapkan langsung di memori saat file dibaca. Data
                     pribadi asli pasien tidak pernah ditulis ke database maupun dikirim ke AI:
@@ -1175,7 +1115,7 @@ export default function DataManagementPage() {
                       </div>
                     ))}
                   </div>
-                </div>
+                </details>
               )}
 
               {/* Card 3: Data Quality Metrics */}
@@ -1214,7 +1154,7 @@ export default function DataManagementPage() {
                       </div>
                     ))}
 
-                    <div className="pt-2 border-t border-jkn-divider text-[11px] text-jkn-muted divide-y divide-jkn-divider">
+                    <details className="pt-2 border-t border-jkn-divider text-[11px] text-jkn-muted"><summary className="cursor-pointer list-none text-bpjs font-medium">Rincian baris</summary><div className="divide-y divide-jkn-divider mt-1">
                       <div className="py-1.5 flex justify-between">
                         <span>Total Baris Dibaca</span>
                         <strong className="font-mono text-jkn-text">
@@ -1239,7 +1179,7 @@ export default function DataManagementPage() {
                           {formatNumber(q.duplicate_rows)}
                         </strong>
                       </div>
-                    </div>
+                    </div></details>
                   </div>
                 ) : (
                   <p className="text-xs text-jkn-muted leading-relaxed">
@@ -1433,7 +1373,14 @@ export default function DataManagementPage() {
           </div>
         </div>
       )}
-      <ProvenanceCatalog compact />
+      <details className="group rounded-2xl border border-jkn-border/80 bg-surface">
+        <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between text-base font-semibold text-jkn-text">
+          <span>Asal data: resmi dan sintetis</span>
+          <span className="text-xs font-medium text-bpjs group-open:hidden">Tampilkan</span>
+          <span className="text-xs font-medium text-bpjs hidden group-open:inline">Sembunyikan</span>
+        </summary>
+        <div className="px-1 pb-3"><ProvenanceCatalog compact /></div>
+      </details>
     </DashboardShell>
   );
 }

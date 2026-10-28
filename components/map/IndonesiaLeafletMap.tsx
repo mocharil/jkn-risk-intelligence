@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, GeoJSON, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Building2, ArrowRight, Navigation, X } from "lucide-react";
 import { ProvinceRiskData, RiskLevel, RiskType } from "@/types/risk";
@@ -17,6 +17,12 @@ interface IndonesiaLeafletMapProps {
   /** Pilih & dekati provinsi dari luar (mis. dari tabel). */
   focusProvince?: string;
   className?: string;
+  /** Peta lebih tinggi agar sejajar dengan kartu di sebelahnya. */
+  tall?: boolean;
+  /** Peta sematkan tanpa kontrol dan legenda (mis. di dalam jawaban Copilot); tampilan menyesuaikan provinsi berdata. */
+  bare?: boolean;
+  /** Lapisan risiko digambar sebagai peta panas hijau (makin pekat = skor risiko provinsi makin tinggi). */
+  heat?: boolean;
   /** Hanya tampilkan lapisan statistik BPJS (biaya, akses, FKRTL). */
   nationalOnly?: boolean;
   /** Lapisan dikendalikan dari luar (menyembunyikan header & pemilih lapisan bawaan). */
@@ -37,6 +43,50 @@ const METRICS: { key: Metric; label: string; group: "Dataset klaim" | "Statistik
 const LEVEL_COLOR: Record<RiskLevel, string> = { CRITICAL: "#B91C1C", HIGH: "#EA580C", MEDIUM: "#CA8A04", LOW: "#059669" };
 const LEVEL_LABEL: Record<RiskLevel, string> = { CRITICAL: "Kritis", HIGH: "Tinggi", MEDIUM: "Sedang", LOW: "Rendah" };
 const NO_DATA = "#9CA3AF";
+
+/**
+ * Batas wilayah pada /geo/indonesia-provinces.json berasal dari peta dasar lama (32 provinsi), jadi beberapa poligon
+ * mencakup lebih dari satu provinsi saat ini. Nilainya digabung berbobot jumlah klaim.
+ */
+const POLY_GROUPS: Record<string, string[]> = {
+  "DI. ACEH": ["ID-AC"],
+  "SUMATERA UTARA": ["ID-SU"],
+  "SUMATERA BARAT": ["ID-SB"],
+  RIAU: ["ID-RI", "ID-KR"],
+  JAMBI: ["ID-JA"],
+  "SUMATERA SELATAN": ["ID-SS"],
+  BENGKULU: ["ID-BE"],
+  LAMPUNG: ["ID-LA"],
+  "BANGKA BELITUNG": ["ID-BB"],
+  "DKI JAKARTA": ["ID-JK"],
+  "JAWA BARAT": ["ID-JB"],
+  "JAWA TENGAH": ["ID-JT"],
+  "DAERAH ISTIMEWA YOGYAKARTA": ["ID-YO"],
+  PROBANTEN: ["ID-BT"],
+  "JAWA TIMUR": ["ID-JI"],
+  BALI: ["ID-BA"],
+  "NUSATENGGARA BARAT": ["ID-NB"],
+  "NUSA TENGGARA TIMUR": ["ID-NT"],
+  "KALIMANTAN BARAT": ["ID-KB"],
+  "KALIMANTAN TENGAH": ["ID-KT"],
+  "KALIMANTAN SELATAN": ["ID-KS"],
+  "KALIMANTAN TIMUR": ["ID-KI", "ID-KU"],
+  "SULAWESI UTARA": ["ID-SA"],
+  GORONTALO: ["ID-GO"],
+  "SULAWESI TENGAH": ["ID-ST"],
+  "SULAWESI SELATAN": ["ID-SN", "ID-SR"],
+  "SULAWESI TENGGARA": ["ID-SG"],
+  MALUKU: ["ID-MA"],
+  "MALUKU UTARA": ["ID-MU"],
+  "IRIAN JAYA BARAT": ["ID-PB"],
+  "IRIAN JAYA TENGAH": ["ID-PA"],
+  "IRIAN JAYA TIMUR": ["ID-PA"],
+};
+
+/** Zoom nasional untuk peta panas: seluruh kepulauan terlihat utuh tanpa terpotong. */
+const HEAT_ZOOM = 4.2;
+const HEAT_FROM = "#DCFCE7";
+const HEAT_TO = "#14532D";
 
 const REGIONS = [
   { key: "ALL", label: "Nasional", center: [-2.5, 118.0] as [number, number], zoom: 5 },
@@ -91,12 +141,35 @@ function formatMetric(m: Metric, v: number | null): string {
   return v.toLocaleString("id-ID", { maximumFractionDigits: 1 });
 }
 
-export const IndonesiaLeafletMap: React.FC<IndonesiaLeafletMapProps> = ({ provinceData, onSelectProvince, focusProvince, className, nationalOnly, metric: controlledMetric }) => {
+export const IndonesiaLeafletMap: React.FC<IndonesiaLeafletMapProps> = ({ provinceData, onSelectProvince, focusProvince, className, tall, bare, heat, nationalOnly, metric: controlledMetric }) => {
   const [selected, setSelected] = useState<ProvinceRiskData | null>(null);
-  const [view, setView] = useState<{ center: [number, number]; zoom: number }>({ center: [-2.5, 118.0], zoom: 5 });
+  const [view, setView] = useState<{ center: [number, number]; zoom: number }>(() => {
+    if (bare) {
+      const pts = provinceData.filter((p) => p.total_claims > 0).map((p) => INDONESIA_PROVINCES.find((g) => g.code === p.province_code)).filter((g): g is NonNullable<typeof g> => !!g);
+      if (pts.length > 0) {
+        const lat = pts.reduce((a, g) => a + g.lat, 0) / pts.length;
+        const lng = pts.reduce((a, g) => a + g.lng, 0) / pts.length;
+        const latSpan = Math.max(...pts.map((g) => g.lat)) - Math.min(...pts.map((g) => g.lat));
+        const lngSpan = Math.max(...pts.map((g) => g.lng)) - Math.min(...pts.map((g) => g.lng));
+        // Zoom yang memuat semua provinsi dibahas pada kanvas sekitar 420 x 260 px, dengan ruang di tepi.
+        const z = Math.log2((360 / 256) * Math.min(420 / (lngSpan * 1.7 + 4), 260 / (latSpan * 1.7 + 3)));
+        return { center: [lat, lng], zoom: Math.max(4.2, Math.min(7.2, z)) };
+      }
+    }
+    return { center: [-2.5, 118.0], zoom: heat ? HEAT_ZOOM : 5 };
+  });
   const [activeRegion, setActiveRegion] = useState("ALL");
+  const [geo, setGeo] = useState<GeoJSON.FeatureCollection | null>(null);
   const [innerMetric, setMetric] = useState<Metric>(nationalOnly ? "NAT_COST" : "RISK");
   const metric: Metric = controlledMetric ?? innerMetric;
+
+  useEffect(() => {
+    if (!heat || geo) return;
+    fetch("/geo/indonesia-provinces.json")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setGeo(j))
+      .catch(() => {});
+  }, [heat, geo]);
 
   const byCode = useMemo(() => new Map(provinceData.map((p) => [p.province_code, p])), [provinceData]);
 
@@ -105,6 +178,30 @@ export const IndonesiaLeafletMap: React.FC<IndonesiaLeafletMapProps> = ({ provin
     const vals = INDONESIA_PROVINCES.map((g) => valueOf(metric, byCode.get(g.code))).filter((v): v is number => v !== null);
     return { min: Math.min(...vals, Infinity), max: Math.max(...vals, -Infinity) };
   }, [metric, byCode]);
+
+  // Nilai per poligon (gabungan provinsi yang berbagi batas lama), untuk peta panas.
+  const isNat = metric === "NAT_COST" || metric === "NAT_ACCESS" || metric === "NAT_FKRTL";
+  const heatOn = !!heat && (metric === "RISK" || isNat);
+  const polyStats = useMemo(() => {
+    const out = new Map<string, { score: number | null; claims: number; high: number; names: string[]; rep: ProvinceRiskData | null }>();
+    for (const [name, codes] of Object.entries(POLY_GROUPS)) {
+      const all = codes.map((c) => byCode.get(c)).filter((d): d is ProvinceRiskData => !!d);
+      const ds = isNat ? all.filter((d) => d.national) : all.filter((d) => d.total_claims > 0);
+      const claims = ds.reduce((a, d) => a + d.total_claims, 0);
+      const high = ds.reduce((a, d) => a + d.high_risk_claims, 0);
+      const score = isNat
+        ? ds.length > 0 ? ds.reduce((a, d) => a + (valueOf(metric, d) ?? 0), 0) / ds.length : null
+        : claims > 0 ? ds.reduce((a, d) => a + (d.risk_score ?? 0) * d.total_claims, 0) / claims : null;
+      const rep = [...ds].sort((a, b) => b.total_claims - a.total_claims)[0] ?? ds[0] ?? null;
+      out.set(name, { score, claims, high, names: codes.map((c) => INDONESIA_PROVINCES.find((g) => g.code === c)?.name ?? c), rep });
+    }
+    return out;
+  }, [byCode, isNat, metric]);
+
+  const heatRange = useMemo(() => {
+    const vals = Array.from(polyStats.values()).map((v) => v.score).filter((v): v is number => v !== null);
+    return { min: Math.min(...vals, Infinity), max: Math.max(...vals, -Infinity) };
+  }, [polyStats]);
 
   useEffect(() => {
     if (!focusProvince) return;
@@ -123,6 +220,7 @@ export const IndonesiaLeafletMap: React.FC<IndonesiaLeafletMapProps> = ({ provin
     const t = (v - range.min) / span;
     switch (metric) {
       case "RISK":
+        if (heat) return { fill: lerpColor("#86EFAC", "#064E3B", t), radius: 5 + Math.min(6, Math.sqrt(d.high_risk_claims)), opacity: 0.95 };
         return { fill: LEVEL_COLOR[d.risk_level], radius: 7 + Math.min(15, Math.sqrt(d.high_risk_claims) * 2), opacity: 0.8 };
       case "EXPOSURE":
         return { fill: lerpColor("#FCA5A5", "#7F1D1D", t), radius: 6 + Math.sqrt(t) * 16, opacity: 0.85 };
@@ -136,14 +234,14 @@ export const IndonesiaLeafletMap: React.FC<IndonesiaLeafletMapProps> = ({ provin
   const meta = METRICS.find((m) => m.key === metric)!;
   const focusRegion = (r: (typeof REGIONS)[number]) => {
     setActiveRegion(r.key);
-    setView({ center: r.center, zoom: r.zoom });
+    setView({ center: r.center, zoom: heat && r.key === "ALL" ? HEAT_ZOOM : r.zoom });
   };
 
   const nat = selected?.national;
 
   return (
     <div className={`relative bg-surface rounded-xl border border-jkn-border p-4 sm:p-5 shadow-subtle overflow-hidden flex flex-col ${className || ""}`}>
-      {!controlledMetric && <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 mb-3">
+      {!controlledMetric && !bare && <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
           <h3 className="text-base font-bold text-jkn-text">{nationalOnly ? "Biaya dan akses layanan per provinsi" : "Sebaran risiko klaim per provinsi"}</h3>
           <p className="text-xs text-jkn-muted mt-0.5 max-w-xl">{meta.hint}</p>
@@ -169,6 +267,7 @@ export const IndonesiaLeafletMap: React.FC<IndonesiaLeafletMapProps> = ({ provin
         </label>
       </div>}
 
+      {!bare && (
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
           <span className="text-xs text-jkn-dim font-semibold flex items-center gap-1 shrink-0 mr-1">
@@ -190,7 +289,13 @@ export const IndonesiaLeafletMap: React.FC<IndonesiaLeafletMapProps> = ({ provin
 
         {/* Legenda sesuai lapisan */}
         <div className="flex flex-wrap items-center gap-3 text-xs text-jkn-muted bg-surface-secondary px-3 py-1.5 rounded-md border border-jkn-border">
-          {metric === "RISK" ? (
+          {heatOn ? (
+            <span className="inline-flex items-center gap-2">
+              <span>{isNat ? (Number.isFinite(heatRange.min) ? formatMetric(metric, heatRange.min) : "-") : `Skor ${Number.isFinite(heatRange.min) ? Math.round(heatRange.min) : "-"}`}</span>
+              <span className="inline-block w-28 h-2.5 rounded-full border border-jkn-border" style={{ background: `linear-gradient(90deg,${HEAT_FROM},${HEAT_TO})` }} aria-hidden />
+              <span>{isNat ? (Number.isFinite(heatRange.max) ? formatMetric(metric, heatRange.max) : "-") : `Skor ${Number.isFinite(heatRange.max) ? Math.round(heatRange.max) : "-"}`}</span>
+            </span>
+          ) : metric === "RISK" ? (
             <>
               {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as RiskLevel[]).map((l) => (
                 <span key={l} className="inline-flex items-center gap-1.5">
@@ -231,12 +336,67 @@ export const IndonesiaLeafletMap: React.FC<IndonesiaLeafletMapProps> = ({ provin
         </div>
       </div>
 
-      <div className={`relative w-full ${controlledMetric ? "h-[460px]" : "h-[500px]"} rounded-lg border border-jkn-divider overflow-hidden z-0`}>
-        <MapContainer center={view.center} zoom={view.zoom} minZoom={4} maxZoom={9} scrollWheelZoom style={{ width: "100%", height: "100%", background: "#EEF3F0" }}>
-          <MapController center={view.center} zoom={view.zoom} />
-          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      )}
 
-          {INDONESIA_PROVINCES.map((geo) => {
+      <div className={`relative w-full ${bare ? "h-[260px]" : tall || (heat && controlledMetric) ? "aspect-video" : controlledMetric ? "h-[460px]" : "h-[500px]"} rounded-lg border border-jkn-divider overflow-hidden z-0`}>
+        <MapContainer center={view.center} zoom={view.zoom} minZoom={4} maxZoom={9} zoomSnap={heat || bare ? 0.1 : 1} scrollWheelZoom style={{ width: "100%", height: "100%", background: heatOn ? "#FFFFFF" : "#EEF3F0" }}>
+          <MapController center={view.center} zoom={view.zoom} />
+          {!heatOn && <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />}
+
+          {/* Peta panas: poligon provinsi diwarnai putih ke hijau menurut skor risiko */}
+          {heatOn && geo && (
+            <GeoJSON
+              key={`heat-${metric}-${polyStats.size}-${heatRange.min}-${heatRange.max}-${Array.from(polyStats.values()).reduce((a, v) => a + v.claims, 0)}`}
+              data={geo}
+              style={(f) => {
+                const st = polyStats.get(f?.properties?.name);
+                if (!st || st.score === null) return { color: "#D1D5DB", weight: 0.8, fillColor: "#F3F4F6", fillOpacity: 1 };
+                const t = heatRange.max > heatRange.min ? (st.score - heatRange.min) / (heatRange.max - heatRange.min) : 1;
+                return { color: "#FFFFFF", weight: 1, fillColor: lerpColor(HEAT_FROM, HEAT_TO, 0.1 + 0.9 * Math.pow(Math.max(0, t), 0.6)), fillOpacity: 1 };
+              }}
+              onEachFeature={(f, layer) => {
+                const st = polyStats.get(f.properties?.name);
+                const label = st ? st.names.join(" + ") : String(f.properties?.name);
+                layer.bindTooltip(
+                  `<div style="font-size:12px;min-width:170px"><strong>${label}</strong><br/>` +
+                    (st && st.score !== null
+                      ? isNat
+                        ? `${meta.label}: ${formatMetric(metric, st.score)}`
+                        : `Skor risiko ${Math.round(st.score)}<br/>${st.high.toLocaleString("id-ID")} dari ${st.claims.toLocaleString("id-ID")} klaim berisiko tinggi`
+                      : isNat ? "Tidak ada data" : "Belum ada klaim pada data ini") +
+                    "</div>",
+                  { sticky: true }
+                );
+                layer.on("click", () => {
+                  if (st?.rep) {
+                    setSelected(st.rep);
+                    onSelectProvince?.(st.rep.province_code);
+                  }
+                });
+                layer.on("mouseover", () => (layer as unknown as { setStyle: (o: object) => void }).setStyle({ color: "#064E3B", weight: 2 }));
+                layer.on("mouseout", () => (layer as unknown as { setStyle: (o: object) => void }).setStyle({ color: st && st.score !== null ? "#FFFFFF" : "#D1D5DB", weight: st && st.score !== null ? 1 : 0.8 }));
+              }}
+            />
+          )}
+
+          {/* Mode sematan: tandai provinsi yang dibahas agar terlihat meski wilayahnya kecil */}
+          {bare &&
+            heat &&
+            provinceData
+              .filter((p) => p.total_claims > 0)
+              .map((p) => {
+                const g = INDONESIA_PROVINCES.find((x) => x.code === p.province_code);
+                if (!g) return null;
+                return (
+                  <CircleMarker key={`pin-${p.province_code}`} center={[g.lat, g.lng]} radius={7} pathOptions={{ color: "#FFFFFF", weight: 2, fillColor: LEVEL_COLOR[p.risk_level], fillOpacity: 1 }}>
+                    <Tooltip direction="top" offset={[0, -6]} permanent>
+                      <span className="text-xs font-semibold">{g.name}</span>
+                    </Tooltip>
+                  </CircleMarker>
+                );
+              })}
+
+          {!heatOn && INDONESIA_PROVINCES.map((geo) => {
             const d = byCode.get(geo.code);
             const st = styleFor(geo.code);
             const isSel = selected?.province_code === geo.code;
@@ -277,7 +437,7 @@ export const IndonesiaLeafletMap: React.FC<IndonesiaLeafletMapProps> = ({ provin
           })}
         </MapContainer>
 
-        {selected && !controlledMetric && (
+        {selected && !controlledMetric && !bare && (
           <div className="absolute bottom-3 right-3 left-3 md:left-auto md:w-96 max-h-[476px] overflow-y-auto bg-white border border-jkn-border rounded-xl p-4 shadow-elevated z-[1000] tabular-nums" role="dialog" aria-label={`Ringkasan ${selected.province_name}`}>
             <div className="flex items-start justify-between pb-2.5 border-b border-jkn-divider">
               <div>

@@ -373,6 +373,150 @@ export function computeEmergingSignals(store: AggStore): EmergingSignal[] {
 }
 
 // ---------------------------------------------------------------------------
+// Pergeseran pola per jenis temuan (semua jenis, bukan hanya yang lolos ambang sinyal)
+// ---------------------------------------------------------------------------
+export interface PatternShift {
+  risk_type: RiskType;
+  recent: number;
+  previous: number;
+  change_percentage: number | null;
+  exposure_recent: number;
+  /** Lolos ambang sinyal emergen (kenaikan bermakna secara statistik). */
+  significant: boolean;
+}
+
+export function computePatternShifts(store: AggStore): PatternShift[] {
+  const asOf = asOfDate(store.claims);
+  const out: PatternShift[] = [];
+  for (const type of ALL_RISK_TYPES) {
+    let recent = 0;
+    let previous = 0;
+    let exposure = 0;
+    for (const c of store.claims) {
+      if (!c.risk_findings.some((f) => f.risk_type === type)) continue;
+      const age = daysBetween(asOf, c.service.submission_date);
+      if (age >= 0 && age < 14) {
+        recent++;
+        exposure += c.tariff_difference || 0;
+      } else if (age >= 14 && age < 28) previous++;
+    }
+    if (recent + previous === 0) continue;
+    const z = (recent - previous) / Math.sqrt(recent + previous + 1);
+    out.push({
+      risk_type: type,
+      recent,
+      previous,
+      change_percentage: previous > 0 ? pctChange(recent, previous) : null,
+      exposure_recent: exposure,
+      significant: recent >= 3 && z >= SIGNAL_MIN_Z,
+    });
+  }
+  return out.sort((a, b) => b.recent - b.previous - (a.recent - a.previous) || b.recent - a.recent);
+}
+
+// ---------------------------------------------------------------------------
+// Rincian pola 28 hari: deret harian per jenis, faskes terlibat, dan total gabungan
+// ---------------------------------------------------------------------------
+export interface PatternDetail {
+  totals: { recent_claims: number; previous_claims: number; recent_exposure: number; recent_providers: number };
+  types: Array<{
+    risk_type: RiskType;
+    daily: number[];
+    recent: number;
+    previous: number;
+    exposure_recent: number;
+    top_providers: Array<{ provider_id: string; name: string; count: number }>;
+    top_claim_id: string | null;
+  }>;
+}
+
+export function computePatternDetail(store: AggStore): PatternDetail {
+  const asOf = asOfDate(store.claims);
+  const WINDOW = 28;
+  const recentClaims = new Set<string>();
+  const prevClaims = new Set<string>();
+  const recentProviders = new Set<string>();
+  let recentExposure = 0;
+  const types: PatternDetail["types"] = [];
+
+  for (const type of ALL_RISK_TYPES) {
+    const daily = new Array<number>(WINDOW).fill(0);
+    const byProvider = new Map<string, { name: string; count: number }>();
+    let recent = 0;
+    let previous = 0;
+    let exposure = 0;
+    let topClaim: CanonicalClaim | null = null;
+    for (const c of store.claims) {
+      if (!c.risk_findings.some((f) => f.risk_type === type)) continue;
+      const age = daysBetween(asOf, c.service.submission_date);
+      if (age < 0 || age >= WINDOW) continue;
+      daily[WINDOW - 1 - age]++;
+      if (age < 14) {
+        recent++;
+        exposure += c.tariff_difference || 0;
+        const cur = byProvider.get(c.provider.provider_id) ?? { name: c.provider.name, count: 0 };
+        cur.count++;
+        byProvider.set(c.provider.provider_id, cur);
+        if (!topClaim || c.risk_score > topClaim.risk_score) topClaim = c;
+      } else previous++;
+    }
+    types.push({
+      risk_type: type,
+      daily,
+      recent,
+      previous,
+      exposure_recent: exposure,
+      top_providers: Array.from(byProvider.entries())
+        .map(([provider_id, v]) => ({ provider_id, name: v.name, count: v.count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 2),
+      top_claim_id: topClaim ? topClaim.claim_id : null,
+    });
+  }
+
+  for (const c of store.claims) {
+    if (c.risk_findings.length === 0) continue;
+    const age = daysBetween(asOf, c.service.submission_date);
+    if (age >= 0 && age < 14) {
+      recentClaims.add(c.claim_id);
+      recentProviders.add(c.provider.provider_id);
+      recentExposure += c.tariff_difference || 0;
+    } else if (age >= 14 && age < 28) prevClaims.add(c.claim_id);
+  }
+
+  return {
+    totals: { recent_claims: recentClaims.size, previous_claims: prevClaims.size, recent_exposure: recentExposure, recent_providers: recentProviders.size },
+    types,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Umur kasus yang belum diputuskan (hari sejak klaim diajukan sampai tanggal acuan data)
+// ---------------------------------------------------------------------------
+export const QUEUE_AGE_BUCKETS: Array<{ key: string; label: string; max: number }> = [
+  { key: "d7", label: "0 sampai 7 hari", max: 7 },
+  { key: "d14", label: "8 sampai 14 hari", max: 14 },
+  { key: "d30", label: "15 sampai 30 hari", max: 30 },
+  { key: "d60", label: "31 sampai 60 hari", max: 60 },
+  { key: "d90", label: "lebih dari 60 hari", max: Infinity },
+];
+
+export function computeQueueAge(
+  investigations: Array<{ status: string; claim: { service: { submission_date: string } } }>,
+  asOf: string
+): Array<{ key: string; label: string; count: number }> {
+  const closed = new Set(["CONFIRMED_RISK", "FALSE_POSITIVE", "CLOSED"]);
+  const counts = QUEUE_AGE_BUCKETS.map((b) => ({ key: b.key, label: b.label, count: 0 }));
+  for (const inv of investigations) {
+    if (closed.has(inv.status)) continue;
+    const age = Math.max(0, daysBetween(asOf, inv.claim.service.submission_date));
+    const idx = QUEUE_AGE_BUCKETS.findIndex((b) => age <= b.max);
+    counts[idx === -1 ? counts.length - 1 : idx].count++;
+  }
+  return counts;
+}
+
+// ---------------------------------------------------------------------------
 // Alur kerja investigasi: berubah setiap kali pengguna menetapkan status/keputusan.
 // ---------------------------------------------------------------------------
 export interface WorkflowSummary {

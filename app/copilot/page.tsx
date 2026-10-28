@@ -1,5 +1,6 @@
 "use client";
 
+import { CopilotVisuals, CopilotVisual } from "@/components/ai/CopilotVisuals";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth/client";
@@ -29,6 +30,7 @@ interface Message {
   grounding?: { valid_citations: number; removed_invalid_citations: number; context_items: number };
   evidence_citations?: Array<{ ref?: number; evidence_id: string; title: string; excerpt: string; status: string }>;
   entity_links?: Array<{ type: string; id: string; label: string; risk_score?: number; href?: string }>;
+  visuals?: CopilotVisual[];
   suggested_followups?: string[];
   timestamp: string;
 }
@@ -359,7 +361,7 @@ export default function AICopilotPage() {
             embeddingModel: j.embedding?.model || j.ai.embedding_model,
             reason:
               j.governance?.copilot_mode === "DETERMINISTIC_ONLY"
-                ? "Kebijakan tata kelola: mode deterministik (tanpa LLM)."
+                ? "Kebijakan tata kelola: mode aturan (tanpa AI)."
                 : j.ai.reason,
             policy: j.governance?.copilot_mode === "DETERMINISTIC_ONLY",
           })
@@ -409,7 +411,7 @@ export default function AICopilotPage() {
         badgeColor: "bg-risk-critical-bg text-risk-critical border-risk-critical-border",
         icon: ForensicCrosshairIcon,
         accent: "text-risk-critical border-risk-critical/25 bg-risk-critical-bg/60",
-        title: `Bedah Temuan & Bukti Klaim ${cId}`,
+        title: `Mengapa klaim ${cId} berisiko?`,
         prompt: `Mengapa klaim ${cId} dianggap berisiko?`,
         desc: "Telusuri sinyal detektor, kontradiksi dokumen rekam medis, dan selisih tarif terhadap peer.",
       },
@@ -420,7 +422,7 @@ export default function AICopilotPage() {
         badgeColor: "bg-bpjs-soft text-bpjs-dark border-bpjs-border",
         icon: FacilityMatrixIcon,
         accent: "text-bpjs-dark border-bpjs-border bg-bpjs-soft/70",
-        title: "Faskes Paling Berisiko & Polanya",
+        title: "Faskes paling berisiko dan polanya",
         prompt: "Faskes mana yang paling berisiko dan apa polanya?",
         desc: "Identifikasi rumah sakit dengan rasio klaim risiko tinggi, severity-3, dan eksposur terbesar.",
       },
@@ -431,7 +433,7 @@ export default function AICopilotPage() {
         badgeColor: "bg-intel-light text-intel-deep border-intel-border",
         icon: BenchmarkDeltaIcon,
         accent: "text-intel-deep border-intel-border bg-intel-light/70",
-        title: `Uji Kewajaran Biaya Klaim ${cId}`,
+        title: `Wajarkah biaya klaim ${cId}?`,
         prompt: `Apakah biaya klaim ${cId} wajar dibanding rerata nasional BPJS?`,
         desc: "Bandingkan nilai tagihan dan lama rawat (LOS) dengan agregat resmi Portal Data BPJS.",
       },
@@ -442,7 +444,7 @@ export default function AICopilotPage() {
         badgeColor: "bg-risk-medium-bg text-risk-medium border-risk-medium-border",
         icon: GeoGridIcon,
         accent: "text-risk-medium border-risk-medium-border bg-risk-medium-bg/70",
-        title: `Bandingkan Risiko ${prov1} & ${prov2}`,
+        title: `${prov1} dibanding ${prov2}`,
         prompt: `Bandingkan risiko ${prov1} dan ${prov2}`,
         desc: "Komparasi volume klaim berisiko tinggi, eksposur rupiah, serta modus dominan antarprovinsi.",
       },
@@ -543,6 +545,7 @@ export default function AICopilotPage() {
               confidence: d.confidence,
               evidence_citations: d.evidence_citations,
               entity_links: d.entity_links,
+              visuals: d.visuals,
               suggested_followups: d.suggested_followups,
               streaming: false,
             });
@@ -596,331 +599,176 @@ export default function AICopilotPage() {
 
   return (
     <DashboardShell>
-      {/* Top Workspace Header — Simple & Clean */}
-      <div className="flex items-center justify-between gap-3 bg-surface rounded-xl border border-jkn-border px-4 py-3 shadow-subtle">
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className="w-9 h-9 rounded-xl bg-slate-900 text-teal-400 border border-slate-800 shadow-subtle flex items-center justify-center shrink-0"
-            aria-hidden="true"
-          >
-            <ArsaGlyph className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-base sm:text-lg font-bold text-jkn-text tracking-tight">Arsa Copilot</h1>
-            <p className="text-xs text-jkn-muted truncate">
-              Asisten investigasi klaim &amp; fasilitas kesehatan JKN berbasis bukti.
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={newChat}
-          className="h-9 px-3.5 rounded-lg border border-jkn-border bg-white text-xs font-semibold text-jkn-text hover:border-bpjs hover:text-bpjs-dark hover:bg-bpjs-soft/40 inline-flex items-center gap-1.5 transition-all shadow-subtle shrink-0"
-        >
-          <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-          <span>Percakapan Baru</span>
-        </button>
-      </div>
+      <h1 className="sr-only">Arsa Copilot</h1>
 
       {/* Main 2-Column Intelligence Workspace — Equal Locked Height on Desktop (Zero Blank Space) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:h-[calc(100vh-11.5rem)] lg:min-h-[600px] items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:h-[calc(100vh-8.5rem)] lg:min-h-[600px] items-stretch">
         {/* Left/Center Column: Conversation & Forensic Canvas (8 cols) */}
-        <div className="lg:col-span-8 xl:col-span-8 2xl:col-span-9 bg-surface rounded-xl border border-jkn-border shadow-card flex flex-col h-[640px] lg:h-full min-h-0 overflow-hidden">
+        <div className="lg:col-span-8 xl:col-span-8 2xl:col-span-9 relative bg-white rounded-2xl border border-jkn-border/70 flex flex-col h-[640px] lg:h-full min-h-0 overflow-hidden">
+          {!isWelcomeState && (
+            <div className="flex justify-end px-4 pt-2 shrink-0">
+              <button type="button" onClick={newChat} className="h-8 px-3 rounded-full text-xs font-medium text-jkn-muted hover:text-jkn-text hover:bg-frame inline-flex items-center gap-1.5 transition-colors">
+                <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Percakapan baru</span>
+              </button>
+            </div>
+          )}
           {/* Scrollable Message & Welcome Area */}
           <div
             ref={scrollContainerRef}
-            className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-5"
+            className={`flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6 space-y-5 pt-4 sm:pt-6`}
             role="log"
             aria-label="Percakapan dengan Arsa Copilot"
             aria-live="polite"
           >
             {isWelcomeState ? (
-              <div className="max-w-3xl mx-auto space-y-5 py-1 animate-in fade-in duration-150">
-                {/* Clean Welcome Card */}
-                <div className="rounded-xl border border-jkn-border bg-surface-secondary/60 p-5 shadow-subtle">
-                  <div className="flex flex-col sm:flex-row sm:items-start gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-slate-900 text-teal-400 flex items-center justify-center shrink-0">
-                      <ArsaGlyph className="w-5 h-5" />
-                    </div>
-                    <div className="space-y-2 min-w-0 flex-1">
-                      <div className="text-sm text-jkn-text leading-relaxed">
-                        {renderAnswer(messages[0]?.text || greeting().text, "msg-1")}
-                      </div>
-                    </div>
-                  </div>
+              <div className="h-full min-h-[420px] flex flex-col items-center justify-center text-center max-w-2xl mx-auto gap-9 py-6 animate-in fade-in duration-150">
+                <div className="space-y-3">
+                  <span className="mx-auto w-12 h-12 rounded-full bg-[#0B291C] text-teal-300 grid place-items-center" aria-hidden="true">
+                    <ArsaGlyph className="w-6 h-6" />
+                  </span>
+                  <h2 className="text-3xl font-semibold text-jkn-text">Halo, {firstName}</h2>
+                  <p className="text-base text-jkn-muted">Apa yang ingin Anda periksa hari ini?</p>
                 </div>
-
-                {/* 2x2 Categorized Forensic Starter Cards */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-jkn-text uppercase tracking-wider">
-                      Mulai Investigasi
-                    </span>
-                    <span className="text-[11px] text-jkn-dim">Pilih topik atau ketik pertanyaan di bawah</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {starterCards.map((card) => {
-                      const Icon = card.icon;
-                      return (
-                        <button
-                          key={card.index}
-                          type="button"
-                          onClick={() => handleSend(card.prompt)}
-                          disabled={busy}
-                          className="group text-left p-4 rounded-xl bg-white border border-jkn-border hover:border-bpjs hover:bg-bpjs-soft/15 transition-all shadow-subtle hover:shadow-card flex flex-col justify-between gap-3 disabled:opacity-50"
-                        >
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`w-7 h-7 rounded-lg border flex items-center justify-center ${card.accent}`}
-                                >
-                                  <Icon className="w-4 h-4" />
-                                </span>
-                                <span className="text-[11px] font-bold text-jkn-muted">{card.category}</span>
-                              </div>
-                              <span
-                                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${card.badgeColor}`}
-                              >
-                                {card.badge}
-                              </span>
-                            </div>
-                            <div className="text-sm font-bold text-jkn-text group-hover:text-bpjs-dark transition-colors">
-                              {card.title}
-                            </div>
-                            <p className="text-xs text-jkn-muted leading-relaxed line-clamp-2">{card.desc}</p>
-                          </div>
-
-                          <div className="flex items-center justify-between pt-2 border-t border-jkn-divider text-xs font-semibold text-bpjs-dark">
-                            <span className="truncate pr-2">{card.prompt}</span>
-                            <ArrowRight
-                              className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-1 transition-transform"
-                              aria-hidden="true"
-                            />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                  {starterCards.map((card) => {
+                    const Icon = card.icon;
+                    return (
+                      <button
+                        key={card.index}
+                        type="button"
+                        onClick={() => handleSend(card.prompt)}
+                        disabled={busy}
+                        className="group flex items-center gap-3 text-left rounded-2xl border border-jkn-border/70 px-4 py-3.5 hover:border-bpjs/50 hover:bg-frame/50 transition-colors disabled:opacity-50"
+                      >
+                        <span className="w-9 h-9 rounded-xl bg-frame text-bpjs-dark grid place-items-center shrink-0 group-hover:bg-white transition-colors">
+                          <Icon className="w-[18px] h-[18px]" />
+                        </span>
+                        <span className="text-sm font-medium text-jkn-text leading-snug">{card.title}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
-              messages.map((msg, msgIdx) => (
-                <div
-                  key={msg.id}
-                  className={`flex gap-3 ${
-                    msg.sender === "USER" ? "max-w-2xl ml-auto flex-row-reverse" : "max-w-3xl mr-auto"
-                  }`}
-                >
-                  {/* Precision Avatar Badge */}
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 font-mono text-xs font-bold ${
-                      msg.sender === "USER"
-                        ? "bg-slate-800 text-white border border-slate-700"
-                        : "bg-slate-900 text-teal-400 border border-slate-800 shadow-subtle"
-                    }`}
-                    aria-hidden="true"
-                  >
-                    {msg.sender === "USER" ? userInitials : <ArsaGlyph className="w-4 h-4" />}
+              messages.map((msg, msgIdx) =>
+                msg.id === "msg-1" ? null : msg.sender === "USER" ? (
+                  <div key={msg.id} className="flex justify-end">
+                    <div className="max-w-[80%] rounded-2xl rounded-br-md bg-[#0B291C] text-white px-4 py-2.5 text-sm leading-relaxed whitespace-pre-line">{msg.text}</div>
                   </div>
-
-                  <div className="space-y-2.5 min-w-0 flex-1">
-                    <div
-                      className={`rounded-xl text-sm leading-relaxed ${
-                        msg.sender === "USER"
-                          ? "p-3.5 bg-slate-900 text-white rounded-tr-none font-medium shadow-subtle"
-                          : "bg-white border border-jkn-border text-jkn-text rounded-tl-none shadow-subtle overflow-hidden"
-                      }`}
-                    >
-                      {/* AI Card Header Bar — Simple */}
-                      {msg.sender === "AI" && msg.id !== "msg-1" && (
-                        <div className="flex items-center justify-between gap-2 px-4 py-2 bg-surface-secondary/60 border-b border-jkn-divider text-xs">
-                          {msg.streaming ? (
-                            <span className="inline-flex items-center gap-2 text-bpjs-dark font-semibold">
-                              <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-bpjs opacity-75" />
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-bpjs" />
-                              </span>
-                              <span>Menyusun analisis...</span>
-                            </span>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-jkn-text">Hasil Analisis</span>
-                              {msg.grounding && msg.grounding.valid_citations > 0 && (
-                                <span className="px-2 py-0.5 rounded bg-bpjs-soft text-bpjs-dark border border-bpjs-border text-[11px] font-medium tabular-nums">
-                                  {msg.grounding.valid_citations} bukti rujukan
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {!msg.streaming && (
-                            <button
-                              type="button"
-                              onClick={() => copy(msg)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded hover:bg-white text-jkn-muted hover:text-jkn-text transition-colors"
-                              aria-label="Salin jawaban beserta buktinya"
-                            >
-                              {copiedId === msg.id ? (
-                                <Check className="w-3.5 h-3.5 text-bpjs" aria-hidden="true" />
-                              ) : (
-                                <Copy className="w-3.5 h-3.5" aria-hidden="true" />
-                              )}
-                              <span>{copiedId === msg.id ? "Tersalin" : "Salin"}</span>
-                            </button>
-                          )}
+                ) : (
+                  <div key={msg.id} className="flex gap-3 max-w-3xl">
+                    <span className="w-7 h-7 rounded-full bg-[#0B291C] text-teal-300 grid place-items-center shrink-0 mt-0.5" aria-hidden="true">
+                      <ArsaGlyph className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-3">
+                      {msg.streaming && !msg.text ? (
+                        <div className="flex items-center gap-1.5 py-2" aria-label="Menyusun jawaban">
+                          <span className="w-1.5 h-1.5 rounded-full bg-jkn-dim animate-bounce [animation-delay:-0.3s]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-jkn-dim animate-bounce [animation-delay:-0.15s]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-jkn-dim animate-bounce" />
+                        </div>
+                      ) : (
+                        <div className="text-[15px] leading-7 text-jkn-text">
+                          {renderAnswer(msg.text, msg.id)}
+                          {msg.streaming && msg.text && <span className="inline-block w-1.5 h-4 ml-1 bg-bpjs animate-pulse align-middle rounded-sm" aria-hidden="true" />}
                         </div>
                       )}
 
-                      {/* Message Content */}
-                      <div className={msg.sender === "AI" ? "p-4" : "whitespace-pre-line"}>
-                        {msg.sender === "AI" ? (
-                          msg.streaming && !msg.text ? (
-                            <div className="flex items-center gap-2 text-xs text-jkn-muted py-1">
-                              <span className="w-2 h-2 rounded-full bg-bpjs animate-ping" />
-                              <span>Menyusun analisis &amp; memeriksa rujukan bukti...</span>
-                            </div>
-                          ) : (
-                            renderAnswer(msg.text, msg.id)
-                          )
-                        ) : (
-                          msg.text
-                        )}
-                        {msg.streaming && msg.text && (
-                          <span
-                            className="inline-block w-2 h-4 ml-1 bg-bpjs animate-pulse align-middle rounded-xs"
-                            aria-hidden="true"
-                          />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Cited Evidence Cards */}
-                    {msg.evidence_citations && msg.evidence_citations.length > 0 && (
-                      <div className="p-3.5 rounded-xl bg-surface-secondary/50 border border-jkn-border text-sm space-y-2 shadow-subtle">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-bpjs-dark flex items-center gap-1.5">
-                            <EvidenceDocIcon className="w-3.5 h-3.5 text-bpjs" />
-                            <span>Bukti &amp; Referensi ({msg.evidence_citations.length})</span>
-                          </span>
-                          <span className="text-[11px] text-jkn-dim">Klik angka [n] di teks untuk sorot bukti</span>
+                      {!msg.streaming && msg.id !== "msg-1" && (
+                        <div className="flex items-center gap-3 text-xs text-jkn-dim">
+                          {msg.grounding && msg.grounding.valid_citations > 0 && <span className="tabular-nums">{msg.grounding.valid_citations} sumber</span>}
+                          <button type="button" onClick={() => copy(msg)} className="inline-flex items-center gap-1 hover:text-jkn-text transition-colors" aria-label="Salin jawaban beserta sumbernya">
+                            {copiedId === msg.id ? <Check className="w-3.5 h-3.5 text-bpjs" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
+                            <span>{copiedId === msg.id ? "Tersalin" : "Salin"}</span>
+                          </button>
                         </div>
-                        <div className="grid grid-cols-1 gap-2">
-                          {msg.evidence_citations.map((ev) => (
-                            <div
-                              key={ev.evidence_id}
-                              id={`${msg.id}-ref-${ev.ref}`}
-                              className={`p-2.5 rounded-lg bg-white border border-jkn-divider border-l-[3px] scroll-mt-20 target:ring-2 target:ring-bpjs transition-all ${
-                                ev.status === "CONTRADICTS_CLAIM"
-                                  ? "border-l-risk-critical"
-                                  : ev.status === "SUPPORTS_CLAIM"
-                                  ? "border-l-bpjs"
-                                  : "border-l-risk-medium"
-                              }`}
+                      )}
+
+                      {!msg.streaming && msg.visuals && msg.visuals.length > 0 && <CopilotVisuals visuals={msg.visuals} />}
+
+                      {msg.evidence_citations && msg.evidence_citations.length > 0 && (
+                        <details className="group rounded-2xl border border-jkn-border/70">
+                          <summary className="cursor-pointer list-none px-4 py-2.5 flex items-center justify-between text-sm text-jkn-muted hover:text-jkn-text">
+                            <span className="inline-flex items-center gap-2">
+                              <EvidenceDocIcon className="w-4 h-4 text-bpjs" />
+                              <span>Sumber ({msg.evidence_citations.length})</span>
+                            </span>
+                            <span className="text-xs group-open:hidden">Tampilkan</span>
+                            <span className="text-xs hidden group-open:inline">Sembunyikan</span>
+                          </summary>
+                          <ol className="px-4 pb-3 space-y-2.5">
+                            {msg.evidence_citations.map((ev) => (
+                              <li key={ev.evidence_id} id={`${msg.id}-ref-${ev.ref}`} className="flex gap-3 scroll-mt-20 target:bg-bpjs-soft/50 rounded-lg -mx-2 px-2 py-1 transition-colors">
+                                <span className="w-5 h-5 rounded-full bg-frame text-jkn-text text-[11px] font-semibold grid place-items-center shrink-0 mt-0.5 tabular-nums">{ev.ref}</span>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-medium text-jkn-text">{ev.title}</span>
+                                    <span
+                                      className={`text-[11px] ${ev.status === "CONTRADICTS_CLAIM" ? "text-risk-critical" : ev.status === "SUPPORTS_CLAIM" ? "text-bpjs-dark" : "text-jkn-dim"}`}
+                                    >
+                                      {ev.status === "CONTRADICTS_CLAIM" ? "kontradiksi" : ev.status === "SUPPORTS_CLAIM" ? "mendukung" : "acuan"}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-jkn-muted leading-relaxed line-clamp-2" title={ev.excerpt}>
+                                    {ev.excerpt}
+                                  </p>
+                                </div>
+                              </li>
+                            ))}
+                          </ol>
+                        </details>
+                      )}
+
+                      {msg.entity_links && msg.entity_links.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {msg.entity_links.map((link, idx) => (
+                            <Link
+                              key={idx}
+                              href={linkHref(link)}
+                              className="inline-flex items-center gap-2 h-8 px-3.5 rounded-full border border-jkn-border/80 hover:border-bpjs/60 hover:bg-frame/60 text-xs font-medium text-jkn-text transition-colors group"
                             >
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded bg-slate-900 text-teal-300 text-[11px] font-bold font-mono tabular-nums">
-                                  {ev.ref}
-                                </span>
-                                <span className="text-xs font-bold text-jkn-text">{ev.title}</span>
-                                <span className="text-[11px] font-mono text-jkn-dim px-1.5 py-0.5 rounded bg-surface-secondary">
-                                  {ev.evidence_id}
-                                </span>
-                                <span
-                                  className={`ml-auto text-[10px] px-2 py-0.5 rounded font-semibold ${
-                                    ev.status === "CONTRADICTS_CLAIM"
-                                      ? "bg-risk-critical-bg text-risk-critical border border-risk-critical-border"
-                                      : ev.status === "SUPPORTS_CLAIM"
-                                      ? "bg-risk-low-bg text-risk-low border border-risk-low-border"
-                                      : "bg-risk-medium-bg text-risk-medium border border-risk-medium-border"
-                                  }`}
-                                >
-                                  {ev.status === "CONTRADICTS_CLAIM"
-                                    ? "Kontradiksi Klaim"
-                                    : ev.status === "SUPPORTS_CLAIM"
-                                    ? "Mendukung Klaim"
-                                    : "Konteks Acuan"}
-                                </span>
-                              </div>
-                              <p className="text-jkn-muted text-xs leading-relaxed mt-1.5 pl-7">
-                                &ldquo;{ev.excerpt}&rdquo;
-                              </p>
-                            </div>
+                              <span>{link.label}</span>
+                              {link.risk_score !== undefined && <span className="text-risk-critical font-semibold tabular-nums">{link.risk_score}</span>}
+                              <ArrowRight className="w-3 h-3 text-jkn-dim group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
+                            </Link>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Entity Action Links */}
-                    {msg.entity_links && msg.entity_links.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {msg.entity_links.map((link, idx) => (
-                          <Link
-                            key={idx}
-                            href={linkHref(link)}
-                            className="inline-flex items-center gap-2 h-8 px-3 rounded-lg bg-white border border-bpjs-border hover:border-bpjs hover:bg-bpjs-soft/60 text-xs font-semibold text-bpjs-dark transition-all shadow-subtle group"
-                          >
-                            <span>{link.label}</span>
-                            {link.risk_score !== undefined && (
-                              <span className="px-1.5 py-0.5 rounded bg-risk-critical-bg text-risk-critical text-[11px] font-bold font-mono tabular-nums">
-                                {link.risk_score}
-                              </span>
-                            )}
-                            <ArrowRight
-                              className="w-3.5 h-3.5 text-bpjs group-hover:translate-x-0.5 transition-transform"
-                              aria-hidden="true"
-                            />
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Suggested Follow-ups (hanya pada pesan AI terbaru agar tidak menumpuk) */}
-                    {msgIdx === messages.length - 1 &&
-                      msg.suggested_followups &&
-                      msg.suggested_followups.length > 0 &&
-                      !msg.streaming && (
-                        <div className="space-y-1.5 pt-1">
-                          <span className="text-[11px] font-semibold text-jkn-dim block">
-                            Tindak Lanjut Investigasi:
-                          </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {msg.suggested_followups.map((sug, i) => (
-                              <button
-                                key={i}
-                                type="button"
-                                onClick={() => handleSend(sug)}
-                                disabled={busy}
-                                className="text-xs px-3 py-1.5 rounded-lg bg-surface-secondary/80 border border-jkn-border hover:border-bpjs hover:bg-bpjs-soft text-jkn-text font-medium transition-colors text-left inline-flex items-center gap-1.5 disabled:opacity-50"
-                              >
-                                <span className="font-mono text-bpjs font-bold">&gt;</span>
-                                <span>{sug}</span>
-                              </button>
-                            ))}
-                          </div>
+                      {msgIdx === messages.length - 1 && msg.suggested_followups && msg.suggested_followups.length > 0 && !msg.streaming && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {msg.suggested_followups.map((sug, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => handleSend(sug)}
+                              disabled={busy}
+                              className="text-xs px-3.5 py-1.5 rounded-full bg-frame/70 hover:bg-frame text-jkn-text transition-colors text-left disabled:opacity-50"
+                            >
+                              {sug}
+                            </button>
+                          ))}
                         </div>
                       )}
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              )
             )}
 
             {loading && (
-              <div className="flex items-center gap-3 text-xs font-medium text-jkn-muted p-3.5 bg-surface-secondary/70 rounded-xl w-fit border border-jkn-border shadow-subtle">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-bpjs opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-bpjs" />
-                </span>
-                <span>Memeriksa data klaim &amp; menyusun analisis...</span>
+              <div className="flex items-center gap-1.5 pl-10 py-1" aria-label="Memeriksa data">
+                <span className="w-1.5 h-1.5 rounded-full bg-jkn-dim animate-bounce [animation-delay:-0.3s]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-jkn-dim animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-jkn-dim animate-bounce" />
               </div>
             )}
           </div>
 
-          {/* Bottom Composer Form */}
+          {/* Composer */}
           <form
-            className="p-3.5 border-t border-jkn-border bg-white flex items-center gap-2.5 shrink-0"
+            className="px-4 pb-4 pt-2 bg-white shrink-0"
             onSubmit={(e) => {
               e.preventDefault();
               handleSend();
@@ -929,51 +777,36 @@ export default function AICopilotPage() {
             <label htmlFor="copilot-input" className="sr-only">
               Pertanyaan investigasi
             </label>
-            <div className="relative flex-1">
-              <CommandPromptIcon className="w-4 h-4 text-bpjs absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="max-w-3xl mx-auto flex items-center gap-2 rounded-full border border-jkn-border bg-white pl-5 pr-2 h-12 focus-within:border-bpjs focus-within:ring-4 focus-within:ring-bpjs/10 transition-all">
               <input
                 id="copilot-input"
                 type="text"
                 maxLength={1000}
-                placeholder={
-                  live.claim
-                    ? `Tanyakan klaim (mis. mengapa klaim ${live.claim} berisiko?), faskes, atau provinsi...`
-                    : "Tulis pertanyaan investigasi klaim, faskes, atau provinsi..."
-                }
+                placeholder={live.claim ? `Tanyakan sesuatu, misalnya mengapa klaim ${live.claim} berisiko` : "Tanyakan klaim, faskes, atau provinsi"}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                className="w-full h-11 text-sm pl-10 pr-4 rounded-xl bg-surface-secondary/70 border border-jkn-border text-jkn-text outline-hidden focus:border-bpjs focus:bg-white focus:ring-2 focus:ring-bpjs/15 transition-all"
+                className="flex-1 min-w-0 h-full text-sm bg-transparent text-jkn-text outline-none focus:outline-none focus-visible:outline-none placeholder:text-jkn-dim"
               />
+              {busy ? (
+                <button type="button" onClick={stop} aria-label="Hentikan" className="w-9 h-9 rounded-full bg-risk-critical-bg text-risk-critical grid place-items-center shrink-0 hover:bg-red-100 transition-colors">
+                  <Square className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
+              ) : (
+                <button type="submit" disabled={!input.trim()} aria-label="Kirim" className="w-9 h-9 rounded-full bg-[#0B291C] text-white grid place-items-center shrink-0 hover:bg-bpjs-dark disabled:opacity-30 transition-all">
+                  <TransmitArrowIcon className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            {busy ? (
-              <button
-                type="button"
-                onClick={stop}
-                className="h-11 px-4 rounded-xl border border-risk-critical-border bg-risk-critical-bg text-xs font-bold text-risk-critical hover:bg-red-100 transition-colors flex items-center gap-1.5 shrink-0"
-              >
-                <Square className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Hentikan</span>
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={!input.trim()}
-                className="h-11 px-5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-bpjs-dark disabled:opacity-40 transition-all shadow-subtle flex items-center gap-2 shrink-0"
-              >
-                <span>Kirim</span>
-                <TransmitArrowIcon className="w-3.5 h-3.5 text-teal-400" />
-              </button>
-            )}
           </form>
         </div>
 
         {/* Right Column: Clean 2-Tab Context Panel (Klaim & Faskes) */}
-        <div className="lg:col-span-4 xl:col-span-4 2xl:col-span-3 bg-surface rounded-xl border border-jkn-border shadow-card flex flex-col h-[520px] lg:h-full min-h-0 overflow-hidden">
+        <div className="lg:col-span-4 xl:col-span-4 2xl:col-span-3 bg-white rounded-2xl border border-jkn-border/70 flex flex-col h-[520px] lg:h-full min-h-0 overflow-hidden">
           {/* Inspector Header & Segmented Switcher */}
-          <div className="p-3.5 border-b border-jkn-divider bg-surface-secondary/40 space-y-2.5 shrink-0">
+          <div className="px-4 pt-4 pb-3 space-y-3 shrink-0">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold text-jkn-text uppercase tracking-wider">Prioritas Audit</h2>
-              <span className="text-[11px] text-jkn-dim">Klik untuk analisis</span>
+              <h2 className="text-sm font-semibold text-jkn-text">Prioritas audit</h2>
+              <span className="text-[11px] text-jkn-dim">Klik untuk bertanya</span>
             </div>
 
             {/* Segmented Tab Controls (2 Tabs: Klaim & Faskes) */}
@@ -1028,52 +861,35 @@ export default function AICopilotPage() {
                     Memuat daftar klaim...
                   </div>
                 ) : (
-                  live.topClaims.map((c) => (
-                    <div
-                      key={c.claim_id}
-                      className="p-3 rounded-lg bg-surface-secondary/60 hover:bg-bpjs-soft/30 border border-jkn-divider hover:border-bpjs-border transition-all space-y-1.5 group"
-                    >
-                      <div className="flex items-center justify-between gap-2">
+                  <ul className="divide-y divide-jkn-divider -mx-1">
+                    {live.topClaims.map((c) => (
+                      <li key={c.claim_id} className="group flex items-center gap-3 px-1 py-2.5">
                         <button
                           type="button"
                           onClick={() => handleSend(`Mengapa klaim ${c.claim_id} dianggap berisiko?`)}
                           disabled={busy}
-                          className="font-mono text-xs font-bold text-jkn-text group-hover:text-bpjs-dark flex items-center gap-1.5 text-left"
+                          className="min-w-0 flex-1 text-left disabled:opacity-50"
+                          title="Tanyakan Copilot mengapa klaim ini berisiko"
                         >
-                          <span>{c.claim_id}</span>
-                          <span className="px-1.5 py-0.5 rounded bg-risk-critical-bg text-risk-critical border border-risk-critical-border text-[10px] tabular-nums">
-                            {c.risk_score}
+                          <span className="flex items-center gap-2">
+                            <span className="text-[13px] font-semibold text-jkn-text group-hover:text-bpjs-dark tabular-nums">{c.claim_id}</span>
+                            <span className="text-[11px] font-semibold text-risk-critical tabular-nums">{c.risk_score}</span>
                           </span>
+                          <span className="block text-xs text-jkn-muted truncate">{c.provider.name}</span>
                         </button>
-                        <Link
-                          href={
-                            c.investigation_id
-                              ? `/investigations/${c.investigation_id}`
-                              : `/investigations/${c.claim_id}`
-                          }
-                          title={`Buka berkas investigasi ${c.claim_id}`}
-                          className="p-1 rounded hover:bg-white text-jkn-dim hover:text-bpjs transition-colors"
-                        >
-                          <ArrowUpRight className="w-3.5 h-3.5" />
-                        </Link>
-                      </div>
-                      <div className="text-[11px] text-jkn-muted truncate">{c.provider.name}</div>
-                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-jkn-divider/60">
-                        <span className="font-mono text-risk-critical font-semibold tabular-nums">
-                          +{formatRupiah(c.tariff_difference || 0)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleSend(`Mengapa klaim ${c.claim_id} dianggap berisiko?`)}
-                          disabled={busy}
-                          className="text-[11px] font-semibold text-bpjs-dark hover:underline inline-flex items-center gap-1 disabled:opacity-50"
-                        >
-                          <span>Analisis</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                        <div className="text-right shrink-0">
+                          <div className="text-xs font-semibold tabular-nums text-jkn-text">{(c.tariff_difference || 0) > 0 ? formatRupiah(c.tariff_difference || 0, true) : <span className="font-normal text-jkn-dim">tanpa selisih</span>}</div>
+                          <Link
+                            href={c.investigation_id ? `/investigations/${c.investigation_id}` : `/investigations/${c.claim_id}`}
+                            title={`Buka berkas investigasi ${c.claim_id}`}
+                            className="text-[11px] text-bpjs hover:underline"
+                          >
+                            Buka berkas
+                          </Link>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </>
             ) : (

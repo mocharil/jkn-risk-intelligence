@@ -22,6 +22,11 @@ interface IndonesiaRiskMapProps {
   onSelectProvince?: (provinceCode: string) => void;
   focusProvince?: string;
   className?: string;
+  /** Peta lebih tinggi agar sejajar dengan kartu di sebelahnya. */
+  tall?: boolean;
+  bare?: boolean;
+  /** Peta panas hijau untuk lapisan risiko. */
+  heat?: boolean;
   nationalOnly?: boolean;
   metric?: "NAT_COST" | "NAT_ACCESS" | "NAT_FKRTL";
 }

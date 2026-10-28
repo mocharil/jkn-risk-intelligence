@@ -255,7 +255,7 @@ export default function ReportDetailPage() {
                       <strong>
                         Sintesis Analisis (
                         {finding.ai_explanation.source === "llm"
-                          ? "LLM · Sitasi Tervalidasi"
+                          ? "AI · Sitasi tervalidasi"
                           : "Deterministik"}
                         ):
                       </strong>{" "}

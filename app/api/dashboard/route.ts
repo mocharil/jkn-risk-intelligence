@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guard } from "@/lib/auth/guard";
 import { DatabaseService } from "@/lib/supabase/db-service";
 import { getStore, memoized } from "@/lib/data/store";
-import { computeWorkflow } from "@/lib/analytics/aggregates";
+import { computeWorkflow, computePatternShifts, computePatternDetail, computeQueueAge } from "@/lib/analytics/aggregates";
 import { computeProvinceNational } from "@/lib/analytics/provider-national";
 
 export async function GET(request: NextRequest) {
@@ -41,6 +41,9 @@ export async function GET(request: NextRequest) {
     kpis,
     province_risk: provinceRisk.map((p) => ({ ...p, national: provinceNational.get(p.province_code) })),
     emerging_signals: emergingSignals,
+    pattern_shifts: memoized("dashboard.pattern_shifts", () => computePatternShifts(store)),
+    pattern_detail: memoized("dashboard.pattern_detail", () => computePatternDetail(store)),
+    queue_age: computeQueueAge(store.investigations, kpis.as_of),
     top_providers: topProviders,
     providers_total: providers.length,
     workflow: computeWorkflow(store.investigations),

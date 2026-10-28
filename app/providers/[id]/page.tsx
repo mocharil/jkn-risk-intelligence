@@ -11,7 +11,7 @@ import { CanonicalClaim } from "@/types/claim";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
 import { formatDate } from "@/lib/formatting/date";
 import { FACILITY_TYPE_LABELS } from "@/lib/formatting/provider-labels";
-import { FacilityMark, PersonAvatar } from "@/components/ui/Avatar";
+import { facilityPhotoFor, PersonAvatar } from "@/components/ui/Avatar";
 import { AlertTriangle, ArrowLeft, Building2, ChevronRight, MapPin } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -167,43 +167,62 @@ export default function ProviderDetailPage() {
 
   return (
     <DashboardShell>
-      {/* Header */}
-      <div className="bg-[#071A12] text-white rounded-2xl border border-jkn-border shadow-subtle overflow-hidden p-5 sm:p-6 space-y-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+      {/* Kepala faskes: foto di kiri, identitas di kanan */}
+      <div className="rounded-2xl border border-jkn-border/90 bg-surface shadow-card overflow-hidden grid grid-cols-1 md:grid-cols-[300px_1fr]">
+        <div className="relative h-48 md:h-full min-h-[190px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={facilityPhotoFor(provider.provider_id)} alt={`Foto ilustrasi ${provider.name}`} className="absolute inset-0 w-full h-full object-cover" />
           <Link
             href="/providers"
             aria-label="Kembali ke daftar faskes"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-sm font-semibold text-white transition-colors"
+            className="absolute left-3 top-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 text-sm font-semibold text-jkn-text hover:bg-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" aria-hidden />
             Daftar faskes
           </Link>
-          <span className="text-sm font-mono text-emerald-200">
-            {provider.provider_id} · {FACILITY_TYPE_LABELS[provider.type] || provider.type.replace(/_/g, " ")}
-          </span>
+          <span className="absolute left-3 bottom-3 text-[11px] px-2 py-0.5 rounded bg-white/90 text-jkn-muted">Foto ilustrasi</span>
         </div>
-        <div className="flex items-start gap-4">
-          <FacilityMark level={provider.risk_level} size={52} />
+        <div className="p-5 sm:p-6 flex items-start gap-4 min-w-0">
+          <div className="relative w-16 h-16 shrink-0" title={`Skor risiko ${provider.risk_score}`}>
+            <svg viewBox="0 0 64 64" className="w-16 h-16" role="img" aria-label={`Skor risiko ${provider.risk_score}`}>
+              <circle cx="32" cy="32" r="26" fill="none" stroke="#E4ECE8" strokeWidth="6" />
+              <circle
+                cx="32"
+                cy="32"
+                r="26"
+                fill="none"
+                stroke={provider.risk_level === "CRITICAL" ? "#B91C1C" : provider.risk_level === "HIGH" ? "#EA580C" : provider.risk_level === "MEDIUM" ? "#CA8A04" : "#059669"}
+                strokeWidth="6"
+                strokeLinecap="round"
+                strokeDasharray={`${(provider.risk_score / 100) * 2 * Math.PI * 26} ${2 * Math.PI * 26}`}
+                transform="rotate(-90 32 32)"
+              />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-xl font-semibold text-jkn-text tabular-nums">{provider.risk_score}</span>
+          </div>
           <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{provider.name}</h1>
+              <h1 className="text-2xl font-semibold text-jkn-text leading-tight">{provider.name}</h1>
               <RiskPill score={provider.risk_score} level={provider.risk_level} size="sm" />
             </div>
-            <p className="text-sm text-emerald-100/85 mt-1.5 inline-flex items-center gap-1.5 flex-wrap">
-              <MapPin className="w-4 h-4 text-emerald-300 shrink-0" aria-hidden />
-              {provider.address && provider.address !== "—" ? `${provider.address}, ` : ""}
-              {provider.city}, {provider.province_name}
+            <p className="text-sm text-jkn-muted mt-1.5 inline-flex items-start gap-1.5">
+              <MapPin className="w-4 h-4 text-jkn-dim shrink-0 mt-0.5" aria-hidden />
+              <span>
+                {provider.address && provider.address !== "—" ? `${provider.address}, ` : ""}
+                {provider.city}, {provider.province_name}
+              </span>
             </p>
+            <p className="text-xs text-jkn-dim mt-2 font-mono">
+              {provider.provider_id} · {FACILITY_TYPE_LABELS[provider.type] || provider.type.replace(/_/g, " ")}
+            </p>
+            {provider.national?.small_sample && (
+              <p className="mt-3 inline-flex items-start gap-2 text-xs text-risk-medium bg-risk-medium-bg border border-risk-medium-border rounded-lg px-3 py-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden />
+                <span>Baru {provider.national.claims} klaim pada data ini, di bawah 20. Skor dan rasio belum dapat disimpulkan; gunakan sebagai petunjuk, bukan temuan.</span>
+              </p>
+            )}
           </div>
         </div>
-        {provider.national?.small_sample && (
-          <p className="inline-flex items-start gap-2 text-sm text-amber-100 bg-amber-500/15 border border-amber-300/30 rounded-lg px-3 py-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
-            <span>
-              Baru {provider.national.claims} klaim pada data ini, di bawah 20. Skor dan rasio faskes ini belum dapat disimpulkan; gunakan sebagai petunjuk, bukan temuan.
-            </span>
-          </p>
-        )}
       </div>
 
       {/* Unified Telemetry Strip (Replaces 4 floating cards) */}
@@ -284,10 +303,10 @@ export default function ProviderDetailPage() {
                 {provider.national.cost_ratio === null ? "-" : `${provider.national.cost_ratio.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}x`}
               </span>
               <span className="text-xs text-jkn-muted block mt-1">
-                Tagihan dibagi rerata nasional untuk campuran kelas rawat yang sama ({Object.entries(provider.national.class_mix ?? {})
+                Campuran kelas rawat: {Object.entries(provider.national.class_mix ?? {})
                   .sort((a, b) => b[1] - a[1])
                   .map(([k, v]) => `${CLASS_LABEL[k] || k} ${Math.round(v * 100)}%`)
-                  .join(", ") || "tidak ada klaim"}).
+                  .join(", ") || "tidak ada klaim"}.
               </span>
             </div>
             <div className="p-4 rounded-lg bg-surface-secondary/70 border border-jkn-divider">
@@ -295,21 +314,20 @@ export default function ProviderDetailPage() {
               <span className="text-2xl font-mono font-bold text-jkn-text block mt-1">
                 {provider.national.los_ratio === null ? "-" : `${provider.national.los_ratio.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}x`}
               </span>
-              <span className="text-xs text-jkn-muted block mt-1">Lama rawat rerata faskes dibagi rerata nasional kelas yang sama.</span>
+              <span className="text-xs text-jkn-muted block mt-1">Rerata lama rawat faskes dibanding kelas yang sama.</span>
             </div>
             {provider.national.province && (
               <div className="p-4 rounded-lg bg-surface-secondary/70 border border-jkn-divider">
                 <span className="text-xs text-jkn-dim block">Konteks {provider.national.province.name}</span>
                 <span className="text-2xl font-mono font-bold text-jkn-text block mt-1">{formatNumber(provider.national.province.fkrtl_count)} FKRTL</span>
                 <span className="text-xs text-jkn-muted block mt-1">
-                  {provider.national.province.fkrtl_per_100k.toLocaleString("id-ID")} per 100 ribu peserta (nasional {provider.national.province.fkrtl_per_100k_national_mean.toLocaleString("id-ID")}).
-                  Biaya per admisi di provinsi ini {formatRupiah(provider.national.province.cost_per_admission, true)}, indeks {provider.national.province.cost_index.toLocaleString("id-ID", { maximumFractionDigits: 2 })} terhadap nasional.
+                  {provider.national.province.fkrtl_per_100k.toLocaleString("id-ID")} per 100 ribu peserta (nasional {provider.national.province.fkrtl_per_100k_national_mean.toLocaleString("id-ID")}), biaya per admisi {formatRupiah(provider.national.province.cost_per_admission, true)}.
                 </span>
               </div>
             )}
           </div>
           <p className="text-xs text-jkn-muted leading-relaxed">
-            Rerata nasional mencakup seluruh jenis kasus, jadi dipakai sebagai konteks kewajaran, bukan bukti kecurangan. Klaim yang ditandai ikut dihitung, sehingga faskes dengan banyak temuan cenderung di atas 1,0.
+            Rerata nasional hanya konteks kewajaran, bukan bukti kecurangan.
           </p>
         </div>
       )}
@@ -410,19 +428,19 @@ export default function ProviderDetailPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-            <div className="sm:col-span-5 h-52 w-full">
+            <div className="sm:col-span-6 h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={compositionItems} outerRadius="70%">
+                <RadarChart data={compositionItems} outerRadius="58%" margin={{ top: 8, right: 28, bottom: 8, left: 28 }}>
                   <PolarGrid stroke="#D5E0DA" />
                   <PolarAngleAxis dataKey="subject" tick={{ fill: "#43564E", fontSize: 10 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 60]} tick={false} axisLine={false} />
+                  <PolarRadiusAxis angle={30} domain={[0, "dataMax"]} tick={false} axisLine={false} />
                   <Radar name="Proporsi (%)" dataKey="pct" stroke="#D92D20" fill="#D92D20" fillOpacity={0.25} />
                   <Tooltip formatter={(v: number) => [`${v}%`, "Proporsi Temuan"]} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
 
-            <div className="sm:col-span-7 space-y-2">
+            <div className="sm:col-span-6 space-y-2">
               {compositionItems.map((item) => (
                 <div key={item.subject}>
                   <div className="flex justify-between text-[11px] font-medium mb-0.5">

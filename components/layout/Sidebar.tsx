@@ -97,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           name: "AI Copilot",
           href: "/copilot",
           icon: Bot,
-          badge: ai ? (ai.available ? "LLM" : "Lokal") : undefined,
+          badge: ai ? (ai.available ? "AI" : "Lokal") : undefined,
           badgeColor: ai?.available
             ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-semibold"
             : "bg-amber-500/20 text-amber-200 border border-amber-400/30 font-semibold",
@@ -256,7 +256,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             "flex items-center rounded-xl bg-white/[0.04] border border-white/[0.08] py-2",
             collapsed ? "justify-center px-1" : "justify-between px-3"
           )}
-          title={ai?.reason || (ai?.available ? `${ai.label || "LLM"} aktif` : "AI: mode deterministik")}
+          title={(ai?.available ? "Asisten AI aktif" : "AI: mode deterministik")}
         >
           <div className="flex items-center gap-2 min-w-0">
             <span
@@ -275,7 +275,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {ai === null
                     ? "Memeriksa Mesin..."
                     : ai.available
-                    ? `${ai.label || "Gemini LLM"} Aktif`
+                    ? "Asisten AI aktif"
                     : "Mesin Deterministik"}
                 </div>
                 <div className="text-[10px] text-emerald-100/45 truncate">
