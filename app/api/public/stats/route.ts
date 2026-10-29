@@ -43,7 +43,7 @@ export async function GET() {
       province_map: computeProvinceRisk(store).map((d) => ({ code: d.province_code, name: d.province_name, lat: d.latitude, lng: d.longitude, score: d.risk_score, high: d.high_risk_claims, claims: d.total_claims })),
       top_provinces: Array.from(byProvince.values()).sort((a, b) => b.high - a.high).slice(0, 5),
       top_providers: [...store.providers].sort((a, b) => b.potential_exposure - a.potential_exposure).slice(0, 3).map((pv) => ({ name: pv.name, risk_score: pv.risk_score, high_risk_claims: pv.high_risk_claims, total_claims: pv.total_claims, exposure: pv.potential_exposure, dominant_risk_type: pv.dominant_risk_type })),
-      top_claims: topClaimsList.map((i) => ({ claim_id: i.claim_id, risk_score: i.risk_score, signals: i.primary_risk_signals.slice(0, 3), exposure: i.potential_exposure })),
+      top_claims: topClaimsList.map((i) => ({ claim_id: i.claim_id, provider: i.claim.provider.name, city: i.claim.provider.city, risk_score: i.risk_score, signals: i.primary_risk_signals.slice(0, 3), exposure: i.potential_exposure })),
       audit: { entries: chain.length, valid: chain.valid },
       provinces: new Set(store.providers.map((p) => p.province_code)).size,
       queue_cases: inv.length,

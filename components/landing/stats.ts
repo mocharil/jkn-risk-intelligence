@@ -15,7 +15,7 @@ export interface PublicStats {
   province_map: Array<{ code: string; name: string; lat: number; lng: number; score: number; high: number; claims: number }>;
   top_provinces: Array<{ name: string; high: number; claims: number }>;
   top_providers: Array<{ name: string; risk_score: number; high_risk_claims: number; total_claims: number; exposure: number; dominant_risk_type: string }>;
-  top_claims: Array<{ claim_id: string; risk_score: number; signals: string[]; exposure: number }>;
+  top_claims: Array<{ claim_id: string; provider?: string; city?: string; risk_score: number; signals: string[]; exposure: number }>;
   audit: { entries: number; valid: boolean };
   clone: { claim_id: string; partner: string; similarity: number } | null;
   spotlight: {

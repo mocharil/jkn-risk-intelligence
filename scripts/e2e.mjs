@@ -66,7 +66,8 @@ async function main() {
 
   const anon = new Client();
   console.log("\n[1] Proteksi akses");
-  check("halaman tanpa login -> redirect ke /login", (await anon.req("/")).status === 307);
+  check("alamat utama tanpa login -> redirect ke /landing", (await anon.req("/")).status === 307 && (await anon.req("/")).headers.get("location")?.endsWith("/landing"));
+  check("halaman terproteksi tanpa login -> redirect ke /login", (await anon.req("/investigation-queue")).headers.get("location")?.includes("/login"));
   check("API tanpa login -> 401", (await anon.json("/api/claims")).status === 401);
   check("login salah -> 401", (await anon.post("/api/auth/login", { email: "investigator@arsa.id", password: "salah" })).status === 401);
 

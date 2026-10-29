@@ -9,6 +9,7 @@ import { ProvinceRiskData, RiskLevel, RiskType } from "@/types/risk";
 import { INDONESIA_PROVINCES } from "@/lib/data/indonesia-provinces";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
 import { RiskPill } from "../ui/RiskPill";
+import { POLY_GROUPS } from "@/lib/geo/poly-groups";
 
 interface IndonesiaLeafletMapProps {
   provinceData: ProvinceRiskData[];
@@ -48,40 +49,6 @@ const NO_DATA = "#9CA3AF";
  * Batas wilayah pada /geo/indonesia-provinces.json berasal dari peta dasar lama (32 provinsi), jadi beberapa poligon
  * mencakup lebih dari satu provinsi saat ini. Nilainya digabung berbobot jumlah klaim.
  */
-const POLY_GROUPS: Record<string, string[]> = {
-  "DI. ACEH": ["ID-AC"],
-  "SUMATERA UTARA": ["ID-SU"],
-  "SUMATERA BARAT": ["ID-SB"],
-  RIAU: ["ID-RI", "ID-KR"],
-  JAMBI: ["ID-JA"],
-  "SUMATERA SELATAN": ["ID-SS"],
-  BENGKULU: ["ID-BE"],
-  LAMPUNG: ["ID-LA"],
-  "BANGKA BELITUNG": ["ID-BB"],
-  "DKI JAKARTA": ["ID-JK"],
-  "JAWA BARAT": ["ID-JB"],
-  "JAWA TENGAH": ["ID-JT"],
-  "DAERAH ISTIMEWA YOGYAKARTA": ["ID-YO"],
-  PROBANTEN: ["ID-BT"],
-  "JAWA TIMUR": ["ID-JI"],
-  BALI: ["ID-BA"],
-  "NUSATENGGARA BARAT": ["ID-NB"],
-  "NUSA TENGGARA TIMUR": ["ID-NT"],
-  "KALIMANTAN BARAT": ["ID-KB"],
-  "KALIMANTAN TENGAH": ["ID-KT"],
-  "KALIMANTAN SELATAN": ["ID-KS"],
-  "KALIMANTAN TIMUR": ["ID-KI", "ID-KU"],
-  "SULAWESI UTARA": ["ID-SA"],
-  GORONTALO: ["ID-GO"],
-  "SULAWESI TENGAH": ["ID-ST"],
-  "SULAWESI SELATAN": ["ID-SN", "ID-SR"],
-  "SULAWESI TENGGARA": ["ID-SG"],
-  MALUKU: ["ID-MA"],
-  "MALUKU UTARA": ["ID-MU"],
-  "IRIAN JAYA BARAT": ["ID-PB"],
-  "IRIAN JAYA TENGAH": ["ID-PA"],
-  "IRIAN JAYA TIMUR": ["ID-PA"],
-};
 
 /** Zoom nasional untuk peta panas: seluruh kepulauan terlihat utuh tanpa terpotong. */
 const HEAT_ZOOM = 4.2;
