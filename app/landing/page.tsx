@@ -48,6 +48,7 @@ import {
 import { formatNumber } from "@/lib/formatting/currency";
 import { HeroDashboardMock } from "@/components/landing/HeroDashboardMock";
 import { PublicStats, RISK_LABEL } from "@/components/landing/stats";
+import { ProductTour } from "@/components/landing/ProductTour";
 import { AuditChainCard, CopilotCard, OverviewCard, PriorityQueueCard } from "@/components/landing/BentoCards";
 import { REQUIRED_FIELDS } from "@/lib/ingest/canonical";
 
@@ -105,22 +106,22 @@ const ADVANTAGES = [
   {
     num: "03.",
     badge: `${REQUIRED_FIELDS.length}/${REQUIRED_FIELDS.length} Kolom Wajib`,
-    title: "Terhubung Lintas Sistem RS",
+    title: "Unggah Ekspor Klaim Sendiri",
     description:
-      "Menerima ekspor klaim multi-format (CSV, XLSX, JSON) dari berbagai skema SIMRS rumah sakit otomatis dengan pemetaan kolom berbasis AI.",
-    metricLabel: "Kompatibilitas Skema",
-    metricValue: "Multi-SIMRS & e-Klaim",
+      "Menerima ekspor klaim CSV, TSV, XLSX, dan JSON. Kolom dipetakan otomatis ke skema JKN lalu dikonfirmasi manusia, dan identitas pasien disamarkan sebelum disimpan.",
+    metricLabel: "Format Berkas",
+    metricValue: "CSV · XLSX · JSON",
     icon: Layers,
     backdrop: HOSPITAL_BACKDROPS[2],
   },
   {
     num: "04.",
-    badge: "pgvector HNSW",
-    title: "Skalabel Seiring Pertumbuhan",
+    badge: "8 Detektor",
+    title: "Sensus Seluruh Klaim",
     description:
-      "Dirancang untuk menyaring ribuan klaim INA-CBG secara sensus lintas provinsi dengan pencarian kemiripan vektor.",
-    metricLabel: "Cakupan Pengawasan",
-    metricValue: "Lintas Provinsi",
+      "Setiap klaim diperiksa oleh 8 detektor dan dibandingkan dengan klaim sejenis di tingkat diagnosis, kelas rawat, dan provinsi. Alur unggah diuji hingga 5.000 baris.",
+    metricLabel: "Diuji Sampai",
+    metricValue: "5.000 baris",
     icon: TrendingUp,
     backdrop: HOSPITAL_BACKDROPS[3],
   },
@@ -129,15 +130,15 @@ const ADVANTAGES = [
 const FAQS = [
   {
     q: "Bagaimana cara ARSA menggunakan AI dalam audit klaim rumah sakit?",
-    a: "ARSA menggunakan 8 detektor deterministik dan pencarian kemiripan vektor pgvector untuk mengidentifikasi anomali klaim INA-CBG secara objektif, mengoptimalkan antrean prioritas harian, dan menyusun ringkasan bukti rekam medis dengan sitasi verbatim tanpa halusinasi.",
+    a: "ARSA menggunakan 8 detektor deterministik dan pencarian kemiripan narasi (embedding) untuk mengidentifikasi anomali klaim INA-CBG secara objektif, mengoptimalkan antrean prioritas harian, dan menyusun ringkasan bukti rekam medis dengan sitasi verbatim. Setiap pernyataan Copilot wajib bersitasi, dan jawaban tanpa sumber yang sah ditolak.",
   },
   {
     q: "Apakah ARSA cocok untuk kolaborasi tim verifikator dan komite medis RS?",
     a: "Ya. ARSA menyediakan kontrol akses berbasis peran (Investigator, Supervisor, dan Admin) sehingga verifikator dapat menelaah bukti klaim dan meminta dokumen tambahan ke faskes, sementara keputusan akhir dikonfirmasi oleh supervisor dengan alasan tertulis wajib.",
   },
   {
-    q: "Bagaimana perlindungan privasi data pasien (UU PDP No. 27/2022) di ARSA?",
-    a: "Seluruh identitas langsung seperti NIK 16 digit, nomor kartu BPJS, nama lengkap, dan alamat dianonimisasi menggunakan token kriptografis HMAC-SHA256 di memori sebelum disimpan ke basis data.",
+    q: "Bagaimana ARSA melindungi identitas pasien?",
+    a: "Identitas langsung seperti NIK, nomor kartu, nama, dan alamat disamarkan dengan token HMAC-SHA256 di memori sebelum apa pun disimpan. Ini rancangan privasi sejak input, bukan klaim kepatuhan hukum; penilaian kepatuhan UU PDP tetap perlu dilakukan pada penerapan nyata.",
   },
   {
     q: "Apakah ARSA menggantikan peran verifikator manusia?",
@@ -365,7 +366,7 @@ function AdvantageCardVisual({
           /* 03: Terhubung Lintas Sistem RS — Multi-SIMRS & e-Klaim Auto-Mapper Flow */
           <div className="w-full flex items-center justify-between gap-1.5 px-1">
             <div className="flex flex-col gap-1.5">
-              {["SIMRS RS", "e-Klaim", "CSV / XLSX"].map((src, i) => (
+              {["CSV", "XLSX", "JSON"].map((src, i) => (
                 <motion.span
                   key={src}
                   animate={{ x: isFeatured ? [0, 3, 0] : 0 }}
@@ -391,7 +392,7 @@ function AdvantageCardVisual({
                 />
               </div>
               <span className="text-[8px] font-mono text-emerald-200 mt-1">
-                AI Mapper
+                Pemetaan kolom
               </span>
             </div>
 
@@ -400,7 +401,7 @@ function AdvantageCardVisual({
               <Building2 className="w-4 h-4 mx-auto text-[#2E6B38]" />
               <div className="text-[9px] font-extrabold mt-0.5">{REQUIRED_FIELDS.length}/{REQUIRED_FIELDS.length} Kolom Wajib</div>
               <div className="text-[8px] text-emerald-700 font-medium">
-                UU PDP Ready
+                PII disamarkan
               </div>
             </div>
           </div>
@@ -415,7 +416,7 @@ function AdvantageCardVisual({
                 {stats ? `Sensus Klaim ${stats.provinces} Provinsi` : "Sensus Klaim Lintas Provinsi"}
               </span>
               <span className="font-mono text-emerald-300 font-bold">
-                Vektor aktif
+                8 detektor
               </span>
             </div>
 
@@ -546,7 +547,7 @@ export default function LandingPage() {
   return (
     <div
       id="top"
-      className="min-h-screen bg-white text-[#141A16] selection:bg-[#2F6A38]/20 selection:text-[#1D4624] font-sans antialiased overflow-x-hidden"
+      className="min-h-screen bg-white text-[#141A16] selection:bg-[#2F6A38]/20 selection:text-[#1D4624] font-sans antialiased overflow-x-clip"
     >
       {/* =====================================================================
           SECTION 1: GREEN JKN HOSPITAL HERO + 3D GLASS WORKSPACE (00:00 - 00:01)
@@ -641,6 +642,7 @@ export default function LandingPage() {
               <a href="#top" className="hover:text-[#1B5E20] transition-colors">Beranda</a>
               <a href="#about" className="hover:text-[#1B5E20] transition-colors">Tentang</a>
               <a href="#platform" className="hover:text-[#1B5E20] transition-colors">Platform</a>
+              <a href="#tour" className="hover:text-[#1B5E20] transition-colors">Tur</a>
               <a href="#ecosystem" className="hover:text-[#1B5E20] transition-colors">Ekosistem</a>
               <a href="#advantages" className="hover:text-[#1B5E20] transition-colors">Keunggulan</a>
               <a href="#faq" className="hover:text-[#1B5E20] transition-colors">FAQ</a>
@@ -648,7 +650,7 @@ export default function LandingPage() {
 
             <div className="flex items-center gap-2">
               <Link
-                href="/"
+                href="/?masuk=1"
                 className={`hidden sm:inline-flex rounded-full font-semibold text-[#14261B] hover:text-[#2E6B38] transition-all duration-500 ${navCompact ? "px-3 py-1 text-[12px]" : "px-4 py-1.5 text-[13px] bg-white/70 hover:bg-white backdrop-blur-md border border-emerald-900/10 shadow-2xs"}`}
               >
                 Command Center
@@ -704,7 +706,7 @@ export default function LandingPage() {
             >
               berbasis bukti
             </motion.span>
-            , lebih cepat
+            , lebih terarah
           </motion.h1>
 
           {/* Subtitle */}
@@ -728,7 +730,7 @@ export default function LandingPage() {
           >
             <motion.div whileHover={{ scale: 1.04, y: -1 }} whileTap={{ scale: 0.98 }}>
               <Link
-                href="/"
+                href="/?masuk=1"
                 className="relative overflow-hidden h-11 px-6 rounded-xl bg-gradient-to-b from-[#3B7A42] to-[#1E4D24] hover:from-[#44894C] hover:to-[#24592B] text-white text-xs sm:text-[13px] font-medium inline-flex items-center justify-center shadow-[0_10px_24px_-4px_rgba(30,77,36,0.5),inset_0_1px_0_rgba(255,255,255,0.35)] border border-[#193F1E] transition-all"
               >
                 <span>Mulai sekarang</span>
@@ -872,7 +874,7 @@ export default function LandingPage() {
                   <AnimatedCounter target={f1Target} suffix="%" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full bg-emerald-400/20 border border-emerald-300/35 text-[10px] font-semibold text-emerald-100">
-                  INA-CBG Verified
+                  Data sintetis
                 </span>
               </div>
               <p className="text-xs sm:text-sm font-medium text-white/95 leading-snug">
@@ -1007,6 +1009,8 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <ProductTour />
+
       {/* =====================================================================
           SECTION 4: RADIAL ECOSYSTEM HUB WITH ANIMATED PULSES (00:10 - 00:12)
       ====================================================================== */}
@@ -1035,8 +1039,8 @@ export default function LandingPage() {
             </span>
           </div>
           <h2 className="text-3xl sm:text-5xl font-semibold tracking-[-0.025em] text-[#141A16] leading-[1.12]">
-            Terhubung dengan sistem
-            <br /> yang sudah dipakai rumah sakit
+            Mulai dari berkas klaim
+            <br /> yang sudah Anda miliki
           </h2>
         </motion.div>
 
@@ -1111,7 +1115,7 @@ export default function LandingPage() {
                 <FileSpreadsheet className="w-3.5 h-3.5" />
               </span>
               <span className="text-xs sm:text-sm font-medium text-stone-800">
-                SIMRS &amp; e-Klaim Ingest
+                Unggah CSV, XLSX, JSON
               </span>
             </motion.div>
 
@@ -1130,7 +1134,7 @@ export default function LandingPage() {
                 <ShieldCheck className="w-3.5 h-3.5" />
               </span>
               <span className="text-xs sm:text-sm font-medium text-stone-800">
-                Perisai Privasi UU PDP
+                Identitas disamarkan (HMAC)
               </span>
             </motion.div>
           </div>
@@ -1177,7 +1181,7 @@ export default function LandingPage() {
                 <Database className="w-3.5 h-3.5" />
               </span>
               <span className="text-xs sm:text-sm font-medium text-stone-800">
-                Vektor pgvector HNSW
+                Kemiripan narasi medis
               </span>
             </motion.div>
 
@@ -1257,7 +1261,7 @@ export default function LandingPage() {
               className="inline-block"
             >
               <Link
-                href="/"
+                href="/?masuk=1"
                 className="h-10 px-5 rounded-xl bg-gradient-to-b from-[#437A49] to-[#234D29] text-white text-xs font-medium inline-flex items-center gap-1.5 justify-center shadow-sm hover:opacity-95 transition-opacity"
               >
                 <span>Coba ARSA</span>
@@ -1441,7 +1445,7 @@ export default function LandingPage() {
             </h2>
             <div className="flex items-center gap-2.5">
               <Link
-                href="/"
+                href="/?masuk=1"
                 className="w-9 h-9 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-200/80 flex items-center justify-center text-[#2E6B38] transition-colors"
                 title="Command Center"
               >
@@ -1504,7 +1508,7 @@ export default function LandingPage() {
                   FAQ
                 </a>
                 <Link
-                  href="/"
+                  href="/?masuk=1"
                   className="px-3.5 py-2 rounded-lg bg-stone-100/90 hover:bg-stone-200/70 text-stone-700 text-center transition-colors"
                 >
                   Command Center
@@ -1520,10 +1524,10 @@ export default function LandingPage() {
               </div>
               <div className="flex flex-col gap-2 text-xs">
                 <span className="px-4 py-2 rounded-lg bg-stone-100/90 text-stone-700 font-mono">
-                  BPJS Kesehatan Care Center 165
+                  Healthkathon 2026 · Efisiensi Risiko
                 </span>
                 <span className="px-4 py-2 rounded-lg bg-stone-100/90 text-stone-700">
-                  contact@arsa-jkn.id
+                  github.com/mocharil/jkn-risk-intelligence
                 </span>
               </div>
             </div>

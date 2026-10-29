@@ -62,26 +62,30 @@ export function PriorityQueueCard({ stats }: { stats: PublicStats | null }) {
               transition={{ duration: 0.45, delay: 0.1 + i * 0.12 }}
               className="rounded-xl border border-stone-200/80 bg-[#F6F9F7] hover:bg-[#EEF5F0] px-3 py-2.5 transition-colors"
             >
-              <div className="flex items-center gap-2.5">
-                <span className="w-5 h-5 rounded-md bg-[#1D3B23] text-white text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
-                <span className="font-mono text-[12px] font-semibold text-[#141A16] whitespace-nowrap shrink-0">{r.claim_id}</span>
-                <div className="flex flex-wrap gap-1 min-w-0">
-                  {r.signals.slice(0, 2).map((s) => (
-                    <span key={s} className="px-1.5 py-0.5 rounded bg-white border border-stone-200 text-[10px] text-stone-600 whitespace-nowrap">
-                      {RISK_LABEL[s] ?? s}
-                    </span>
-                  ))}
+              <div className="flex items-center gap-3">
+                <svg width="38" height="38" viewBox="0 0 38 38" className="shrink-0" role="img" aria-label={`Skor risiko ${r.risk_score}`}>
+                  <circle cx="19" cy="19" r="15" fill="none" stroke="#E4ECE8" strokeWidth="4" />
+                  <circle cx="19" cy="19" r="15" fill="none" stroke={r.risk_score >= 90 ? "#B91C1C" : "#C2410C"} strokeWidth="4" strokeLinecap="round" strokeDasharray={`${(r.risk_score / 100) * 94.25} 94.25`} transform="rotate(-90 19 19)" />
+                  <text x="19" y="23" textAnchor="middle" fontSize="11" fontWeight="700" fill="#11241D">{r.risk_score}</text>
+                </svg>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12px] font-bold text-[#141A16] truncate">{r.provider ?? r.claim_id}</div>
+                  <div className="text-[10px] text-stone-500 truncate">
+                    <span className="font-mono">{r.claim_id}</span>
+                    {r.city ? ` · ${r.city}` : ""}
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {r.signals.slice(0, 2).map((sg) => (
+                      <span key={sg} className="px-1.5 py-0.5 rounded bg-white border border-stone-200 text-[9px] text-stone-600 whitespace-nowrap">
+                        {RISK_LABEL[sg] ?? sg}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <span className="ml-auto text-[11px] font-mono text-stone-500 whitespace-nowrap hidden sm:block">{r.exposure > 0 ? formatRupiah(r.exposure, true) : "—"}</span>
-                <span className="px-2 py-0.5 rounded-md bg-red-50 border border-red-100 text-red-700 text-[11px] font-bold">{r.risk_score}</span>
-              </div>
-              <div className="mt-2 h-1 rounded-full bg-stone-200/70 overflow-hidden">
-                <motion.div
-                  initial={reduce ? false : { width: 0 }}
-                  animate={inView ? { width: `${r.risk_score}%` } : undefined}
-                  transition={{ duration: 0.9, delay: 0.3 + i * 0.12, ease: [0.16, 1, 0.3, 1] }}
-                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-red-500"
-                />
+                <div className="text-right shrink-0 hidden sm:block">
+                  {r.exposure > 0 ? <div className="font-mono text-[12px] font-bold text-red-700">{formatRupiah(r.exposure, true)}</div> : <div className="text-[10px] font-semibold text-stone-500">Tanpa selisih tarif</div>}
+                  <div className="text-[9px] text-stone-400">potensi eksposur</div>
+                </div>
               </div>
             </motion.div>
           </Link>

@@ -49,11 +49,17 @@ export async function middleware(req: NextRequest) {
 
   if (pathname.startsWith("/api/")) return NextResponse.json({ error: "Belum login", code: "UNAUTHENTICATED" }, { status: 401 });
   const url = req.nextUrl.clone();
+  // Pengunjung baru di alamat utama diarahkan ke landing; tombol "masuk" di landing memakai ?masuk=1 agar tetap menuju login.
+  if (pathname === "/" && !req.nextUrl.searchParams.has("masuk")) {
+    url.pathname = "/landing";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
   url.pathname = "/login";
   url.search = `?next=${encodeURIComponent(pathname + req.nextUrl.search)}`;
   return NextResponse.redirect(url);
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|arsa_logo.png|samples/|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|css|js|map|csv|mp4|webm|vtt)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|arsa_logo.png|samples/|geo/|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|css|js|map|csv|mp4|webm|vtt)$).*)"],
 };
