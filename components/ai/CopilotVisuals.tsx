@@ -5,6 +5,7 @@ import Link from "next/link";
 import { IndonesiaRiskMap } from "@/components/map/IndonesiaRiskMap";
 import { formatRupiah, formatNumber } from "@/lib/formatting/currency";
 import type { ProvinceRiskData } from "@/types/risk";
+import { riskTypeName } from "@/lib/risk/labels";
 
 type Level = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 
@@ -33,17 +34,6 @@ export type CopilotVisual =
 
 const LEVEL_COLOR: Record<Level, string> = { CRITICAL: "#B91C1C", HIGH: "#EA580C", MEDIUM: "#CA8A04", LOW: "#059669" };
 
-const TYPE_LABEL: Record<string, string> = {
-  UPCODING: "Upcoding",
-  CLONING: "Cloning",
-  PHANTOM_BILLING: "Phantom billing",
-  ABNORMAL_LOS: "LOS anomali",
-  UNBUNDLING: "Unbundling",
-  INFLATED_BILLS: "Inflasi tagihan",
-  REPEAT_BILLING: "Tagihan berulang",
-  READMISSION: "Rawat ulang dini",
-};
-
 function Ring({ score, level, size = 44 }: { score: number; level: Level; size?: number }) {
   const r = size / 2 - 5;
   const c = 2 * Math.PI * r;
@@ -68,7 +58,7 @@ function Ring({ score, level, size = 44 }: { score: number; level: Level; size?:
   );
 }
 
-function ProvinceVisual({ v }: { v: Extract<CopilotVisual, { kind: "provinces" }> }) {
+function ProvinceVisual({ v, compact }: { v: Extract<CopilotVisual, { kind: "provinces" }>; compact: boolean }) {
   // Peta hanya memuat provinsi yang dibahas; sisanya abu-abu polos.
   const data = useMemo<ProvinceRiskData[]>(
     () =>
@@ -92,11 +82,11 @@ function ProvinceVisual({ v }: { v: Extract<CopilotVisual, { kind: "provinces" }
     [v.rows]
   );
   return (
-    <section className="rounded-2xl border border-jkn-border/70 overflow-hidden grid grid-cols-1 md:grid-cols-5" aria-label={v.title}>
-      <div className="md:col-span-3 border-b md:border-b-0 md:border-r border-jkn-border/70">
+    <section className={`rounded-2xl border border-jkn-border/70 overflow-hidden grid grid-cols-1 ${compact ? "" : "md:grid-cols-5"}`} aria-label={v.title}>
+      <div className={compact ? "border-b border-jkn-border/70" : "md:col-span-3 border-b md:border-b-0 md:border-r border-jkn-border/70"}>
         <IndonesiaRiskMap provinceData={data} heat bare className="!p-0 !border-0 !rounded-none !shadow-none" />
       </div>
-      <div className="md:col-span-2 p-4 flex flex-col justify-center gap-3">
+      <div className={`${compact ? "" : "md:col-span-2 "}p-4 flex flex-col justify-center gap-3`}>
         <h3 className="text-sm font-semibold text-jkn-text">{v.title}</h3>
         <ul className="space-y-3">
           {v.rows.map((r) => (
@@ -122,10 +112,10 @@ function ProvinceVisual({ v }: { v: Extract<CopilotVisual, { kind: "provinces" }
   );
 }
 
-function ProviderVisual({ v }: { v: Extract<CopilotVisual, { kind: "providers" }> }) {
+function ProviderVisual({ v, compact }: { v: Extract<CopilotVisual, { kind: "providers" }>; compact: boolean }) {
   return (
     <section aria-label={v.title}>
-      <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+      <ul className={`grid grid-cols-2 gap-2.5 ${compact ? "" : "sm:grid-cols-3 lg:grid-cols-5"}`}>
         {v.rows.map((p) => (
           <li key={p.provider_id}>
             <Link href={`/providers/${p.provider_id}`} className="h-full flex flex-col items-center text-center gap-1.5 rounded-2xl border border-jkn-border/70 hover:border-bpjs/50 hover:bg-frame/40 transition-colors px-2 py-3">
@@ -142,12 +132,12 @@ function ProviderVisual({ v }: { v: Extract<CopilotVisual, { kind: "providers" }
   );
 }
 
-function ClaimVisual({ v }: { v: Extract<CopilotVisual, { kind: "claim" }> }) {
+function ClaimVisual({ v, compact }: { v: Extract<CopilotVisual, { kind: "claim" }>; compact: boolean }) {
   const maxV = Math.max(...v.marks.map((m) => m.value), 1) * 1.08;
   const colors: Record<string, string> = { claim: "#B91C1C", peer: "#007A3A", nat: "#0E7490" };
   const sorted = [...v.marks].sort((a, b) => a.value - b.value);
   return (
-    <section className="rounded-2xl border border-jkn-border/70 p-4 grid grid-cols-1 md:grid-cols-[auto_1fr] gap-5 items-center" aria-label={`Ringkasan ${v.claim_id}`}>
+    <section className={`rounded-2xl border border-jkn-border/70 p-4 grid grid-cols-1 gap-5 items-center ${compact ? "" : "md:grid-cols-[auto_1fr]"}`} aria-label={`Ringkasan ${v.claim_id}`}>
       <div className="flex items-center gap-3">
         <Ring score={v.score} level={v.level} size={60} />
         <div className="min-w-0">
@@ -158,7 +148,7 @@ function ClaimVisual({ v }: { v: Extract<CopilotVisual, { kind: "claim" }> }) {
           <div className="mt-1 flex flex-wrap gap-1">
             {v.findings.map((f) => (
               <span key={f.type} className="text-[11px] px-1.5 py-0.5 rounded bg-frame text-jkn-text">
-                {TYPE_LABEL[f.type] || f.type} {f.score}
+                {riskTypeName(f.type)} {f.score}
               </span>
             ))}
           </div>
@@ -188,11 +178,11 @@ function ClaimVisual({ v }: { v: Extract<CopilotVisual, { kind: "claim" }> }) {
   );
 }
 
-/** Peta, cincin skor, dan posisi tagihan di bawah jawaban Copilot. */
-export const CopilotVisuals: React.FC<{ visuals: CopilotVisual[] }> = ({ visuals }) => (
+/** Peta, cincin skor, dan posisi tagihan di bawah jawaban Copilot. `compact` untuk panel sempit (satu kolom). */
+export const CopilotVisuals: React.FC<{ visuals: CopilotVisual[]; compact?: boolean }> = ({ visuals, compact = false }) => (
   <div className="space-y-3">
     {visuals.map((v, i) =>
-      v.kind === "provinces" ? <ProvinceVisual key={i} v={v} /> : v.kind === "providers" ? <ProviderVisual key={i} v={v} /> : <ClaimVisual key={i} v={v} />
+      v.kind === "provinces" ? <ProvinceVisual key={i} v={v} compact={compact} /> : v.kind === "providers" ? <ProviderVisual key={i} v={v} compact={compact} /> : <ClaimVisual key={i} v={v} compact={compact} />
     )}
   </div>
 );

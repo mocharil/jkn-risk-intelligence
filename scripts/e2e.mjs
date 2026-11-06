@@ -107,6 +107,8 @@ async function main() {
   const events = raw.split("\n\n").filter((l) => l.startsWith("data:")).map((l) => JSON.parse(l.slice(5)));
   check("urutan event start -> delta+ -> final", events[0]?.type === "start" && events.some((e) => e.type === "delta") && events[events.length - 1]?.type === "final");
   check("final tervalidasi (mode llm, sitasi valid)", events[events.length - 1].response.mode === "llm" && events[events.length - 1].response.grounding.valid_citations >= 1);
+  const sfinal = events[events.length - 1].response;
+  check("jalur biasa dan streaming memberi keyakinan dan tindak lanjut yang sama", sfinal.confidence === c1.confidence && JSON.stringify(sfinal.suggested_followups) === JSON.stringify(c1.suggested_followups), JSON.stringify({ stream: [sfinal.confidence, sfinal.suggested_followups], biasa: [c1.confidence, c1.suggested_followups] }));
   const sh = await inv.req("/api/copilot?stream=1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: "HALUSINASI tolong" }) });
   const sev = (await sh.text()).split("\n\n").filter((l) => l.startsWith("data:")).map((l) => JSON.parse(l.slice(5)));
   check("streaming: jawaban halusinasi diganti deterministik pada final", sev[sev.length - 1].response.mode === "deterministic");

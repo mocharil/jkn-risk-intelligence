@@ -74,10 +74,11 @@ export function buildVisuals(store: DataStore, items: ContextItem[], _question: 
   }
 
   // 2. Faskes yang dibahas atau daftar faskes teratas
-  const providerIds = Array.from(new Set(items.filter((i) => i.link?.type === "PROVIDER" && i.link.id && i.id !== "list:top_providers").map((i) => i.link!.id)));
+  // Butir daftar (list:*) hanya pembanding umum; faskes di dalamnya belum berarti pertanyaan menyebut faskes itu.
+  const providerIds = Array.from(new Set(items.filter((i) => i.link?.type === "PROVIDER" && i.link.id && !i.id.startsWith("list:")).map((i) => i.link!.id)));
   const hasClaim = items.some((i) => i.kind === "CLAIM");
-  // Daftar faskes teratas hanya relevan bila pertanyaan tidak sedang membahas provinsi atau satu klaim.
-  const wantsTopList = items.some((i) => i.id === "list:top_providers") && out.length === 0 && !hasClaim;
+  // Daftar faskes teratas hanya relevan bila pertanyaan tidak sedang membahas provinsi (daftar ini hanya dibawa untuk pertanyaan peringkat atau tanpa faskes tertentu).
+  const wantsTopList = items.some((i) => i.id === "list:top_providers") && out.length === 0;
   const providers = store.providers;
   const explicit = hasClaim && providerIds.length <= 1 ? [] : providerIds;
   const picked = explicit.length > 0 ? providers.filter((p) => explicit.includes(p.provider_id)) : wantsTopList ? [...providers].sort((a, b) => b.risk_score - a.risk_score || b.potential_exposure - a.potential_exposure).slice(0, MAX_PROVIDERS) : [];

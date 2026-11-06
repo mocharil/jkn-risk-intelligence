@@ -2,6 +2,7 @@ import { CanonicalClaim } from "@/types/claim";
 import { Provider } from "@/types/provider";
 import { ALL_RISK_TYPES, DashboardKPIs, EmergingSignal, ProvinceRiskData, RiskLevel, RiskType, TrendPoint } from "@/types/risk";
 import { INDONESIA_PROVINCES } from "../data/indonesia-provinces";
+import { RISK_TYPE_LABEL } from "../risk/labels";
 
 /**
  * Semua angka di dashboard / peta / profil faskes dihitung dari klaim hasil analisis —
@@ -356,7 +357,7 @@ export function computeEmergingSignals(store: AggStore): EmergingSignal[] {
       signal_id: `SIG-${type.slice(0, 3)}-${asOf.replace(/-/g, "")}`,
       risk_type: type,
       title: TYPE_TITLE[type],
-      description: `${recent.length} klaim dengan sinyal ${type.replace("_", " ")} dalam 14 hari terakhir (${prevCount} pada 14 hari sebelumnya, ${change >= 0 ? "+" : ""}${change}%), tersebar di ${providers.size} faskes.`,
+      description: `${recent.length} klaim dengan sinyal ${RISK_TYPE_LABEL[type]} dalam 14 hari terakhir (${prevCount} pada 14 hari sebelumnya, ${change >= 0 ? "+" : ""}${change}%), tersebar di ${providers.size} faskes.`,
       severity,
       change_percentage: change,
       affected_providers_count: providers.size,

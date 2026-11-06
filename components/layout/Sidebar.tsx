@@ -256,7 +256,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             "flex items-center rounded-xl bg-white/[0.04] border border-white/[0.08] py-2",
             collapsed ? "justify-center px-1" : "justify-between px-3"
           )}
-          title={(ai?.available ? "Asisten AI aktif" : "AI: mode deterministik")}
+          title={(ai?.available ? "Asisten AI aktif" : "Mode aturan (tanpa AI)")}
         >
           <div className="flex items-center gap-2 min-w-0">
             <span
@@ -276,7 +276,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     ? "Memeriksa Mesin..."
                     : ai.available
                     ? "Asisten AI aktif"
-                    : "Mesin Deterministik"}
+                    : "Mode aturan (tanpa AI)"}
                 </div>
                 <div className="text-[10px] text-emerald-100/45 truncate">
                   {detectorCount === null ? "Detektor Forensik JKN" : `${detectorCount} Detektor Forensik JKN`}

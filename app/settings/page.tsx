@@ -355,7 +355,7 @@ export default function SettingsPage() {
           <div className="mt-1 text-lg text-jkn-text tabular-nums">
             Skor ≥ {queueMinScore}, SLA {slaTargetHours} jam
           </div>
-          <div className="mt-1 text-xs text-jkn-muted">Copilot: {copilotMode === "HYBRID_CITATION" ? "AI hibrida dengan sitasi verbatim" : "deterministik murni"}</div>
+          <div className="mt-1 text-xs text-jkn-muted">Copilot: {copilotMode === "HYBRID_CITATION" ? "AI dengan sitasi tervalidasi" : "mode aturan (tanpa AI)"}</div>
         </div>
         <div className="bg-white px-5 py-4">
           <div className="text-sm text-jkn-muted">Personel dan peran</div>
