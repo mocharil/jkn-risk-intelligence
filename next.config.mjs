@@ -18,6 +18,9 @@ const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   reactStrictMode: true,
   poweredByHeader: false,
+  // Aplikasi tidak memakai next/image. Mematikan pengoptimal gambar (/_next/image) menutup permukaan serangannya, yang
+  // tercakup banyak advisori Next 14 yang hanya bisa ditutup dengan lompatan mayor ke Next 15/16.
+  images: { unoptimized: true },
   ...(process.env.BUILD_STANDALONE === "1" ? { output: "standalone" } : {}),
   async headers() {
     return [

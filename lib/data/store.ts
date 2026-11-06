@@ -274,9 +274,16 @@ function build(opts: { keepUsers?: UserRecord[]; keepAudit?: AuditEntry[]; ignor
   return store;
 }
 
+/** Periksa penyedia AI sejak proses mulai (tanpa menunggu), supaya permintaan pertama pengguna tidak membayar ping-nya. */
+function warmUpAI() {
+  if (process.env.NODE_ENV === "test") return;
+  void import("../ai/llm").then((m) => m.getAIStatus()).catch(() => {});
+}
+
 export function getStore(): DataStore {
   if (!g.__arsaStore) {
     g.__arsaStore = build();
+    warmUpAI();
   } else {
     // Pastikan DS-SEED pada instance HMR memiliki profil sampel, anonimisasi, dan hasil analisis lengkap
     const idx = g.__arsaStore.datasets.findIndex((d) => d.dataset_id === "DS-SEED");

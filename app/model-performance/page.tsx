@@ -92,6 +92,7 @@ export default function ModelPerformancePage() {
   const [p, setP] = useState<Payload | null>(null);
   const [sys, setSys] = useState<SystemThresholdStatus | null>(null);
   const [busy, setBusy] = useState<"" | "ai" | "local">("");
+  const [confirmAi, setConfirmAi] = useState(false);
   const [msg, setMsg] = useState("");
   const [source, setSource] = useState<"seed" | "bpjs">("seed");
   const [loadError, setLoadError] = useState("");
@@ -170,12 +171,12 @@ export default function ModelPerformancePage() {
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {can("analysis.run") ? (
             <>
-              <button onClick={() => rerunAnalysis(true)} disabled={!!busy} className="h-8 px-3 rounded-md border border-jkn-border text-sm font-medium text-jkn-text hover:bg-frame disabled:opacity-50 transition-colors">
-                {busy === "local" ? "Menghitung" : "Uji embedding lokal"}
+              <button onClick={() => setConfirmAi(true)} disabled={!!busy || confirmAi} className="h-8 px-3 rounded-md border border-jkn-border text-sm font-medium text-jkn-text hover:bg-frame disabled:opacity-50 transition-colors">
+                {busy === "ai" ? "Menganalisis ulang" : "Embedding AI"}
               </button>
-              <button onClick={() => rerunAnalysis(false)} disabled={!!busy} className="h-8 inline-flex items-center gap-1.5 px-3.5 rounded-md bg-[#1d1f20] text-white text-sm font-medium hover:bg-black disabled:opacity-50 transition-colors">
-                <RefreshCw className={`w-3.5 h-3.5 ${busy === "ai" ? "animate-spin" : ""}`} aria-hidden />
-                <span>{busy === "ai" ? "Menganalisis ulang" : "Jalankan ulang detektor"}</span>
+              <button onClick={() => rerunAnalysis(true)} disabled={!!busy} className="h-8 inline-flex items-center gap-1.5 px-3.5 rounded-md bg-[#1d1f20] text-white text-sm font-medium hover:bg-black disabled:opacity-50 transition-colors">
+                <RefreshCw className={`w-3.5 h-3.5 ${busy === "local" ? "animate-spin" : ""}`} aria-hidden />
+                <span>{busy === "local" ? "Menghitung" : "Jalankan ulang detektor"}</span>
               </button>
             </>
           ) : (
@@ -185,6 +186,28 @@ export default function ModelPerformancePage() {
           )}
         </div>
       </div>
+
+      {confirmAi && (
+        <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="min-w-0">
+            Embedding AI memakai model yang berbeda dari data bawaan, sehingga <b>antrean, eksposur, dan metrik bergeser</b> dari angka yang tampil sekarang, dan prosesnya memakan beberapa menit. Admin dapat mengembalikan angka awal lewat reset demo.
+          </p>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                setConfirmAi(false);
+                rerunAnalysis(false);
+              }}
+              className="h-8 px-3 rounded-md bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+            >
+              Ya, jalankan
+            </button>
+            <button onClick={() => setConfirmAi(false)} className="h-8 px-3 rounded-md border border-amber-300 bg-white text-sm font-medium text-amber-900 hover:bg-amber-100 transition-colors">
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
 
       {msg && (
         <div role="status" className="text-sm rounded-lg px-4 py-2.5 bg-bpjs-soft border border-bpjs-border text-bpjs-dark">

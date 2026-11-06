@@ -309,11 +309,18 @@ export function analyzeLocal(store: AnalyzableStore): AnalysisSummary {
   return analyzeWithVectors(store, vectors, LOCAL_MODEL);
 }
 
-/** Analisis async: memakai embedding Vertex bila tersedia (fallback otomatis ke lokal). */
+/**
+ * Analisis async. Model embedding mengikuti data yang sedang aktif: bila analisis sebelumnya memakai embedding lokal
+ * (dataset bawaan), analisis lanjutan seperti unggahan dataset tetap lokal. Ambang kemiripan berbeda per model, dan
+ * memindahkan seluruh klaim ke model lain terbukti menggeser antrean, eksposur, dan metrik (antrean 65 menjadi 116,
+ * F1 makro 0,827 menjadi 0,759 pada data sintetis bawaan). Embedding penyedia dipakai hanya
+ * bila diminta eksplisit (`forceLocal: false`) atau bila data sudah memakainya; gagal di tengah jalan jatuh ke lokal.
+ */
 export async function analyzeAll(store: AnalyzableStore, opts: { forceLocal?: boolean; only?: Set<string> } = {}): Promise<AnalysisSummary> {
   // Embedding (dan panggilan ke penyedia) hanya untuk klaim yang punya narasi klinis sungguhan.
   const narrated = store.claims.filter(hasNarrative);
-  const emb = await embedTexts(narrated.map(narrativeText), { forceLocal: opts.forceLocal });
+  const keepLocal = opts.forceLocal ?? (store.meta.embedding_model === undefined || store.meta.embedding_model === LOCAL_MODEL);
+  const emb = await embedTexts(narrated.map(narrativeText), { forceLocal: keepLocal });
   const vectors = new Map<string, { model: string; vector: number[] }>();
   narrated.forEach((c, i) => vectors.set(c.claim_id, { model: emb.model, vector: emb.vectors[i] }));
   store.embeddings = vectors;

@@ -131,13 +131,17 @@ async function main() {
   check("kolom PII ditangani (NIK dipseudonim, alamat/HP dihapus)", up.body.data.anonymization.columns_dropped.includes("ALAMAT") && up.body.data.anonymization.columns_pseudonymized.includes("NIK"));
   const conf = await sup.post(`/api/datasets/${up.body.data.dataset_id}/mapping`, { mappings: up.body.data.mappings });
   check("konfirmasi mapping -> READY, 151 klaim", conf.body?.data?.status === "READY" && conf.body.data.result.claims_ingested === 151, JSON.stringify(conf.body?.error || conf.body?.data?.result));
-  check("analisis memakai embedding provider (bukan lokal)", conf.body.data.result.embedding_model.startsWith("openai:"), conf.body?.data?.result?.embedding_model);
+  check("analisis lanjutan memakai model embedding data aktif (lokal), angka lama tidak bergeser", conf.body.data.result.embedding_model === "local-hash-v1", conf.body?.data?.result?.embedding_model);
   const ing = (await sup.json("/api/claims?full=1&limit=1000&search=SIMRS-A")).body;
   const blob = JSON.stringify(ing.data);
   check("tidak ada NIK 16 digit / nomor HP mentah pada klaim tersimpan", !/(?<!\d)\d{16}(?!\d)/.test(blob) && !/(?<!\d)08\d{8,11}/.test(blob));
   const files = fs.readdirSync(path.join(dataDir, "uploads"));
   const disk = files.map((f) => fs.readFileSync(path.join(dataDir, "uploads", f), "utf8")).join("");
   check("tidak ada PII mentah di disk", !/(?<!\d)\d{16}(?!\d)/.test(disk) && !/Jl\. Mawar/.test(disk));
+
+  const rerun = await adm.post("/api/analysis/run", { local: false });
+  check("analisis ulang eksplisit oleh admin memakai embedding provider", String(rerun.body?.data?.embedding_model).startsWith("openai:"), JSON.stringify(rerun.body?.data?.embedding_model ?? rerun.body));
+  check("analisis ulang hanya untuk admin (supervisor 403)", (await sup.post("/api/analysis/run", { local: true })).status === 403);
 
   console.log("\n[3b] Aksi admin");
   check("admin dapat reset demo", (await adm.post("/api/demo/reset", {})).status === 200);

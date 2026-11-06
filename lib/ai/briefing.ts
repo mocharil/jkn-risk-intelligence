@@ -2,7 +2,7 @@ import { z } from "zod";
 import { DashboardKPIs } from "@/types/risk";
 import { computeEmergingSignals } from "../analytics/aggregates";
 import { DataStore } from "../data/store";
-import { generateJson, getAIStatus } from "./llm";
+import { generateJson, getAIStatus, peekAIStatus } from "./llm";
 import { llmForbiddenByPolicy } from "../governance/policy";
 
 const LlmSchema = z.object({
@@ -28,11 +28,15 @@ export async function withAiBriefing(store: DataStore, kpis: DashboardKPIs, opts
   if (g.__arsaBriefing && g.__arsaBriefing.key === key && Date.now() - g.__arsaBriefing.at < TTL) {
     return { ...kpis, ai_briefing: g.__arsaBriefing.value };
   }
-  const status = await getAIStatus();
-  if (!status.available) return kpis;
+  // Dashboard tidak menunggu ping ke penyedia: bila status belum diketahui, versi sementara tampil dulu dan status diperiksa di latar belakang.
+  const known = peekAIStatus();
+  if (known && !known.available) return kpis;
 
   if (!g.__arsaBriefingInflight || g.__arsaBriefingInflight.key !== key) {
-    const promise = generateBriefing(store, kpis, key).finally(() => {
+    const promise = (async () => {
+      const status = known ?? (await getAIStatus());
+      return status.available ? generateBriefing(store, kpis, key) : null;
+    })().finally(() => {
       if (g.__arsaBriefingInflight?.promise === promise) g.__arsaBriefingInflight = undefined;
     });
     g.__arsaBriefingInflight = { key, promise };
