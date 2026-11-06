@@ -3,6 +3,7 @@ import { CanonicalClaim, SimilarClaimRef } from "@/types/claim";
 import { Investigation } from "@/types/investigation";
 import { RiskFinding, RiskLevel } from "@/types/risk";
 import { cosine, embedTexts, localEmbed, LOCAL_MODEL } from "../ai/embeddings";
+import { riskLevelName } from "./labels";
 import { scrubText } from "../pii/anonymize";
 import { Benchmarks, computeBenchmarks } from "./benchmarks";
 import { calculateCompositeRisk, DetectorContext, runDetectors } from "./detectors";
@@ -266,7 +267,7 @@ export function analyzeWithVectors(
             note_id: `NOT-${id}-1`,
             author: "Arsa Risk Engine",
             role: "Sistem",
-            content: `Kasus otomatis masuk antrean prioritas: skor ${claim.risk_score} (${claim.risk_level}). ${rationaleFor(claim)}`,
+            content: `Kasus otomatis masuk antrean prioritas: skor ${claim.risk_score} (${riskLevelName(claim.risk_level)}). ${rationaleFor(claim)}`,
             created_at,
             type: "AI_ASSESSMENT",
           },

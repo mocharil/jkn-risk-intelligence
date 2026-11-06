@@ -1,3 +1,4 @@
+import { INVESTIGATION_STATUS_LABEL } from "../risk/labels";
 import { CanonicalClaim } from "@/types/claim";
 import { Dataset } from "@/types/dataset";
 import { Investigation, InvestigationNote, InvestigationStatus } from "@/types/investigation";
@@ -336,16 +337,6 @@ export interface Actor {
   role: string;
 }
 
-const STATUS_LABEL: Record<InvestigationStatus, string> = {
-  NEW: "Baru",
-  UNDER_INVESTIGATION: "Dalam Investigasi",
-  NEED_EVIDENCE: "Membutuhkan Bukti Tambahan",
-  CONFIRMED_RISK: "Risiko Terkonfirmasi",
-  FALSE_POSITIVE: "False Positive (Klaim Wajar)",
-  ESCALATED: "Dieskalasi ke Komite Medis",
-  CLOSED: "Ditutup",
-};
-
 export function updateInvestigation(
   idOrClaim: string,
   update: { status?: InvestigationStatus; note?: string; decision?: Investigation["decision"]; action?: string },
@@ -372,7 +363,7 @@ export function updateInvestigation(
       note_id: `NOT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       author: actor.name,
       role: actor.role,
-      content: `Status diubah dari "${STATUS_LABEL[previous]}" menjadi "${STATUS_LABEL[update.status]}".${update.note ? ` Catatan: ${update.note}` : ""}`,
+      content: `Status diubah dari "${INVESTIGATION_STATUS_LABEL[previous]}" menjadi "${INVESTIGATION_STATUS_LABEL[update.status]}".${update.note ? ` Catatan: ${update.note}` : ""}`,
       created_at: now,
       type: "SYSTEM_AUDIT",
     });

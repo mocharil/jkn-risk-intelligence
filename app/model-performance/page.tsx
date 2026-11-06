@@ -1,5 +1,6 @@
 "use client";
 
+import { RISK_TYPE_LABEL } from "@/lib/risk/labels";
 import React, { useCallback, useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { PageLoader } from "@/components/ui/PageLoader";
@@ -143,16 +144,7 @@ export default function ModelPerformancePage() {
   const useBpjs = source === "bpjs" && bpjsAvailable;
   const r = useBpjs ? (p.bpjs_sample as EvaluationReport) : p.data;
 
-  const TYPE_NAME: Record<string, string> = {
-    UPCODING: "Upcoding",
-    CLONING: "Cloning",
-    PHANTOM_BILLING: "Phantom billing",
-    ABNORMAL_LOS: "LOS anomali",
-    UNBUNDLING: "Unbundling",
-    INFLATED_BILLS: "Inflasi tagihan",
-    REPEAT_BILLING: "Tagihan berulang",
-    READMISSION: "Rawat ulang dini",
-  };
+  const TYPE_NAME: Record<string, string> = RISK_TYPE_LABEL;
   const f1Tone = (v: number) => (v >= 0.85 ? "#059669" : v >= 0.6 ? "#CA8A04" : "#B91C1C");
   const circ = 2 * Math.PI * 52;
   const scatter = r.per_detector.map((m) => ({ x: Math.round(m.recall * 100), y: Math.round(m.precision * 100), z: Math.max(m.positives, 3), small: m.positives < 10, name: TYPE_NAME[m.risk_type] || m.risk_type, f1: m.f1 }));
@@ -386,7 +378,7 @@ export default function ModelPerformancePage() {
 
         <section className="rounded-2xl border border-jkn-border/80 bg-surface p-6">
           <h2 className="text-base font-semibold text-jkn-text">Kelengkapan sitasi bukti</h2>
-          <p className="text-xs text-jkn-muted mt-0.5">Temuan yang menautkan minimal satu bukti valid.</p>
+          <p className="text-xs text-jkn-muted mt-0.5">Bukti valid: sitasi yang id sumbernya ada pada data dan lolos validator (klaim, aturan, atau dokumen). Dokumen medis: sitasi yang merujuk dokumen rekam medis.</p>
           <div className="mt-4 grid grid-cols-2 gap-4">
             {[
               ["Bukti valid", ev.pct, "#007A3A"],
@@ -407,7 +399,7 @@ export default function ModelPerformancePage() {
               );
             })}
           </div>
-          <p className="mt-4 text-xs text-jkn-dim text-center">{ev.with_valid_citation} dari {ev.findings} temuan terverifikasi</p>
+          <p className="mt-4 text-xs text-jkn-dim text-center">{ev.with_valid_citation} dari {ev.findings} temuan bersitasi valid; {ev.with_document_citation} di antaranya merujuk dokumen medis.</p>
         </section>
 
         <section className="rounded-2xl border border-jkn-border/80 bg-surface p-6 flex flex-col">

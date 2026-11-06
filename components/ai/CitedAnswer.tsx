@@ -2,19 +2,11 @@
 
 import React from "react";
 import { AlertTriangle, BadgeCheck } from "lucide-react";
-import { RISK_LEVEL_LABEL, RISK_TYPE_LABEL } from "@/lib/risk/labels";
-import type { RiskLevel, RiskType } from "@/types/risk";
-
-const RISK_ENUM_PATTERN = new RegExp(String.raw`\b(${Object.keys(RISK_TYPE_LABEL).join("|")})\b`, "g");
-const LEVEL_ENUM_PATTERN = new RegExp(String.raw`\((${Object.keys(RISK_LEVEL_LABEL).join("|")})\)`, "g");
+import { humanizeRiskCodes } from "@/lib/risk/labels";
 
 function cleanSpacingAndEnums(raw: string): string {
-  return raw
-    // Rapikan spasi sebelum tanda baca setelah sitasi, mis. "[1] ." -> "[1]."
-    .replace(/(\[\d+\])\s+([.,;:!?])/g, "$1$2")
-    // Jaring pengaman: kode jenis risiko dan tingkat risiko yang lolos dari model dipakaikan nama yang sama dengan antarmuka lain
-    .replace(RISK_ENUM_PATTERN, (m) => RISK_TYPE_LABEL[m as RiskType] || m)
-    .replace(LEVEL_ENUM_PATTERN, (_, l: string) => `(${RISK_LEVEL_LABEL[l as RiskLevel]})`);
+  // Rapikan spasi sebelum tanda baca setelah sitasi, mis. "[1] ." -> "[1]."; lalu jaring pengaman untuk kode mentah dari model.
+  return humanizeRiskCodes(raw.replace(/(\[\d+\])\s+([.,;:!?])/g, "$1$2"));
 }
 
 function renderInline(text: string, anchor: string, badgeSize: "sm" | "md" = "sm"): React.ReactNode[] {

@@ -1,3 +1,4 @@
+import { RISK_TYPE_LABEL } from "@/lib/risk/labels";
 export interface PublicStats {
   claims: number;
   flagged_claims: number;
@@ -32,13 +33,4 @@ export interface PublicStats {
   } | null;
 }
 
-export const RISK_LABEL: Record<string, string> = {
-  UPCODING: "Upcoding",
-  CLONING: "Kloning narasi",
-  PHANTOM_BILLING: "Klaim fiktif",
-  ABNORMAL_LOS: "Lama rawat janggal",
-  UNBUNDLING: "Unbundling",
-  INFLATED_BILLS: "Tagihan membengkak",
-  REPEAT_BILLING: "Tagihan berulang",
-  READMISSION: "Rawat ulang dini",
-};
+export const RISK_LABEL: Record<string, string> = RISK_TYPE_LABEL;

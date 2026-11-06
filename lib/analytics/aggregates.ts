@@ -2,7 +2,7 @@ import { CanonicalClaim } from "@/types/claim";
 import { Provider } from "@/types/provider";
 import { ALL_RISK_TYPES, DashboardKPIs, EmergingSignal, ProvinceRiskData, RiskLevel, RiskType, TrendPoint } from "@/types/risk";
 import { INDONESIA_PROVINCES } from "../data/indonesia-provinces";
-import { RISK_TYPE_LABEL } from "../risk/labels";
+import { RISK_TYPE_LABEL, riskTypeName } from "../risk/labels";
 
 /**
  * Semua angka di dashboard / peta / profil faskes dihitung dari klaim hasil analisis —
@@ -291,8 +291,8 @@ export function computeDashboardKPIs(store: AggStore): DashboardKPIs {
       period: "7 hari terakhir vs 7 hari sebelumnya",
     },
     ai_briefing: {
-      summary: `Arsa menganalisis ${claims.length.toLocaleString("id-ID")} klaim dan menandai ${highRisk.length} klaim berisiko tinggi dengan potensi eksposur Rp ${Math.round(totalExposure).toLocaleString("id-ID")}. ${highRisk.length > 0 ? ` Pola dominan: ${dom.replace(/_/g, " ")}.` : ""}${topProv ? ` Faskes dengan eksposur terbesar: ${topProv.name} (skor ${topProv.risk_score}).` : ""}`,
-      key_findings: topProviders.map((p) => `${p.name}: ${p.high_risk_claims} klaim berisiko tinggi dari ${p.total_claims}, eksposur Rp ${Math.round(p.potential_exposure).toLocaleString("id-ID")}, dominan ${p.dominant_risk_type.replace(/_/g, " ")}.`),
+      summary: `Arsa menganalisis ${claims.length.toLocaleString("id-ID")} klaim dan menandai ${highRisk.length} klaim berisiko tinggi dengan potensi eksposur Rp ${Math.round(totalExposure).toLocaleString("id-ID")}.${highRisk.length > 0 ? ` Pola dominan: ${riskTypeName(dom)}.` : ""}${topProv ? ` Faskes dengan eksposur terbesar: ${topProv.name} (skor ${topProv.risk_score}).` : ""}`,
+      key_findings: topProviders.map((p) => `${p.name}: ${p.high_risk_claims} klaim berisiko tinggi dari ${p.total_claims}, eksposur Rp ${Math.round(p.potential_exposure).toLocaleString("id-ID")}, dominan ${riskTypeName(p.dominant_risk_type)}.`),
       confidence: Number(conf.toFixed(2)),
       affected_providers: providersAtRisk,
       potential_exposure: totalExposure,
