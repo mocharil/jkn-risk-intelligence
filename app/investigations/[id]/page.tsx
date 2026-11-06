@@ -1,7 +1,7 @@
 "use client";
 
 import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -15,7 +15,10 @@ import { FacilityPhoto, PersonAvatar } from "@/components/ui/Avatar";
 import { useSession } from "@/lib/auth/client";
 import { AuditEntry } from "@/lib/audit/chain";
 import { NetworkGraphView } from "@/components/network/NetworkGraphView";
-import { renderCitedText, ModeBadge } from "@/components/ai/CitedAnswer";
+import { ModeBadge } from "@/components/ai/CitedAnswer";
+import { CopilotMessages } from "@/components/ai/CopilotMessages";
+import { useCopilotChat } from "@/components/ai/useCopilotChat";
+import { useChatAutoScroll } from "@/components/ai/useChatAutoScroll";
 import {
   ArrowLeft,
   Sparkles,
@@ -55,7 +58,9 @@ export default function InvestigationWorkspacePage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
   const [aiQuestion, setAiQuestion] = useState("");
-  const [aiResponse, setAiResponse] = useState<{ text: string; mode?: "llm" | "deterministic"; provider?: string; model?: string; reason?: string; citations: Array<{ ref: number; evidence_id: string; title: string; excerpt: string; status: string }> } | null>(null);
+  // Percakapan yang sama dengan halaman Copilot (aliran respons, riwayat, visual, tautan, saran lanjutan), terkunci ke klaim ini.
+  const copilot = useCopilotChat({ storageKey: `arsa.copilot.inv.${investigation?.claim_id ?? id}`, claimId: investigation?.claim_id });
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const { can, role } = useSession();
   const [actionError, setActionError] = useState("");
   const [decisionModal, setDecisionModal] = useState<null | "CONFIRMED_RISK" | "FALSE_POSITIVE">(null);
@@ -63,7 +68,6 @@ export default function InvestigationWorkspacePage() {
   const [explaining, setExplaining] = useState(false);
   const [explainInfo, setExplainInfo] = useState<{ mode: "llm" | "deterministic"; reason?: string } | null>(null);
   const [audit, setAudit] = useState<{ entries: AuditEntry[]; valid: boolean; length: number; reason?: string; head?: string } | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
   const [highlightedEvidenceId, setHighlightedEvidenceId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -178,31 +182,14 @@ export default function InvestigationWorkspacePage() {
     }
   };
 
-  const handleAskAI = async (customPrompt?: string) => {
-    const query = customPrompt || aiQuestion;
-    if (!query.trim()) return;
-
-    setAiLoading(true);
+  const askCopilot = (q?: string) => {
+    const text = (q ?? aiQuestion).trim();
+    if (!text || copilot.busy) return;
     setAiQuestion("");
-
-    try {
-      const res = await fetch("/api/copilot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: query,
-          claim_id: investigation!.claim_id,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Permintaan gagal");
-      setAiResponse({ text: data.answer, mode: data.mode, provider: data.provider, model: data.model, reason: data.fallback_reason, citations: data.evidence_citations || [] });
-    } catch (e) {
-      setAiResponse({ text: `Maaf, permintaan gagal: ${e instanceof Error ? e.message : "kesalahan"}`, citations: [] });
-    } finally {
-      setAiLoading(false);
-    }
+    copilot.send(text);
   };
+
+  useChatAutoScroll(chatScrollRef, copilot.messages, copilot.loading);
 
   if (loading) {
     return (
@@ -910,7 +897,7 @@ export default function InvestigationWorkspacePage() {
           )}
         </div>
 
-        {/* Right Column: AI Investigator Panel (4 cols / 35%) */}
+        {/* Right Column: Arsa Copilot (4 cols / 35%): percakapan yang sama dengan halaman Copilot, terkunci ke klaim ini */}
         <div className="lg:col-span-4 bg-surface rounded-xl border border-jkn-border p-4 shadow-subtle space-y-4 sticky top-20">
           <div className="flex items-center justify-between pb-3 border-b border-jkn-divider">
             <div className="flex items-center gap-2.5">
@@ -919,87 +906,76 @@ export default function InvestigationWorkspacePage() {
               </div>
               <div>
                 <h3 className="text-xs font-bold text-jkn-text">Arsa Copilot</h3>
-                <p className="text-[10px] text-jkn-muted">Penalaran bersitasi atas klaim ini</p>
+                <p className="text-[10px] text-jkn-muted">Penalaran bersitasi, terkunci ke klaim ini</p>
               </div>
             </div>
-            <ModeBadge mode={aiResponse?.mode} provider={aiResponse?.provider} model={aiResponse?.model} reason={aiResponse?.reason} />
+            {copilot.messages.length > 0 && (
+              <button type="button" onClick={copilot.newChat} className="text-[11px] font-medium text-jkn-muted hover:text-jkn-text transition-colors">
+                Percakapan baru
+              </button>
+            )}
           </div>
 
-          {/* AI Output Box */}
-          <div className="p-3 rounded-lg bg-surface-secondary/80 border border-jkn-divider text-xs text-jkn-text space-y-2.5 max-h-80 overflow-y-auto">
-            {aiLoading ? (
-              <div className="flex items-center gap-2 text-jkn-muted py-4">
-                <Sparkles className="w-4 h-4 text-bpjs animate-spin" />
-                <span>Mengambil konteks & memvalidasi sitasi...</span>
-              </div>
-            ) : aiResponse ? (
-              <div className="space-y-2">
-                <div className="leading-relaxed text-xs">{renderCitedText(aiResponse.text, "inv-ai")}</div>
-                {aiResponse.citations.length > 0 && (
-                  <div className="space-y-1 pt-1 border-t border-jkn-divider">
-                    {aiResponse.citations.map((c) => (
-                      <div key={c.evidence_id} id={`inv-ai-ref-${c.ref}`} className="text-[10px] p-1.5 rounded bg-white border border-bpjs-border/50 scroll-mt-20">
-                        <span className="inline-flex items-center justify-center min-w-[14px] h-3.5 px-1 mr-1 rounded bg-bpjs text-white text-[9px] font-bold">{c.ref}</span>
-                        <b>{c.title}</b> <span className="font-mono text-jkn-dim">{c.evidence_id}</span>
-                        <div className="italic text-jkn-muted">"{c.excerpt}"</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
+          <div ref={chatScrollRef} className="max-h-[24rem] overflow-y-auto pr-1" role="log" aria-label="Percakapan dengan Arsa Copilot" aria-live="polite">
+            {copilot.messages.length === 0 && !copilot.loading ? (
               <div className="space-y-2">
                 <p className="leading-relaxed text-jkn-muted text-[11px]">
-                  Klik pertanyaan di bawah atau tulis pertanyaan sendiri. Jawaban hanya berasal dari data klaim ini (temuan, dokumen, klaim serupa) dan setiap pernyataan harus bersitasi.
+                  Klik pertanyaan di bawah atau tulis pertanyaan sendiri. Copilot membahas klaim ini dan dapat membandingkannya dengan faskes, provinsi, dan statistik BPJS. Setiap pernyataan harus bersitasi.
                 </p>
                 <div className="p-2 rounded-md bg-white border border-bpjs-border/60 text-[11px] text-bpjs-dark font-medium tabular-nums">
                   {claim.risk_findings.length} temuan · {claim.medical_evidence.length} dokumen · {claim.similar_claims.length} klaim serupa tersedia sebagai konteks.
                 </div>
               </div>
+            ) : (
+              <CopilotMessages messages={copilot.messages} loading={copilot.loading} busy={copilot.busy} onAsk={askCopilot} compact />
             )}
           </div>
 
-          {/* Quick Prompts */}
-          <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-jkn-dim block">
-              Pertanyaan yang Disarankan
-            </span>
-            <div className="space-y-1">
-              {[
-                "Mengapa klaim ini berisiko tinggi?",
-                "Dokumen mana yang membantah klaim ini?",
-                "Bagaimana perbandingannya dengan faskes dan klaim serupa?",
-              ].map((prompt, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleAskAI(prompt)}
-                  className="w-full text-left p-2 rounded-lg bg-white border border-jkn-border hover:border-bpjs hover:bg-bpjs-soft/30 text-[11px] text-jkn-text transition-colors flex items-center justify-between group"
-                >
-                  <span className="truncate">{prompt}</span>
-                  <ChevronRight className="w-3 h-3 text-jkn-dim group-hover:text-bpjs shrink-0" />
-                </button>
-              ))}
+          {/* Pertanyaan yang disarankan: hanya saat percakapan kosong; setelah itu saran lanjutan muncul di bawah jawaban */}
+          {copilot.messages.length === 0 && !copilot.loading && (
+            <div className="space-y-1.5">
+              <span className="text-xs font-semibold text-jkn-dim block">Pertanyaan yang Disarankan</span>
+              <div className="space-y-1">
+                {["Mengapa klaim ini berisiko tinggi?", "Dokumen mana yang membantah klaim ini?", "Bagaimana perbandingannya dengan faskes dan klaim serupa?"].map((prompt, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => askCopilot(prompt)}
+                    className="w-full text-left p-2 rounded-lg bg-white border border-jkn-border hover:border-bpjs hover:bg-bpjs-soft/30 text-[11px] text-jkn-text transition-colors flex items-center justify-between group"
+                  >
+                    <span className="truncate">{prompt}</span>
+                    <ChevronRight className="w-3 h-3 text-jkn-dim group-hover:text-bpjs shrink-0" />
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Input Prompt */}
           <div className="flex items-center gap-2 pt-2 border-t border-jkn-divider">
             <input
               type="text"
+              maxLength={1000}
               placeholder="Tanya Arsa Copilot tentang klaim ini..."
+              aria-label="Pertanyaan tentang klaim ini"
               value={aiQuestion}
               onChange={(e) => setAiQuestion(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAskAI()}
+              onKeyDown={(e) => e.key === "Enter" && askCopilot()}
               className="w-full h-9 text-xs px-3 rounded-lg bg-surface-secondary border border-jkn-border text-jkn-text outline-hidden focus:border-bpjs focus:bg-white transition-colors"
             />
-            <button
-              onClick={() => handleAskAI()}
-              aria-label="Kirim pertanyaan"
-              disabled={aiLoading || !aiQuestion.trim()}
-              className="h-9 w-9 flex items-center justify-center rounded-lg bg-bpjs text-white hover:bg-bpjs-deep disabled:opacity-50 transition-colors shrink-0"
-            >
-              <Send className="w-3.5 h-3.5" />
-            </button>
+            {copilot.busy ? (
+              <button type="button" onClick={copilot.stop} aria-label="Hentikan" className="h-9 w-9 flex items-center justify-center rounded-lg bg-risk-critical-bg text-risk-critical hover:bg-red-100 transition-colors shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => askCopilot()}
+                aria-label="Kirim pertanyaan"
+                disabled={!aiQuestion.trim()}
+                className="h-9 w-9 flex items-center justify-center rounded-lg bg-bpjs text-white hover:bg-bpjs-deep disabled:opacity-50 transition-colors shrink-0"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { RISK_TYPE_LABEL } from "@/lib/risk/labels";
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -150,14 +151,14 @@ export default function ProviderDetailPage() {
 
   // Controlled semantic tones instead of 8 rainbow colors
   const compositionItems = [
-    { label: "Upcoding (Inflasi Severity)", subject: "Upcoding", pct: rc.upcoding_pct ?? 0 },
-    { label: "Phantom Billing (Tanpa Bukti Tindakan)", subject: "Phantom", pct: rc.phantom_billing_pct ?? 0 },
-    { label: "Cloning (Duplikasi Narasi Medis)", subject: "Cloning", pct: rc.cloning_pct ?? 0 },
-    { label: "Abnormal LOS (Deviasi Lama Rawat)", subject: "LOS", pct: rc.abnormal_los_pct ?? 0 },
-    { label: "Unbundling (Pemecahan Paket)", subject: "Unbundling", pct: rc.unbundling_pct ?? 0 },
-    { label: "Inflated Bills (Mark-up Obat/Alkes)", subject: "Inflated", pct: rc.inflated_bills_pct ?? 0 },
-    { label: "Repeat Billing (Tagihan Berulang)", subject: "Repeat", pct: rc.repeat_billing_pct ?? 0 },
-    { label: "Readmission (Rawat Ulang Dini)", subject: "Readmisi", pct: rc.readmission_pct ?? 0 },
+    { label: RISK_TYPE_LABEL.UPCODING, subject: "Upcoding", pct: rc.upcoding_pct ?? 0 },
+    { label: RISK_TYPE_LABEL.PHANTOM_BILLING, subject: "Phantom", pct: rc.phantom_billing_pct ?? 0 },
+    { label: RISK_TYPE_LABEL.CLONING, subject: "Cloning", pct: rc.cloning_pct ?? 0 },
+    { label: RISK_TYPE_LABEL.ABNORMAL_LOS, subject: "LOS", pct: rc.abnormal_los_pct ?? 0 },
+    { label: RISK_TYPE_LABEL.UNBUNDLING, subject: "Unbundling", pct: rc.unbundling_pct ?? 0 },
+    { label: RISK_TYPE_LABEL.INFLATED_BILLS, subject: "Inflated", pct: rc.inflated_bills_pct ?? 0 },
+    { label: RISK_TYPE_LABEL.REPEAT_BILLING, subject: "Repeat", pct: rc.repeat_billing_pct ?? 0 },
+    { label: RISK_TYPE_LABEL.READMISSION, subject: "Readmisi", pct: rc.readmission_pct ?? 0 },
   ];
 
   const avgAmtProvider = (pc?.avg_claim_amount?.provider ?? 0);

@@ -2,8 +2,9 @@ import { z } from "zod";
 import { DashboardKPIs } from "@/types/risk";
 import { computeEmergingSignals } from "../analytics/aggregates";
 import { DataStore } from "../data/store";
-import { generateJson, getAIStatus } from "./llm";
+import { generateJson, getAIStatus, peekAIStatus } from "./llm";
 import { llmForbiddenByPolicy } from "../governance/policy";
+import { humanizeRiskCodes, riskTypeName } from "../risk/labels";
 
 const LlmSchema = z.object({
   summary: z.string().min(20),
@@ -28,11 +29,15 @@ export async function withAiBriefing(store: DataStore, kpis: DashboardKPIs, opts
   if (g.__arsaBriefing && g.__arsaBriefing.key === key && Date.now() - g.__arsaBriefing.at < TTL) {
     return { ...kpis, ai_briefing: g.__arsaBriefing.value };
   }
-  const status = await getAIStatus();
-  if (!status.available) return kpis;
+  // Dashboard tidak menunggu ping ke penyedia: bila status belum diketahui, versi sementara tampil dulu dan status diperiksa di latar belakang.
+  const known = peekAIStatus();
+  if (known && !known.available) return kpis;
 
   if (!g.__arsaBriefingInflight || g.__arsaBriefingInflight.key !== key) {
-    const promise = generateBriefing(store, kpis, key).finally(() => {
+    const promise = (async () => {
+      const status = known ?? (await getAIStatus());
+      return status.available ? generateBriefing(store, kpis, key) : null;
+    })().finally(() => {
       if (g.__arsaBriefingInflight?.promise === promise) g.__arsaBriefingInflight = undefined;
     });
     g.__arsaBriefingInflight = { key, promise };
@@ -49,7 +54,7 @@ async function generateBriefing(store: DataStore, kpis: DashboardKPIs, key: stri
   const ctx = [
     `[agg:national] ${kpis.total_claims_analyzed} klaim, ${kpis.high_risk_claims} berisiko tinggi, eksposur Rp ${Math.round(kpis.potential_exposure).toLocaleString("id-ID")}, ${kpis.providers_at_risk} faskes berisiko tinggi. Tren 7 hari: klaim ${kpis.trends.claims_change_pct}%, berisiko tinggi ${kpis.trends.high_risk_change_pct}%.`,
     ...signals.map((s) => `[signal:${s.signal_id}] ${s.title}: ${s.description} Eksposur Rp ${Math.round(s.potential_exposure).toLocaleString("id-ID")}.`),
-    ...providers.map((p) => `[provider:${p.provider_id}] ${p.name}: skor ${p.risk_score}, ${p.high_risk_claims}/${p.total_claims} klaim tinggi, eksposur Rp ${Math.round(p.potential_exposure).toLocaleString("id-ID")}, dominan ${p.dominant_risk_type}.`),
+    ...providers.map((p) => `[provider:${p.provider_id}] ${p.name}: skor ${p.risk_score}, ${p.high_risk_claims}/${p.total_claims} klaim tinggi, eksposur Rp ${Math.round(p.potential_exposure).toLocaleString("id-ID")}, dominan ${riskTypeName(p.dominant_risk_type)}.`),
   ];
   const validIds = new Set<string>(["agg:national", ...signals.map((s) => `signal:${s.signal_id}`), ...providers.map((p) => `provider:${p.provider_id}`)]);
 
@@ -63,8 +68,9 @@ async function generateBriefing(store: DataStore, kpis: DashboardKPIs, key: stri
     if (cited.length === 0 || cited.length < res.cited_ids.length) return null; // validator menolak → tetap deterministik
     const value: DashboardKPIs["ai_briefing"] = {
       ...kpis.ai_briefing,
-      summary: res.summary,
-      key_findings: res.key_findings,
+      // Model kadang menulis kode mentah (UPCODING); kartu briefing memakai nama yang sama dengan menu lain.
+      summary: humanizeRiskCodes(res.summary),
+      key_findings: res.key_findings.map(humanizeRiskCodes),
       source: "llm",
       provider: status.provider_label,
       model: status.model,

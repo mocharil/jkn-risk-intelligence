@@ -13,6 +13,7 @@ import { CanonicalClaim, NationalContext } from "@/types/claim";
 import { INDONESIA_PROVINCES } from "@/lib/data/indonesia-provinces";
 import { formatRupiah } from "@/lib/formatting/currency";
 import { formatRelativeTime } from "@/lib/formatting/date";
+import { CLAIM_STATUS_LABEL } from "@/lib/risk/labels";
 import {
   ShieldAlert,
   Search,
@@ -59,21 +60,6 @@ const STATUS_STYLE: Record<string, { label: string; className: string }> = {
     label: "Ditutup",
     className: "bg-surface-secondary text-jkn-muted border-jkn-border",
   },
-};
-
-const CLAIM_STATUS_LABEL: Record<string, string> = {
-  NEW: "Baru",
-  FLAGGED: "Ditandai",
-  IN_QUEUE: "Dalam Antrean",
-  UNDER_INVESTIGATION: "Diinvestigasi",
-  NEED_EVIDENCE: "Butuh Bukti",
-  CONFIRMED_RISK: "Risiko Terkonfirmasi",
-  FALSE_POSITIVE: "Positif Palsu",
-  CLEARED: "Normal / Lolos",
-  CLEAN: "Normal / Lolos",
-  PENDING_REVIEW: "Menunggu tinjauan",
-  IN_INVESTIGATION: "Diinvestigasi",
-  RESOLVED_VALID: "Wajar / lolos",
 };
 
 const CLAIM_STATUS_STYLE: Record<string, string> = {

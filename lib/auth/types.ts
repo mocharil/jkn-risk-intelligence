@@ -31,7 +31,8 @@ export const PERMISSIONS = {
   "case.final_decision": ["SUPERVISOR", "ADMIN"],
   "dataset.upload": ["INVESTIGATOR", "SUPERVISOR", "ADMIN"],
   "dataset.confirm_mapping": ["INVESTIGATOR", "SUPERVISOR", "ADMIN"],
-  "analysis.run": ["INVESTIGATOR", "SUPERVISOR", "ADMIN"],
+  // Analisis ulang dapat menggeser antrean dan metrik seluruh dataset, jadi hanya administrator.
+  "analysis.run": ["ADMIN"],
   "admin.users": ["ADMIN"],
   "admin.policy": ["ADMIN"],
   "admin.reset_demo": ["ADMIN"],

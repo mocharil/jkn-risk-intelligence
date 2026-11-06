@@ -694,7 +694,7 @@ export default function LandingPage() {
             transition={{ duration: 0.65, delay: 0.08 }}
             className="text-4xl sm:text-6xl md:text-[64px] font-semibold tracking-[-0.03em] leading-[1.08] text-[#111713]"
           >
-            Audit klaim JKN
+            Audit klaim JKN{" "}
             <br className="hidden sm:block" />
             <motion.span
               animate={{

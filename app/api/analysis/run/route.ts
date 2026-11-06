@@ -9,7 +9,8 @@ export async function POST(request: NextRequest) {
   if (g.error) return g.error;
   const body = await request.json().catch(() => ({}));
   const store = getStore();
-  const summary = await analyzeAll(store, { forceLocal: body?.local === true });
+  // `local: true` memaksa embedding lokal, `local: false` meminta embedding penyedia; tanpa pilihan, mengikuti model data saat ini.
+  const summary = await analyzeAll(store, { forceLocal: typeof body?.local === "boolean" ? body.local : undefined });
   store.meta.last_analysis = summary;
   refreshAggregates(store);
   recordAudit({
