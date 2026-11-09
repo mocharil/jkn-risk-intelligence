@@ -18,6 +18,7 @@
     "db:migrate": "tsx scripts/db-migrate.ts",
     "test:db": "cross-env PG_TEST_URL=postgres://postgres:arsa@localhost:54329/arsa vitest run tests/db-pg.test.ts",
     "test:e2e": "node scripts/e2e.mjs",
+    "preflight": "node scripts/preflight.mjs",
     "mock:llm": "node scripts/mock-llm.mjs"
   },
   "dependencies": {

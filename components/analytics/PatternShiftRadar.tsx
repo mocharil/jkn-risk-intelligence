@@ -32,7 +32,7 @@ export const PatternShiftRadar: React.FC<{ shifts: PatternShift[]; height?: numb
     <div className={split ? "grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] gap-6 items-center" : ""}>
       <div style={{ height }} className="w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={data} outerRadius="66%" margin={{ top: 8, right: 36, bottom: 8, left: 36 }}>
+          <RadarChart data={data} outerRadius="56%" margin={{ top: 8, right: 64, bottom: 8, left: 64 }}>
             <PolarGrid stroke="#E4ECE8" />
             <PolarAngleAxis dataKey="label" tick={{ fontSize: 11, fill: "#61756D" }} />
             <PolarRadiusAxis angle={90} tick={false} axisLine={false} domain={[0, "dataMax"]} />

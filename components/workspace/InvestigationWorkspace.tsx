@@ -606,6 +606,7 @@ export function InvestigationQueueInner({
             <Search className="w-3.5 h-3.5 text-jkn-dim absolute left-3 top-2.5 pointer-events-none" />
             <input
               type="text"
+              aria-label={workspaceMode === "QUEUE" ? "Cari kasus di antrean investigasi" : "Cari klaim"}
               placeholder={
                 workspaceMode === "QUEUE"
                   ? "Cari ID klaim (CLM-...), ID investigasi, nama faskes, peserta, atau kode ICD-10..."

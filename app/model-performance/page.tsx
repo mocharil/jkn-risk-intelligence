@@ -147,7 +147,13 @@ export default function ModelPerformancePage() {
   const TYPE_NAME: Record<string, string> = RISK_TYPE_LABEL;
   const f1Tone = (v: number) => (v >= 0.85 ? "#059669" : v >= 0.6 ? "#CA8A04" : "#B91C1C");
   const circ = 2 * Math.PI * 52;
-  const scatter = r.per_detector.map((m) => ({ x: Math.round(m.recall * 100), y: Math.round(m.precision * 100), z: Math.max(m.positives, 3), small: m.positives < 10, name: TYPE_NAME[m.risk_type] || m.risk_type, f1: m.f1 }));
+  const scatter = r.per_detector.map((m) => ({ x: Math.round(m.recall * 100), y: Math.round(m.precision * 100), z: Math.max(m.positives, 3), small: m.positives < 10, name: TYPE_NAME[m.risk_type] || m.risk_type, f1: m.f1, labeled: true }));
+  // Titik yang berimpit (beberapa detektor sama-sama di 100%/100%) hanya diberi satu label; nama lain tampil saat kursor diarahkan.
+  const labeledPoints: Array<{ x: number; y: number }> = [];
+  scatter.forEach((d) => {
+    d.labeled = !labeledPoints.some((o) => Math.abs(o.x - d.x) < 14 && Math.abs(o.y - d.y) < 10);
+    if (d.labeled) labeledPoints.push(d);
+  });
   const ev = r.evidence_completeness;
 
   return (
@@ -329,7 +335,7 @@ export default function ModelPerformancePage() {
 
         <section className="rounded-2xl border border-jkn-border/80 bg-surface p-6 flex flex-col" aria-labelledby="h-pr">
           <h2 id="h-pr" className="text-lg font-semibold text-jkn-text">Peta precision dan recall</h2>
-          <p className="text-sm text-jkn-muted mt-0.5">Makin ke kanan atas makin baik. Ukuran titik menurut jumlah kasus berlabel; titik abu-abu putus-putus berarti sampel kecil (indikatif).</p>
+          <p className="text-sm text-jkn-muted mt-0.5">Makin ke kanan atas makin baik. Ukuran titik menurut jumlah kasus berlabel; titik abu-abu putus-putus berarti sampel kecil (indikatif). Titik yang berimpit hanya diberi satu label; arahkan kursor untuk nama lainnya.</p>
           <div className="flex-1 min-h-[320px] mt-3">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 12, right: 28, bottom: 16, left: 0 }}>
@@ -346,7 +352,7 @@ export default function ModelPerformancePage() {
                   labelFormatter={() => ""}
                 />
                 <Scatter data={scatter} fill="#007A3A" fillOpacity={0.75} shape={(props: { cx?: number; cy?: number; payload?: { z: number; small: boolean } }) => <circle cx={props.cx} cy={props.cy} r={props.payload ? 4 + Math.min(8, props.payload.z / 4) : 5} fill={props.payload?.small ? "#94A3B8" : "#007A3A"} fillOpacity={props.payload?.small ? 0.55 : 0.8} stroke={props.payload?.small ? "#64748B" : "none"} strokeDasharray={props.payload?.small ? "2 2" : undefined} />}>
-                  <LabelList dataKey="name" position="top" fontSize={11} fill="#475B53" />
+                  <LabelList dataKey="name" position="top" fontSize={11} fill="#475B53" content={(lp: { x?: number | string; y?: number | string; index?: number }) => { const d = lp.index === undefined ? undefined : scatter[lp.index]; return d?.labeled ? <text x={Number(lp.x)} y={Number(lp.y) - 10} textAnchor="middle" fontSize={11} fill="#475B53">{d.name}</text> : null; }} />
                 </Scatter>
               </ScatterChart>
             </ResponsiveContainer>
