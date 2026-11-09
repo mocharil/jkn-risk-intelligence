@@ -1,5 +1,6 @@
 "use client";
 
+import { RISK_LEVEL_LABEL, RISK_TYPE_LABEL } from "@/lib/risk/labels";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -16,18 +17,9 @@ import { AlertTriangle, ChevronRight, Layers, MapPin, TrendingUp } from "lucide-
 
 type RiskTab = "OVERVIEW" | "MAP" | "GRAPH" | "PATTERNS";
 
-const TYPE_LABEL: Record<RiskType, string> = {
-  UPCODING: "Upcoding",
-  CLONING: "Kloning narasi",
-  PHANTOM_BILLING: "Tagihan fiktif",
-  ABNORMAL_LOS: "Lama rawat",
-  UNBUNDLING: "Unbundling",
-  INFLATED_BILLS: "Tagihan membengkak",
-  REPEAT_BILLING: "Tagihan berulang",
-  READMISSION: "Readmisi dini",
-};
+const TYPE_LABEL: Record<RiskType, string> = RISK_TYPE_LABEL;
 
-const SEVERITY_LABEL = { CRITICAL: "Kritis", HIGH: "Tinggi", MEDIUM: "Sedang", LOW: "Rendah" } as const;
+const SEVERITY_LABEL = RISK_LEVEL_LABEL;
 
 type SortKey = "exposure" | "score" | "claims" | "cost_ratio" | "access" | "fkrtl";
 const SORTS: { key: SortKey; label: string }[] = [

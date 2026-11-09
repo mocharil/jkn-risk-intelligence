@@ -13,3 +13,6 @@ ArsaAI.zip
 scripts/video
 .env*
 gemini_sa.json
+*.pptx
+*.mp4
+docs

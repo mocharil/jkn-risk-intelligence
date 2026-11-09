@@ -1,5 +1,6 @@
 "use client";
 
+import { RISK_TYPE_LABEL } from "@/lib/risk/labels";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -60,16 +61,7 @@ interface DashboardPayload {
 
 const LEVEL_COLOR = { CRITICAL: "#B91C1C", HIGH: "#EA580C", MEDIUM: "#CA8A04", LOW: "#059669" } as const;
 
-const TYPE_SHORT: Record<string, string> = {
-  UPCODING: "Upcoding",
-  CLONING: "Cloning",
-  PHANTOM_BILLING: "Phantom billing",
-  ABNORMAL_LOS: "LOS anomali",
-  UNBUNDLING: "Unbundling",
-  INFLATED_BILLS: "Inflasi tagihan",
-  REPEAT_BILLING: "Tagihan berulang",
-  READMISSION: "Rawat ulang dini",
-};
+const TYPE_SHORT: Record<string, string> = RISK_TYPE_LABEL;
 
 /** Warna petak provinsi: putih-hijau yang sama dengan peta panas. */
 function heatColor(t: number): string {

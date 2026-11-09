@@ -1,6 +1,7 @@
 import { CanonicalClaim } from "@/types/claim";
 import { ALL_RISK_TYPES, RiskType } from "@/types/risk";
-import { computeDashboardKPIs, computeEmergingSignals, computeProvinceRisk } from "../analytics/aggregates";
+import { computeDashboardKPIs, computeEmergingSignals, computePatternShifts, computeProvinceRisk } from "../analytics/aggregates";
+import { claimStatusName, riskLevelName, riskTypeName } from "../risk/labels";
 import { INDONESIA_PROVINCES } from "../data/indonesia-provinces";
 import { DataStore, memoized } from "../data/store";
 import * as BPJS from "../data/bpjs-national";
@@ -156,7 +157,7 @@ export function claimItems(c: CanonicalClaim): ContextItem[] {
     id: `claim:${c.claim_id}`,
     kind: "CLAIM",
     title: `Klaim ${c.claim_id}`,
-    text: `Klaim ${c.claim_id} di ${c.provider.name} (${c.provider.province_code}). Diagnosis ${d?.code} ${d?.description}, severity ${d?.severity}, lama rawat ${c.service.length_of_stay} hari, DPJP ${c.service.doctor_name}. Tagihan ${rp(c.claim_amount)} vs median peer ${rp(c.approved_tariff || 0)} (selisih ${rp(c.tariff_difference || 0)}). Prosedur: ${c.procedures.map((p) => `${p.code}${p.cost ? ` (${rp(p.cost)})` : ""}`).join(", ") || "-"}. Skor risiko ${c.risk_score} (${c.risk_level}), status ${c.status}.`,
+    text: `Klaim ${c.claim_id} di ${c.provider.name} (${c.provider.province_code}). Diagnosis ${d?.code} ${d?.description}, severity ${d?.severity}, lama rawat ${c.service.length_of_stay} hari, DPJP ${c.service.doctor_name}. Tagihan ${rp(c.claim_amount)} vs median peer ${rp(c.approved_tariff || 0)} (selisih ${rp(c.tariff_difference || 0)}). Prosedur: ${c.procedures.map((p) => `${p.code}${p.cost ? ` (${rp(p.cost)})` : ""}`).join(", ") || "-"}. Skor risiko ${c.risk_score} (${riskLevelName(c.risk_level)}), status ${claimStatusName(c.status)}.`,
     link: { type: "CLAIM", id: c.claim_id, label: `Buka klaim ${c.claim_id}`, risk_score: c.risk_score, href: claimHref(c) },
   });
   for (const f of c.risk_findings) {
@@ -164,7 +165,7 @@ export function claimItems(c: CanonicalClaim): ContextItem[] {
       id: `finding:${c.claim_id}:${f.risk_type}`,
       kind: "FINDING",
       title: f.title,
-      text: `${f.risk_type} skor ${f.risk_score} (conf ${f.confidence}, aturan ${f.rule_id || "-"}): ${f.summary} Bukti hilang: ${f.missing_evidence.join("; ") || "-"}.`,
+      text: `${riskTypeName(f.risk_type)} skor ${f.risk_score} (keyakinan ${f.confidence}, aturan ${f.rule_id || "-"}): ${f.summary} Bukti hilang: ${f.missing_evidence.join("; ") || "-"}.`,
       status: "CONTRADICTS_CLAIM",
     });
   }
@@ -207,7 +208,7 @@ export function buildContext(store: DataStore, opts: { question: string; claim_i
       id: `provider:${p.provider_id}`,
       kind: "PROVIDER",
       title: p.name,
-      text: `${p.name} (${p.provider_id}, ${p.province_name}): skor risiko ${p.risk_score} (${p.risk_level}), ${p.high_risk_claims} klaim berisiko tinggi dari ${p.total_claims}, eksposur ${rp(p.potential_exposure)}, dominan ${p.dominant_risk_type}. Severity-3 ${p.peer_comparison.severity_3_rate.provider}% vs median peer ${p.peer_comparison.severity_3_rate.peer_median}%; rerata LOS ${p.peer_comparison.avg_los_days.provider} hari vs ${p.peer_comparison.avg_los_days.peer_median}; readmisi ${p.peer_comparison.readmission_rate_pct.provider}% vs ${p.peer_comparison.readmission_rate_pct.peer_median}%. Dokter berisiko: ${p.doctors.filter((d) => d.high_risk_claims_count > 0).sort((a, b) => b.risk_score - a.risk_score).slice(0, 2).map((d) => `${d.name} (skor ${d.risk_score}, ${d.high_risk_claims_count} klaim tinggi)`).join("; ") || "-"}.${(() => {
+      text: `${p.name} (${p.provider_id}, ${p.province_name}): skor risiko ${p.risk_score} (${riskLevelName(p.risk_level)}), ${p.high_risk_claims} klaim berisiko tinggi dari ${p.total_claims}, eksposur ${rp(p.potential_exposure)}, dominan ${riskTypeName(p.dominant_risk_type)}. Severity-3 ${p.peer_comparison.severity_3_rate.provider}% vs median peer ${p.peer_comparison.severity_3_rate.peer_median}%; rerata LOS ${p.peer_comparison.avg_los_days.provider} hari vs ${p.peer_comparison.avg_los_days.peer_median}; readmisi ${p.peer_comparison.readmission_rate_pct.provider}% vs ${p.peer_comparison.readmission_rate_pct.peer_median}%. Dokter berisiko: ${p.doctors.filter((d) => d.high_risk_claims_count > 0).sort((a, b) => b.risk_score - a.risk_score).slice(0, 2).map((d) => `${d.name} (skor ${d.risk_score}, ${d.high_risk_claims_count} klaim tinggi)`).join("; ") || "-"}.${(() => {
         const pn = provNationalMap.get(p.provider_id);
         return pn ? ` Biaya klaim ${pn.cost_ratio !== null ? `${pn.cost_ratio.toFixed(2)}x` : "-"} rerata nasional BPJS untuk campuran kelas yang sama${pn.small_sample ? `; baru ${pn.claims} klaim (sampel kecil, belum dapat disimpulkan)` : ""}.`  : "";
       })()}`,
@@ -224,7 +225,7 @@ export function buildContext(store: DataStore, opts: { question: string; claim_i
         id: `province:${p.code}`,
         kind: "AGG",
         title: `Provinsi ${p.name}`,
-        text: `${p.name}: ${r.total_claims} klaim, ${r.high_risk_claims} berisiko tinggi, eksposur ${rp(r.potential_exposure)}, dominan ${r.dominant_risk_type}, level ${r.risk_level}. Faskes teratas: ${r.top_providers.join(", ") || "-"}.`,
+        text: `${p.name}: ${r.total_claims} klaim, ${r.high_risk_claims} berisiko tinggi, eksposur ${rp(r.potential_exposure)}, dominan ${riskTypeName(r.dominant_risk_type)}, level ${riskLevelName(r.risk_level)}. Faskes teratas: ${r.top_providers.join(", ") || "-"}.`,
         link: { type: "MAP", id: p.code, label: `Peta risiko ${p.name}`, risk_score: r.total_claims > 0 ? r.risk_score : undefined, href: `/risk-intelligence?tab=peta&province=${p.code}` },
       });
   });
@@ -239,8 +240,8 @@ export function buildContext(store: DataStore, opts: { question: string; claim_i
       add({
         id: `type:${t}`,
         kind: "AGG",
-        title: `Sinyal ${t}`,
-        text: `${withT.length} klaim memiliki sinyal ${t}, eksposur ${rp(withT.reduce((a, c) => a + (c.tariff_difference || 0), 0))}. Faskes terbanyak: ${top.map(([n, v]) => `${n} (${v})`).join(", ") || "-"}.`,
+        title: `Sinyal ${riskTypeName(t)}`,
+        text: `${withT.length} klaim memiliki sinyal ${riskTypeName(t)}, eksposur ${rp(withT.reduce((a, c) => a + (c.tariff_difference || 0), 0))}. Faskes terbanyak: ${top.map(([n, v]) => `${n} (${v})`).join(", ") || "-"}.`,
       });
     }
   }
@@ -256,25 +257,55 @@ export function buildContext(store: DataStore, opts: { question: string; claim_i
   computeEmergingSignals(store).slice(0, 3).forEach((s) =>
     add({ id: `signal:${s.signal_id}`, kind: "SIGNAL", title: s.title, text: `${s.title}: ${s.description} Eksposur ${rp(s.potential_exposure)}, keyakinan ${s.confidence}.` })
   );
-  if (claims.length === 0 && store.claims.length > 0) {
+  // Pertanyaan peringkat ("faskes/klaim mana yang paling ...") harus dijawab dari daftar teratas walau sebuah klaim sedang dibahas
+  // (mis. dari panel di halaman investigasi); tanpa ini jawabannya hanya menyebut faskes klaim itu sebagai "paling berisiko".
+  const wantsProviderRanking = /(faskes|rumah sakit|rsud|\brs\b).*(paling|tertinggi|teratas|terbesar|terburuk|\bmana\b)|(paling|tertinggi|teratas|terbesar).*(faskes|rumah sakit|rsud)/.test(q);
+  const wantsClaimRanking = /(klaim|kasus).*(teratas|tertinggi|paling\s+(kritis|berisiko|tinggi))|(teratas|tertinggi|paling\s+(kritis|berisiko)).*(klaim|kasus)/.test(q);
+  if ((claims.length === 0 || wantsClaimRanking) && store.claims.length > 0) {
     const top = [...store.claims].sort((a, b) => b.risk_score - a.risk_score).slice(0, 5);
     add({
       id: "list:top_claims",
       kind: "LIST",
       title: "Klaim berisiko tertinggi",
-      text: top.map((c) => `${c.claim_id} (${c.provider.name}, skor ${c.risk_score}, ${c.risk_signals.join("+")}, selisih ${rp(c.tariff_difference || 0)})`).join("; "),
+      text: top.map((c) => `${c.claim_id} (${c.provider.name}, skor ${c.risk_score}, ${c.risk_signals.map(riskTypeName).join(" + ")}, selisih ${rp(c.tariff_difference || 0)})`).join("; "),
       link: { type: "CLAIM", id: top[0]?.claim_id || "", label: `Klaim teratas ${top[0]?.claim_id}`, risk_score: top[0]?.risk_score || 0, href: top[0] ? claimHref(top[0]) : undefined },
     });
   }
-  if (provs.length === 0 && store.providers.length > 0) {
-    const top = [...store.providers].sort((a, b) => b.risk_score - a.risk_score).slice(0, 5);
+  if ((provs.length === 0 || wantsProviderRanking) && store.providers.length > 0) {
+    // "Paling berisiko" bisa berarti skor tertinggi atau eksposur rupiah terbesar; keduanya disebut agar jawaban tidak memilih diam-diam
+    // (Command Center menyorot eksposur terbesar, antrean faskes mengurutkan skor).
+    const line = (p: (typeof store.providers)[number]) => `${p.name} (skor ${p.risk_score}, ${p.high_risk_claims}/${p.total_claims} klaim tinggi, eksposur ${rp(p.potential_exposure)}, dominan ${riskTypeName(p.dominant_risk_type)})`;
+    const byScore = [...store.providers].sort((a, b) => b.risk_score - a.risk_score).slice(0, 5);
+    const byExposure = [...store.providers].sort((a, b) => b.potential_exposure - a.potential_exposure).slice(0, 3);
     add({
       id: "list:top_providers",
       kind: "LIST",
       title: "Faskes berisiko tertinggi",
-      text: top.map((p) => `${p.name} (skor ${p.risk_score}, ${p.high_risk_claims}/${p.total_claims} klaim tinggi, eksposur ${rp(p.potential_exposure)})`).join("; "),
-      link: { type: "PROVIDER", id: top[0]?.provider_id || "", label: `Profil ${top[0]?.name}`, risk_score: top[0]?.risk_score || 0, href: top[0] ? `/providers/${top[0].provider_id}` : undefined },
+      text: `Urut skor risiko: ${byScore.map(line).join("; ")}. Urut eksposur rupiah terbesar: ${byExposure.map((p) => `${p.name} (${rp(p.potential_exposure)})`).join("; ")}.`,
+      link: { type: "PROVIDER", id: byScore[0]?.provider_id || "", label: `Profil ${byScore[0]?.name}`, risk_score: byScore[0]?.risk_score || 0, href: byScore[0] ? `/providers/${byScore[0].provider_id}` : undefined },
     });
+    if (byExposure[0] && byExposure[0].provider_id !== byScore[0]?.provider_id) {
+      add({
+        id: "list:top_exposure_provider",
+        kind: "LIST",
+        title: "Faskes dengan eksposur terbesar",
+        text: `${byExposure[0].name} memiliki eksposur rupiah terbesar (${rp(byExposure[0].potential_exposure)}) dengan skor risiko ${byExposure[0].risk_score}.`,
+        link: { type: "PROVIDER", id: byExposure[0].provider_id, label: `Profil ${byExposure[0].name}`, risk_score: byExposure[0].risk_score, href: `/providers/${byExposure[0].provider_id}` },
+      });
+    }
+  }
+  // Pergeseran pola (14 hari terakhir vs 14 hari sebelumnya), angka yang sama dengan kartu pola di Command Center.
+  if (/(pola|naik|meningkat|menguat|tren|lonjak|minggu|emergen|anomali)/.test(q)) {
+    const shifts = computePatternShifts(store);
+    if (shifts.length > 0) {
+      const sig = shifts.filter((s) => s.significant);
+      add({
+        id: "agg:pattern_shifts",
+        kind: "AGG",
+        title: "Pergeseran pola 14 hari",
+        text: `${sig.length === 0 ? "Tidak ada jenis temuan yang naik secara bermakna secara statistik." : `Naik bermakna: ${sig.map((s) => riskTypeName(s.risk_type)).join(", ")}.`} Per jenis (14 hari terakhir vs 14 hari sebelumnya): ${shifts.map((s) => `${riskTypeName(s.risk_type)} ${s.recent} vs ${s.previous}${s.change_percentage === null ? "" : ` (${s.change_percentage >= 0 ? "+" : ""}${s.change_percentage}%)`}${s.significant ? ", bermakna" : ""}`).join("; ")}. Kenaikan pada hitungan kecil belum tentu lonjakan.`,
+      });
+    }
   }
   // Statistik resmi BPJS selalu tersedia sebagai pembanding; butir spesifik (provinsi, diagnosis, klaim) menyusul menurut pertanyaan.
   const bpjs = bpjsItems(store, q, claims);

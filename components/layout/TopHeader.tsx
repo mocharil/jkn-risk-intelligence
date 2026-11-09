@@ -63,6 +63,10 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 }) => {
   const pathname = usePathname();
   const routeCtx = getRouteContext(pathname || "/");
+  // Judul tab mengikuti halaman (berguna saat banyak tab dan di rekaman layar), bukan satu judul untuk semua.
+  useEffect(() => {
+    document.title = `${routeCtx.title} | ARSA JKN`;
+  }, [routeCtx.title]);
   const [isResetting, setIsResetting] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);

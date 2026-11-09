@@ -1,5 +1,6 @@
 "use client";
 
+import { RISK_TYPE_LABEL } from "@/lib/risk/labels";
 import React from "react";
 import Link from "next/link";
 import { ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip, Legend, LineChart, Line, ReferenceLine, XAxis, YAxis } from "recharts";
@@ -16,16 +17,7 @@ export interface PatternShift {
 /** Deret harian 28 hari per jenis temuan (urut lama ke baru), dari field pattern_detail API dashboard. */
 export type PatternDaily = Record<string, number[]>;
 
-const TYPE_SHORT: Record<string, string> = {
-  UPCODING: "Upcoding",
-  CLONING: "Cloning",
-  PHANTOM_BILLING: "Phantom billing",
-  ABNORMAL_LOS: "LOS anomali",
-  UNBUNDLING: "Unbundling",
-  INFLATED_BILLS: "Inflasi tagihan",
-  REPEAT_BILLING: "Tagihan berulang",
-  READMISSION: "Rawat ulang dini",
-};
+const TYPE_SHORT: Record<string, string> = RISK_TYPE_LABEL;
 
 const tooltipStyle = { backgroundColor: "#FFFFFF", borderRadius: 8, border: "1px solid #D5E0DA", fontSize: 12 };
 
@@ -40,7 +32,7 @@ export const PatternShiftRadar: React.FC<{ shifts: PatternShift[]; height?: numb
     <div className={split ? "grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] gap-6 items-center" : ""}>
       <div style={{ height }} className="w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={data} outerRadius="66%" margin={{ top: 8, right: 36, bottom: 8, left: 36 }}>
+          <RadarChart data={data} outerRadius="56%" margin={{ top: 8, right: 64, bottom: 8, left: 64 }}>
             <PolarGrid stroke="#E4ECE8" />
             <PolarAngleAxis dataKey="label" tick={{ fontSize: 11, fill: "#61756D" }} />
             <PolarRadiusAxis angle={90} tick={false} axisLine={false} domain={[0, "dataMax"]} />

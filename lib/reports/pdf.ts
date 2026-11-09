@@ -1,6 +1,7 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import { AuditEntry, verifyChain } from "../audit/chain";
 import { Investigation } from "@/types/investigation";
+import { riskLevelName, riskTypeName, statusText } from "../risk/labels";
 
 /**
  * Laporan investigasi PDF (server-side): temuan, kutipan bukti verbatim, penjelasan (berlabel sumber),
@@ -116,7 +117,7 @@ export async function buildInvestigationPdf(inv: Investigation, audit: AuditEntr
     ["Episode", `${claim.service.admission_date} s/d ${claim.service.discharge_date} (${claim.service.length_of_stay} hari)`],
     ["Tagihan / median peer", `${rp(claim.claim_amount)} / ${rp(claim.approved_tariff || 0)}`],
     ["Potensi eksposur", rp(claim.tariff_difference || 0)],
-    ["Skor risiko", `${claim.risk_score} (${claim.risk_level})`],
+    ["Skor risiko", `${claim.risk_score} (${riskLevelName(claim.risk_level)})`],
   ];
   for (const [k, v] of meta) {
     ensure(14);
@@ -138,7 +139,7 @@ export async function buildInvestigationPdf(inv: Investigation, audit: AuditEntr
   findings.forEach((f, i) => {
     ensure(40);
     write(`${i + 1}. ${f.title}`, { f: bold, size: 10.5, color: RED });
-    write(`${f.risk_type} - skor ${f.risk_score}, keyakinan ${(f.confidence * 100).toFixed(0)}%, aturan ${f.rule_id || "-"}`, { size: 8.5, color: MUTED });
+    write(`${riskTypeName(f.risk_type)} - skor ${f.risk_score}, keyakinan ${(f.confidence * 100).toFixed(0)}%, aturan ${f.rule_id || "-"}`, { size: 8.5, color: MUTED });
     write(f.summary, { gap: 2 });
     if (f.evidence?.length) {
       write("Bukti terkutip:", { f: bold, size: 9 });
@@ -158,7 +159,7 @@ export async function buildInvestigationPdf(inv: Investigation, audit: AuditEntr
   // ---- III. Keputusan ----
   heading("III. Keputusan & rekomendasi pemulihan dana");
   const d = inv.decision;
-  write(`Status kasus: ${inv.status}`, { f: bold });
+  write(`Status kasus: ${statusText(inv.status)}`, { f: bold });
   if (d) {
     write(VERDICT[d.verdict] || d.verdict, { f: bold, color: GREEN });
     write(`Dasar keputusan: ${d.rationale}`);
@@ -180,7 +181,7 @@ export async function buildInvestigationPdf(inv: Investigation, audit: AuditEntr
   write(`Verifikasi rantai: ${chain.valid ? `VALID (${chain.length} entri)` : `RUSAK pada #${chain.broken_at_seq}: ${chain.reason}`}`, { f: bold, color: chain.valid ? GREEN : RED });
   write(`Hash kepala rantai: ${headHash}`, { f: mono, size: 7.5, color: MUTED });
   audit.slice(0, 25).forEach((e) => {
-    write(`#${e.seq} ${e.timestamp.slice(0, 19).replace("T", " ")} ${e.action} oleh ${e.actor} (${e.actor_role}) ${e.previous_status ?? "-"} -> ${e.new_status ?? "-"}`, { size: 8.3 });
+    write(`#${e.seq} ${e.timestamp.slice(0, 19).replace("T", " ")} ${e.action} oleh ${e.actor} (${e.actor_role}) ${e.previous_status ? statusText(e.previous_status) : "-"} -> ${e.new_status ? statusText(e.new_status) : "-"}`, { size: 8.3 });
     write(`sha256 ${e.hash}`, { f: mono, size: 6.8, color: MUTED, indent: 10 });
   });
 

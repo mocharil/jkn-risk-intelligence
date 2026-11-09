@@ -2,6 +2,7 @@ import React from "react";
 import { RiskLevel, RiskType } from "@/types/risk";
 import { AlertTriangle, AlertCircle, ShieldAlert, ShieldCheck, Activity, Copy, FileQuestion, Clock, Layers, TrendingUp, Repeat, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RISK_LEVEL_LABEL, RISK_TYPE_LABEL } from "@/lib/risk/labels";
 
 interface RiskPillProps {
   score?: number;
@@ -37,38 +38,38 @@ export const RiskPill: React.FC<RiskPillProps> = ({
     CRITICAL: {
       bg: "bg-risk-critical-bg text-red-900 border-risk-critical-border",
       badgeBg: "bg-risk-critical text-white",
-      label: "Kritis",
+      label: RISK_LEVEL_LABEL.CRITICAL,
       icon: ShieldAlert,
     },
     HIGH: {
       bg: "bg-risk-high-bg text-rose-900 border-risk-high-border",
       badgeBg: "bg-risk-high text-white",
-      label: "Tinggi",
+      label: RISK_LEVEL_LABEL.HIGH,
       icon: AlertTriangle,
     },
     MEDIUM: {
       bg: "bg-risk-medium-bg text-amber-900 border-risk-medium-border",
       badgeBg: "bg-amber-600 text-white",
-      label: "Sedang",
+      label: RISK_LEVEL_LABEL.MEDIUM,
       icon: AlertCircle,
     },
     LOW: {
       bg: "bg-risk-low-bg text-emerald-900 border-risk-low-border",
       badgeBg: "bg-risk-low text-white",
-      label: "Rendah",
+      label: RISK_LEVEL_LABEL.LOW,
       icon: ShieldCheck,
     },
   };
 
   const typeConfigs: Record<RiskType, { label: string; icon: React.ElementType; color: string }> = {
-    UPCODING: { label: "Upcoding", icon: Activity, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
-    CLONING: { label: "Cloning", icon: Copy, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
-    PHANTOM_BILLING: { label: "Phantom Billing", icon: FileQuestion, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
-    ABNORMAL_LOS: { label: "LOS Anomali", icon: Clock, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
-    UNBUNDLING: { label: "Unbundling", icon: Layers, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
-    INFLATED_BILLS: { label: "Inflasi Tagihan", icon: TrendingUp, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
-    REPEAT_BILLING: { label: "Tagihan Berulang", icon: Repeat, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
-    READMISSION: { label: "Readmisi Dini", icon: RotateCcw, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
+    UPCODING: { label: RISK_TYPE_LABEL.UPCODING, icon: Activity, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
+    CLONING: { label: RISK_TYPE_LABEL.CLONING, icon: Copy, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
+    PHANTOM_BILLING: { label: RISK_TYPE_LABEL.PHANTOM_BILLING, icon: FileQuestion, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
+    ABNORMAL_LOS: { label: RISK_TYPE_LABEL.ABNORMAL_LOS, icon: Clock, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
+    UNBUNDLING: { label: RISK_TYPE_LABEL.UNBUNDLING, icon: Layers, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
+    INFLATED_BILLS: { label: RISK_TYPE_LABEL.INFLATED_BILLS, icon: TrendingUp, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
+    REPEAT_BILLING: { label: RISK_TYPE_LABEL.REPEAT_BILLING, icon: Repeat, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
+    READMISSION: { label: RISK_TYPE_LABEL.READMISSION, icon: RotateCcw, color: "bg-surface-secondary text-jkn-text border-jkn-border" },
   };
 
   if (type) {

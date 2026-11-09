@@ -1,5 +1,6 @@
 "use client";
 
+import { RISK_LEVEL_LABEL, RISK_TYPE_LABEL } from "@/lib/risk/labels";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -17,17 +18,17 @@ import { AlertTriangle, ArrowUpRight, Building2, Download, Eye, LayoutGrid, List
 type RiskFilter = "ALL" | RiskLevel;
 type SortKey = "exposure" | "risk_score" | "high_risk_ratio" | "peer_delta" | "national_ratio";
 
-const LEVEL_LABEL: Record<RiskLevel, string> = { CRITICAL: "Kritis", HIGH: "Tinggi", MEDIUM: "Sedang", LOW: "Rendah" };
+const LEVEL_LABEL: Record<RiskLevel, string> = RISK_LEVEL_LABEL;
 
 const TYPE_META: Record<string, { label: string; color: string }> = {
-  upcoding_pct: { label: "Upcoding", color: "#B91C1C" },
-  cloning_pct: { label: "Kloning narasi", color: "#CA8A04" },
-  phantom_billing_pct: { label: "Tagihan fiktif", color: "#0E7490" },
-  abnormal_los_pct: { label: "Lama rawat", color: "#007A3A" },
-  unbundling_pct: { label: "Unbundling", color: "#7C3AED" },
-  inflated_bills_pct: { label: "Tagihan membengkak", color: "#EA580C" },
-  repeat_billing_pct: { label: "Tagihan berulang", color: "#BE185D" },
-  readmission_pct: { label: "Readmisi dini", color: "#475569" },
+  upcoding_pct: { label: RISK_TYPE_LABEL.UPCODING, color: "#B91C1C" },
+  cloning_pct: { label: RISK_TYPE_LABEL.CLONING, color: "#CA8A04" },
+  phantom_billing_pct: { label: RISK_TYPE_LABEL.PHANTOM_BILLING, color: "#0E7490" },
+  abnormal_los_pct: { label: RISK_TYPE_LABEL.ABNORMAL_LOS, color: "#007A3A" },
+  unbundling_pct: { label: RISK_TYPE_LABEL.UNBUNDLING, color: "#7C3AED" },
+  inflated_bills_pct: { label: RISK_TYPE_LABEL.INFLATED_BILLS, color: "#EA580C" },
+  repeat_billing_pct: { label: RISK_TYPE_LABEL.REPEAT_BILLING, color: "#BE185D" },
+  readmission_pct: { label: RISK_TYPE_LABEL.READMISSION, color: "#475569" },
 };
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [

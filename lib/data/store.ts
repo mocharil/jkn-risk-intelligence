@@ -1,3 +1,4 @@
+import { INVESTIGATION_STATUS_LABEL } from "../risk/labels";
 import { CanonicalClaim } from "@/types/claim";
 import { Dataset } from "@/types/dataset";
 import { Investigation, InvestigationNote, InvestigationStatus } from "@/types/investigation";
@@ -274,9 +275,16 @@ function build(opts: { keepUsers?: UserRecord[]; keepAudit?: AuditEntry[]; ignor
   return store;
 }
 
+/** Periksa penyedia AI sejak proses mulai (tanpa menunggu), supaya permintaan pertama pengguna tidak membayar ping-nya. */
+function warmUpAI() {
+  if (process.env.NODE_ENV === "test") return;
+  void import("../ai/llm").then((m) => m.getAIStatus()).catch(() => {});
+}
+
 export function getStore(): DataStore {
   if (!g.__arsaStore) {
     g.__arsaStore = build();
+    warmUpAI();
   } else {
     // Pastikan DS-SEED pada instance HMR memiliki profil sampel, anonimisasi, dan hasil analisis lengkap
     const idx = g.__arsaStore.datasets.findIndex((d) => d.dataset_id === "DS-SEED");
@@ -329,16 +337,6 @@ export interface Actor {
   role: string;
 }
 
-const STATUS_LABEL: Record<InvestigationStatus, string> = {
-  NEW: "Baru",
-  UNDER_INVESTIGATION: "Dalam Investigasi",
-  NEED_EVIDENCE: "Membutuhkan Bukti Tambahan",
-  CONFIRMED_RISK: "Risiko Terkonfirmasi",
-  FALSE_POSITIVE: "False Positive (Klaim Wajar)",
-  ESCALATED: "Dieskalasi ke Komite Medis",
-  CLOSED: "Ditutup",
-};
-
 export function updateInvestigation(
   idOrClaim: string,
   update: { status?: InvestigationStatus; note?: string; decision?: Investigation["decision"]; action?: string },
@@ -365,7 +363,7 @@ export function updateInvestigation(
       note_id: `NOT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       author: actor.name,
       role: actor.role,
-      content: `Status diubah dari "${STATUS_LABEL[previous]}" menjadi "${STATUS_LABEL[update.status]}".${update.note ? ` Catatan: ${update.note}` : ""}`,
+      content: `Status diubah dari "${INVESTIGATION_STATUS_LABEL[previous]}" menjadi "${INVESTIGATION_STATUS_LABEL[update.status]}".${update.note ? ` Catatan: ${update.note}` : ""}`,
       created_at: now,
       type: "SYSTEM_AUDIT",
     });

@@ -74,16 +74,10 @@ function baseStatus(p: LLMProvider | null): Omit<AIStatus, "available" | "reason
   };
 }
 
-export async function getAIStatus(opts: { force?: boolean } = {}): Promise<AIStatus> {
-  const provider = selectProvider();
-  const cached = g.__arsaAIStatus;
-  if (cached && !opts.force && cached.provider === (provider?.id ?? "none")) {
-    const age = Date.now() - new Date(cached.checked_at).getTime();
-    if (age < (cached.available ? OK_TTL : FAIL_TTL)) return cached;
-  }
-  if (g.__arsaAIStatusPromise && !opts.force) return g.__arsaAIStatusPromise;
-
-  g.__arsaAIStatusPromise = (async () => {
+/** Memeriksa penyedia (ping) dan menyimpan hasilnya; permintaan serentak berbagi satu pemeriksaan. */
+function refreshAIStatus(provider: LLMProvider | null, force = false): Promise<AIStatus> {
+  if (g.__arsaAIStatusPromise && !force) return g.__arsaAIStatusPromise;
+  const run = (async () => {
     const base = baseStatus(provider);
     let status: AIStatus;
     if (!provider) {
@@ -102,11 +96,39 @@ export async function getAIStatus(opts: { force?: boolean } = {}): Promise<AISta
     g.__arsaAIStatus = status;
     return status;
   })();
-  try {
-    return await g.__arsaAIStatusPromise;
-  } finally {
-    g.__arsaAIStatusPromise = undefined;
+  g.__arsaAIStatusPromise = run;
+  run.finally(() => {
+    if (g.__arsaAIStatusPromise === run) g.__arsaAIStatusPromise = undefined;
+  }).catch(() => {});
+  return run;
+}
+
+/**
+ * Status penyedia AI. Hasil yang sudah ada langsung dikembalikan; bila sudah melewati TTL, ia disegarkan di latar belakang
+ * (stale-while-revalidate), sehingga permintaan pengguna tidak menunggu ping ke penyedia (sampai 15 detik).
+ * Hanya pemeriksaan pertama sejak proses mulai yang menunggu.
+ */
+export async function getAIStatus(opts: { force?: boolean } = {}): Promise<AIStatus> {
+  const provider = selectProvider();
+  const cached = g.__arsaAIStatus;
+  if (cached && !opts.force && cached.provider === (provider?.id ?? "none")) {
+    const age = Date.now() - new Date(cached.checked_at).getTime();
+    if (age >= (cached.available ? OK_TTL : FAIL_TTL)) void refreshAIStatus(provider);
+    return cached;
   }
+  return refreshAIStatus(provider, Boolean(opts.force));
+}
+
+/**
+ * Status yang sudah diketahui tanpa menunggu apa pun: `null` bila belum pernah diperiksa (pemeriksaan dimulai di latar belakang).
+ * Untuk jalur yang boleh menampilkan versi sementara, mis. dashboard.
+ */
+export function peekAIStatus(): AIStatus | null {
+  const provider = selectProvider();
+  const cached = g.__arsaAIStatus;
+  const usable = cached && cached.provider === (provider?.id ?? "none") ? cached : null;
+  if (!usable || Date.now() - new Date(usable.checked_at).getTime() >= (usable.available ? OK_TTL : FAIL_TTL)) void refreshAIStatus(provider);
+  return usable;
 }
 
 export async function isAIAvailable(): Promise<boolean> {
