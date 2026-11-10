@@ -9,7 +9,7 @@
 *Healthkathon 2026 · Detect Smarter, Protect JKN · Kategori: Efisiensi Risiko pada fasilitas kesehatan*
 
 [![Demo langsung](https://img.shields.io/badge/demo-langsung-007A3A?style=for-the-badge)](https://arsa-jkn-hu3kknz2sa-et.a.run.app)
-[![Tes](https://img.shields.io/badge/tes-137%20lulus-007A3A?style=for-the-badge)](#pengujian)
+[![Tes](https://img.shields.io/badge/tes-173%20lulus-007A3A?style=for-the-badge)](#pengujian)
 [![Detektor](https://img.shields.io/badge/detektor-8-0B291C?style=for-the-badge)](#8-detektor-risiko)
 [![Data](https://img.shields.io/badge/data-statistik%20resmi%20BPJS-0B291C?style=for-the-badge)](#data-dan-kejujuran-metodologi)
 
@@ -25,7 +25,7 @@
 
 ## Sekilas
 
-| 8 | 3 | 5.729 | 137 | 0 |
+| 8 | 3 | 5.729 | 173 | 0 |
 |:-:|:-:|:-:|:-:|:-:|
 | detektor risiko | peran pengguna | pemeriksaan data acuan BPJS | tes otomatis lulus | data peserta riil dipakai |
 
@@ -243,7 +243,7 @@ Tanpa kredensial model bahasa, aplikasi berjalan penuh dalam **mode aturan** yan
 
 | Perintah | Fungsi |
 |---|---|
-| `npm test` | 137 tes unit dan integrasi (PII, rantai hash, 8 detektor, ingest, sitasi, adapter model, tata kelola, unggah ujung ke ujung) |
+| `npm test` | 173 tes unit dan integrasi (PII, rantai hash, 8 detektor, ingest, sitasi, adapter model, tata kelola, unggah ujung ke ujung) |
 | `npm run build && npm run test:e2e` | Uji HTTP penuh terhadap server model tiruan (penyedia, streaming, RBAC, ingest, PDF) |
 | `npm run db:up && npm run db:migrate && npm run test:db` | pgvector dan audit append-only di Postgres nyata (Docker) |
 | `npm run eval` | Precision dan recall tiap detektor pada data sintetis berlabel |
@@ -280,7 +280,7 @@ Plan/           Dokumen perencanaan dan produk
 
 ## Pengujian
 
-- **137 tes otomatis lulus** (8 tes pgvector dijalankan terpisah lewat Docker): PII dan anonimisasi, rantai audit, 8 detektor, realisme data sintetis, ingest termasuk XLSX, JSON, TSV, berkas bermasalah, konfirmasi ganda, rollback saat analisis gagal, pemulihan proses yang terputus, dan berkas 5.000 baris.
+- **173 tes otomatis lulus** (8 tes pgvector dijalankan terpisah lewat Docker): PII dan anonimisasi, rantai audit, 8 detektor, realisme data sintetis, ingest termasuk XLSX, JSON, TSV, berkas bermasalah, konfirmasi ganda, rollback saat analisis gagal, pemulihan proses yang terputus, dan berkas 5.000 baris.
 - Smoke test seluruh halaman dan API pada build produksi.
 - Verifikasi independen data acuan BPJS (5.729 pemeriksaan, 0 selisih).
 

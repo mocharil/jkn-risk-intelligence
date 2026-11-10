@@ -502,6 +502,22 @@ export const QUEUE_AGE_BUCKETS: Array<{ key: string; label: string; max: number 
   { key: "d90", label: "lebih dari 60 hari", max: Infinity },
 ];
 
+/**
+ * Jumlah kasus per jenis sinyal di antrean investigasi, dengan daftar dasar yang sama seperti antrean itu sendiri
+ * (kasus baru di bawah skor minimum kebijakan tidak masuk) dan filter `risk_type`-nya (`primary_risk_signals`),
+ * sehingga angka pada chip sama dengan jumlah baris setelah chip diklik. `risk_by_type` menghitung seluruh dataset.
+ */
+export function computeQueueByType(
+  investigations: Array<{ status: string; risk_score: number; primary_risk_signals: RiskType[]; potential_exposure: number }>,
+  minScore: number
+): Array<{ risk_type: RiskType; count: number; potential_exposure: number }> {
+  const queue = investigations.filter((i) => i.status !== "NEW" || i.risk_score >= minScore);
+  return ALL_RISK_TYPES.map((rt) => {
+    const rows = queue.filter((i) => i.primary_risk_signals.includes(rt));
+    return { risk_type: rt, count: rows.length, potential_exposure: rows.reduce((acc, i) => acc + (i.potential_exposure || 0), 0) };
+  });
+}
+
 export function computeQueueAge(
   investigations: Array<{ status: string; claim: { service: { submission_date: string } } }>,
   asOf: string
