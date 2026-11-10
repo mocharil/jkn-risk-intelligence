@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { guard } from "@/lib/auth/guard";
 import { DatabaseService } from "@/lib/supabase/db-service";
 import { getStore, memoized } from "@/lib/data/store";
-import { computeWorkflow, computePatternShifts, computePatternDetail, computeQueueAge } from "@/lib/analytics/aggregates";
+import { computeWorkflow, computePatternShifts, computePatternDetail, computeQueueAge, computeQueueByType } from "@/lib/analytics/aggregates";
+import { getGovernancePolicy } from "@/lib/governance/policy";
 import { computeProvinceNational } from "@/lib/analytics/provider-national";
 
 export async function GET(request: NextRequest) {
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
     top_providers: topProviders,
     providers_total: providers.length,
     workflow: computeWorkflow(store.investigations),
+    queue_by_type: computeQueueByType(store.investigations, getGovernancePolicy().queue_min_score),
     meta,
     is_supabase_connected: DatabaseService.isSupabaseConfigured(),
   });

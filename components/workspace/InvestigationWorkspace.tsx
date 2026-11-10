@@ -165,7 +165,9 @@ export function InvestigationQueueInner({
             open: d.workflow?.open ?? 0,
             exposure: d.kpis?.potential_exposure ?? 0,
             aged: age.filter((a) => a.key === "d60" || a.key === "d90").reduce((acc, a) => acc + a.count, 0),
-            byType: (d.kpis?.risk_by_type || []).filter((t: { claim_count: number }) => t.claim_count > 0),
+            byType: (d.queue_by_type || [])
+              .filter((t: { count: number }) => t.count > 0)
+              .map((t: { risk_type: string; count: number; potential_exposure: number }) => ({ risk_type: t.risk_type, claim_count: t.count, potential_exposure: t.potential_exposure })),
           });
         })
         .catch(() => {});

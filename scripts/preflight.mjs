@@ -72,13 +72,21 @@ row(same(k.high_risk_claims, EXPECT.queue) ? "ok" : "warn", "Antrean prioritas",
 row(same(Math.round(k.potential_exposure), EXPECT.exposure) ? "ok" : "warn", "Potensi eksposur", `${rp(k.potential_exposure)} (acuan deck ${rp(EXPECT.exposure)})`);
 row(dash.meta?.data_mode === "sintetis" ? "ok" : "warn", "Mode data", dash.meta?.data_mode === "sintetis" ? "sintetis bawaan (belum dicampur unggahan)" : `${dash.meta?.data_mode}: angka berbeda dari deck; minta admin menjalankan reset demo`);
 
+// Status kasus tersimpan permanen (snapshot di penyimpanan, bukan hanya di memori): keputusan dari sesi sebelumnya ikut terbawa.
+const wf = dash.workflow;
+if (wf) {
+  const touched = wf.total - (wf.by_status?.NEW || 0);
+  const rincian = Object.entries(wf.by_status || {}).filter(([s]) => s !== "NEW").map(([s, n]) => `${s}: ${n}`).join(", ");
+  row(touched === 0 ? "ok" : "warn", "Status kasus", touched === 0 ? `semua ${wf.total} kasus masih baru` : `${touched} dari ${wf.total} kasus sudah diproses (${rincian}); status tersimpan permanen, jalankan reset demo (admin) untuk mulai bersih`);
+}
+
 // 4. Status sistem
 const status = await (await api("/api/system/status")).json();
 row(status.ai?.available ? "ok" : "warn", "Penyedia AI", status.ai?.available ? "tersedia" : `tidak tersedia (${status.ai?.reason || "alasan tidak diketahui"}); Copilot jatuh ke mode aturan`);
 const emb = status.last_analysis?.embedding_model;
 row(emb === "local-hash-v1" ? "ok" : "warn", "Model embedding analisis", `${emb}${emb === "local-hash-v1" ? "" : " (bukan model awal: angka dapat bergeser dari deck)"}`);
 row(status.audit?.valid ? "ok" : "fail", "Rantai audit", status.audit?.valid ? `valid, ${status.audit.length} entri` : "TIDAK valid");
-if (status.audit?.length > 40) row("warn", "Isi jejak audit", `${status.audit.length} entri; sebagian besar catatan uji akan terlihat mentor dan juri`);
+if (status.audit?.length > 40) row("warn", "Isi jejak audit", `${status.audit.length} entri; catatan uji akan terlihat mentor dan juri, dan reset demo tidak menghapus audit (append-only)`);
 if (Array.isArray(status.warnings) && status.warnings.length) row("warn", "Peringatan sistem", status.warnings.join("; "));
 row(status.database?.configured ? (status.database.ok ? "ok" : "fail") : "ok", "Database", status.database?.configured ? (status.database.ok ? "terhubung" : "tidak sehat") : "tidak dipakai");
 
